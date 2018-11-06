@@ -1,0 +1,6 @@
+[package]
+name = "pixurs"
+version = "0.1.0"
+authors = ["Magnus Hovland Hoff <maghoff@gmail.com>"]
+
+[dependencies]
