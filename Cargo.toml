@@ -8,6 +8,8 @@ description = "Photo sharing web application."
 structopt = "0.2.13"
 r2d2 = "0.8.3"
 r2d2-diesel = "1.0.0"
+hyper = "0.12.13"
+tokio = "0.1.11"
 
 [dependencies.diesel]
 default-features = false
