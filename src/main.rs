@@ -1,16 +1,13 @@
+#![feature(async_await)]
+
 #[macro_use] extern crate diesel_migrations;
-extern crate diesel;
-extern crate hyper;
-extern crate r2d2_diesel;
-extern crate r2d2;
-extern crate structopt;
-extern crate tokio;
 
 mod db;
 
 use std::net::SocketAddr;
-use hyper::rt::Future;
 
+use futures::prelude::*;
+use hyper::rt::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -29,10 +26,12 @@ fn main() -> Result<(), Box<std::error::Error>>{
     let bind_port = 1212;
 
     let service_fn = || {
-        use hyper::{Body, Response, service::service_fn_ok};
-        service_fn_ok(|_req| {
-            Response::new(Body::from("Hello World"))
-        })
+        async {
+            use hyper::{Body, Request, Response, service::service_fn_ok};
+            Ok(service_fn_ok(|_req: Request<Body>| {
+                Response::new(Body::from("Hello World"))
+            })) as Result<_, Box<std::error::Error + Send + Sync>>
+        }.boxed().compat()
     };
 
     let server =

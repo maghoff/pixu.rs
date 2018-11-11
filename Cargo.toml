@@ -3,6 +3,7 @@ name = "pixurs"
 version = "0.1.0"
 authors = ["Magnus Hovland Hoff <maghoff@gmail.com>"]
 description = "Photo sharing web application."
+edition = "2018"
 
 [dependencies]
 structopt = "0.2.13"
@@ -10,6 +11,10 @@ r2d2 = "0.8.3"
 r2d2-diesel = "1.0.0"
 hyper = "0.12.13"
 tokio = "0.1.11"
+
+[dependencies.futures-preview]
+version = "0.3.0-alpha.9"
+features = ["compat"]
 
 [dependencies.diesel]
 default-features = false
