@@ -1,4 +1,4 @@
-#![feature(async_await)]
+#![feature(async_await, futures_api)]
 
 #[macro_use] extern crate diesel_migrations;
 
@@ -18,6 +18,16 @@ struct Options {
     db: String,
 }
 
+use hyper::{Body, Request, Response};
+
+async fn handle_request(_req: Request<Body>) ->
+    Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
+{
+    Ok(Response::new(Body::from(
+        format!("You are looking for {}\n", _req.uri())
+    )))
+}
+
 fn main() -> Result<(), Box<std::error::Error>>{
     let opt = Options::from_args();
     let _db = db::create_pool(opt.db)?;
@@ -26,12 +36,9 @@ fn main() -> Result<(), Box<std::error::Error>>{
     let bind_port = 1212;
 
     let service_fn = || {
-        async {
-            use hyper::{Body, Request, Response, service::service_fn_ok};
-            Ok(service_fn_ok(|_req: Request<Body>| {
-                Response::new(Body::from("Hello World"))
-            })) as Result<_, Box<std::error::Error + Send + Sync>>
-        }.boxed().compat()
+        hyper::service::service_fn(
+            |req| handle_request(req).boxed().compat()
+        )
     };
 
     let server =
