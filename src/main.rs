@@ -1,5 +1,6 @@
 #![feature(async_await, futures_api)]
 
+#[macro_use] extern crate bart_derive;
 #[macro_use] extern crate diesel_migrations;
 
 mod db;
@@ -20,11 +21,17 @@ struct Options {
 
 use hyper::{Body, Request, Response};
 
-async fn handle_request(_req: Request<Body>) ->
+#[derive(BartDisplay)]
+#[template_string="You are looking for {{uri}}\n"]
+struct DummyResponse<'a> {
+    uri: &'a hyper::http::uri::Uri,
+}
+
+async fn handle_request(req: Request<Body>) ->
     Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
 {
     Ok(Response::new(Body::from(
-        format!("You are looking for {}\n", _req.uri())
+        DummyResponse { uri: req.uri(), }.to_string()
     )))
 }
 
