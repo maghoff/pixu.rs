@@ -8,6 +8,7 @@ mod db;
 use std::net::SocketAddr;
 
 use futures::prelude::*;
+use hyper::http;
 use hyper::rt::Future;
 use structopt::StructOpt;
 
@@ -24,15 +25,19 @@ use hyper::{Body, Request, Response};
 #[derive(BartDisplay)]
 #[template_string="You are looking for {{uri}}\n"]
 struct DummyResponse<'a> {
-    uri: &'a hyper::http::uri::Uri,
+    uri: &'a http::uri::Uri,
 }
 
 async fn handle_request(req: Request<Body>) ->
     Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
 {
-    Ok(Response::new(Body::from(
-        DummyResponse { uri: req.uri(), }.to_string()
-    )))
+    let body = DummyResponse { uri: req.uri(), };
+
+    Ok(Response::builder()
+        .header(http::header::CONTENT_TYPE, "text/html;charset=utf-8")
+        .body(Body::from(body.to_string()))
+        .unwrap()
+    )
 }
 
 fn main() -> Result<(), Box<std::error::Error>>{
