@@ -1,4 +1,4 @@
-#![feature(async_await, futures_api)]
+#![feature(async_await, await_macro, futures_api)]
 
 #[macro_use] extern crate bart_derive;
 #[macro_use] extern crate diesel_migrations;
@@ -22,22 +22,67 @@ struct Options {
 
 use hyper::{Body, Request, Response};
 
+const TEXT_HTML: &str = "text/html;charset=utf-8";
+
 #[derive(BartDisplay)]
 #[template_string="You are looking for {{uri}}\n"]
 struct DummyResponse<'a> {
     uri: &'a http::uri::Uri,
 }
 
+enum Error {
+    BadRequest,
+}
+
+trait Resource {
+    fn etag(&self) -> Option<http::ETag>;
+    fn last_modified(&self) -> Option<Timestamp>;
+}
+
+trait QueryableResource {
+    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn Resource>, Error>;
+}
+
+async fn lookup(_path: &str) -> Box<dyn QueryableResource> {
+    // if _path == "*" { asterisk_resource() }
+
+    unimplemented!()
+}
+
+async fn handle_request_core(req: Request<Body>) ->
+    Result<Response<Body>, Error>
+{
+    let queryable_resource = await!(lookup(&req.uri().path()));
+    let resource = queryable_resource.query(req.uri().query())?;
+
+    if let Some(etag) = resource.etag() {
+        // Check ETag-related If-headers
+        unimplemented!();
+    }
+
+    if let Some(last_modified) = resource.last_modified() {
+        // Check last_modified-related If-headers
+        unimplemented!();
+    }
+
+    unimplemented!()
+}
+
 async fn handle_request(req: Request<Body>) ->
     Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
 {
-    let body = DummyResponse { uri: req.uri(), };
+    match await!(handle_request_core(req)) {
+        Ok(res) => Ok(res),
+        Err(Error::BadRequest) => {
+            let body = DummyResponse { uri: req.uri(), };
 
-    Ok(Response::builder()
-        .header(http::header::CONTENT_TYPE, "text/html;charset=utf-8")
-        .body(Body::from(body.to_string()))
-        .unwrap()
-    )
+            Ok(Response::builder()
+                .header(http::header::CONTENT_TYPE, TEXT_HTML)
+                .body(Body::from(body.to_string()))
+                .unwrap()
+            )
+        }
+    }
 }
 
 fn main() -> Result<(), Box<std::error::Error>>{
