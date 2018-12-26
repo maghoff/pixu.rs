@@ -1,11 +1,10 @@
-#![feature(async_await, await_macro, futures_api, never_type, transpose_result, fnbox)]
+#![feature(async_await, await_macro, futures_api, never_type, transpose_result, unsized_locals)]
 
 #[macro_use] extern crate bart_derive;
 #[macro_use] extern crate diesel_migrations;
 
 mod db;
 
-use std::boxed::FnBox;
 use std::fmt;
 use std::net::SocketAddr;
 
@@ -99,7 +98,7 @@ trait Representation {
 
 trait Resource {
     fn representations(self: Box<Self>) ->
-        Vec<(MediaType, Box<dyn FnBox() -> Box<dyn Representation>>)>;
+        Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>;
 }
 
 trait QueryableResource {
@@ -126,7 +125,7 @@ impl QueryableResource for GreeterResource {
 
 impl Resource for GreeterResource {
     fn representations(self: Box<Self>)
-        -> Vec<(MediaType, Box<dyn FnBox() -> Box<dyn Representation>>)>
+        -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
     {
         vec![
             (
