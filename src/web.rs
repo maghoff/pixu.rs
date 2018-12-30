@@ -97,8 +97,6 @@ where
     unimplemented!()
 }
 
-async fn l(_: &str) {}
-
 async fn handle_request_core(req: Request<Body>) ->
     Result<Response<Body>, Error>
 {
