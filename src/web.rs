@@ -3,8 +3,6 @@ use std::fmt;
 use hyper::http;
 use hyper::{Body, Request, Response};
 
-use crate::site::lookup; // FIXME Reverse dependency
-
 const TEXT_HTML: &str = "text/html;charset=utf-8";
 
 #[derive(BartDisplay)]
@@ -88,25 +86,31 @@ enum ResolveError<'a> {
     LookupError(Error),
 }
 
-async fn resolve_resource(uri: &http::Uri) -> Result<Box<dyn Resource>, ResolveError> {
-    match (uri.path(), uri.query()) {
-        ("*", None) => unimplemented!("Should return asterisk resource"),
-        (path, query) if path.starts_with('/') => {
-            let queryable_resource = await!(lookup(&path[1..]));
-            queryable_resource.query(query)
-                .map_err(ResolveError::LookupError)
-        },
-        _ => Err(ResolveError::MalformedUri(uri)),
-    }
+async fn resolve_resource<'a, F, Fut>(f: F, s: &'a str)
+    -> Result<(), ()>
+where
+    F: FnOnce(&'a str) -> Fut,
+    F: 'a,
+    Fut: futures::Future
+{
+    let _ = await!(f(s));
+    unimplemented!()
 }
+
+async fn l(_: &str) {}
 
 async fn handle_request_core(req: Request<Body>) ->
     Result<Response<Body>, Error>
 {
-    let resource = await!(resolve_resource(&req.uri())).map_err(|x| match x {
+    let resource = await!(resolve_resource(crate::site::lookup, "lol"))
+        .map(|_| -> Box<dyn Resource> { unimplemented!() })
+        .map_err(|_| ResolveError::MalformedUri(&req.uri()))
+        .map_err(|x| match x {
         ResolveError::MalformedUri(_) => Error::BadRequest,
         ResolveError::LookupError(_) => Error::InternalServerError,
     })?;
+
+    let resource: Box<dyn Resource> = unimplemented!();
 
     let _accept = req.headers().get(http::header::ACCEPT)
         .map(|x| x.to_str())
