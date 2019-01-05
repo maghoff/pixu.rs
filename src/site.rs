@@ -27,8 +27,8 @@ impl Resource for GreeterResource {
                     path: &'a str,
                 }
 
-                Box::new(DummyResponse { path: &self.path }.to_string()) as Box<dyn Representation>
-            }) as _
+                Box::new(DummyResponse { path: &self.path }.to_string()) as _
+            })
         )]
     }
 }
