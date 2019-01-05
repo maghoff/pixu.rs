@@ -69,10 +69,21 @@ impl fmt::Display for MediaType {
 }
 
 pub trait Representation {
-    fn etag(&self) -> Option<ETag>;
-    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>>;
+    fn etag(&self) -> Option<ETag> {
+        None
+    }
 
-    fn body(&self) -> Body;
+    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        None
+    }
+
+    fn body(self: Box<Self>) -> Body;
+}
+
+impl<B: Into<Body>> Representation for B {
+    fn body(self: Box<Self>) -> Body {
+        (*self).into()
+    }
 }
 
 pub trait Resource {

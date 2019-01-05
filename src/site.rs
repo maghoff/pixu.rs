@@ -1,5 +1,4 @@
-use hyper::Body;
-use crate::web::{QueryableResource, Resource, Representation, MediaType, Error, ETag};
+use crate::web::{QueryableResource, Resource, Representation, MediaType, Error};
 
 struct GreeterResource {
     path: String,
@@ -31,25 +30,16 @@ impl Resource for GreeterResource {
                     args: vec![ "charset=utf-8".to_string() ],
                 },
                 Box::new(move || {
-                    self as Box<dyn Representation>
+                    #[derive(BartDisplay)]
+                    #[template_string="You are looking for {{path}}\n"]
+                    struct DummyResponse<'a> {
+                        path: &'a str,
+                    }
+
+                    Box::new(DummyResponse { path: &self.path }.to_string()) as Box<dyn Representation>
                 }) as _
             )
         ]
-    }
-}
-
-impl Representation for GreeterResource {
-    fn etag(&self) -> Option<ETag> { None }
-    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
-
-    fn body(&self) -> Body {
-        #[derive(BartDisplay)]
-        #[template_string="You are looking for {{path}}\n"]
-        struct DummyResponse<'a> {
-            path: &'a str,
-        }
-
-        Body::from(DummyResponse { path: &self.path }.to_string())
     }
 }
 
