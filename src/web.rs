@@ -48,6 +48,22 @@ pub struct MediaType {
     pub args: Vec<String>,
 }
 
+impl MediaType {
+    pub fn new(
+        type_category: impl ToString,
+        subtype: impl ToString,
+        args: impl Into<Vec<String>>
+    ) ->
+        MediaType
+    {
+        MediaType {
+            type_category: type_category.to_string(),
+            subtype: subtype.to_string(),
+            args: args.into(),
+        }
+    }
+}
+
 impl fmt::Display for MediaType {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // FIXME: Will willingly generate invalid media type strings if the
@@ -89,6 +105,22 @@ impl<B: Into<Body>> Representation for B {
 pub trait Resource {
     fn representations(self: Box<Self>) ->
         Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>;
+}
+
+impl<T: FnOnce() -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>> Resource for T {
+    fn representations(self: Box<Self>)
+        -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
+    {
+        (*self)()
+    }
+}
+
+impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)> {
+    fn representations(self: Box<Self>)
+        -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
+    {
+        *self
+    }
 }
 
 pub trait QueryableResource {
