@@ -3,7 +3,10 @@ use std::fmt;
 use hyper::http;
 use hyper::{Body, Request, Response};
 
-use crate::site::lookup; // FIXME Reverse dependency
+// FIXME Reverse dependency
+// I was unable to dependency inject this async function due to an ICE:
+// https://github.com/rust-lang/rust/issues/57084
+use crate::site::lookup;
 
 const TEXT_HTML: &str = "text/html;charset=utf-8";
 
@@ -37,8 +40,6 @@ impl fmt::Display for ETag {
     }
 }
 
-pub type Timestamp = !;
-
 // FIXME Very alloc heavy struct
 // FIXME Verify validity of data on creation
 pub struct MediaType {
@@ -69,7 +70,7 @@ impl fmt::Display for MediaType {
 
 pub trait Representation {
     fn etag(&self) -> Option<ETag>;
-    fn last_modified(&self) -> Option<Timestamp>;
+    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>>;
 
     fn body(&self) -> Body;
 }
@@ -145,7 +146,9 @@ async fn handle_request_core(req: Request<Body>) ->
     }
 
     if let Some(last_modified) = last_modified {
+        // See timestamp format: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Last-Modified
         response.header("last-modified", last_modified.to_string());
+        unimplemented!("Missing correct datetime formatter");
     }
 
     // Create response body

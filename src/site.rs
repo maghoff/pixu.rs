@@ -1,5 +1,5 @@
 use hyper::Body;
-use crate::web::{QueryableResource, Resource, Representation, MediaType, Error, ETag, Timestamp};
+use crate::web::{QueryableResource, Resource, Representation, MediaType, Error, ETag};
 
 struct GreeterResource {
     path: String,
@@ -40,7 +40,7 @@ impl Resource for GreeterResource {
 
 impl Representation for GreeterResource {
     fn etag(&self) -> Option<ETag> { None }
-    fn last_modified(&self) -> Option<Timestamp> { None }
+    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 
     fn body(&self) -> Body {
         #[derive(BartDisplay)]
