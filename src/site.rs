@@ -22,24 +22,22 @@ impl Resource for GreeterResource {
     fn representations(self: Box<Self>)
         -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
     {
-        vec![
-            (
-                MediaType {
-                    type_category: "text".to_string(),
-                    subtype: "html".to_string(),
-                    args: vec![ "charset=utf-8".to_string() ],
-                },
-                Box::new(move || {
-                    #[derive(BartDisplay)]
-                    #[template_string="You are looking for {{path}}\n"]
-                    struct DummyResponse<'a> {
-                        path: &'a str,
-                    }
+        vec![(
+            MediaType {
+                type_category: "text".to_string(),
+                subtype: "html".to_string(),
+                args: vec![ "charset=utf-8".to_string() ],
+            },
+            Box::new(move || {
+                #[derive(BartDisplay)]
+                #[template_string="You are looking for {{path}}\n"]
+                struct DummyResponse<'a> {
+                    path: &'a str,
+                }
 
-                    Box::new(DummyResponse { path: &self.path }.to_string()) as Box<dyn Representation>
-                }) as _
-            )
-        ]
+                Box::new(DummyResponse { path: &self.path }.to_string()) as Box<dyn Representation>
+            }) as _
+        )]
     }
 }
 
