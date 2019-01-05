@@ -1,4 +1,4 @@
-use crate::web::{QueryableResource, Resource, Representation, MediaType, Error};
+use crate::web::{QueryableResource, Resource, Representation, MediaType};
 
 struct GreeterResource {
     path: String,
@@ -7,14 +7,6 @@ struct GreeterResource {
 impl GreeterResource {
     fn new(path: impl ToString) -> Self {
         Self { path: path.to_string() }
-    }
-}
-
-impl QueryableResource for GreeterResource {
-    fn query(self: Box<Self>, _query: Option<&str>)
-        -> Result<Box<dyn Resource>, Error>
-    {
-        Ok(self as _)
     }
 }
 
