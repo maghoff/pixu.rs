@@ -1,5 +1,3 @@
-use std::fmt;
-
 use hyper::http;
 use hyper::{Body, Request, Response};
 
@@ -7,6 +5,21 @@ use hyper::{Body, Request, Response};
 // I was unable to dependency inject this async function due to an ICE:
 // https://github.com/rust-lang/rust/issues/57084
 use crate::site::lookup;
+
+mod etag;
+pub use self::etag::ETag;
+
+mod media_type;
+pub use self::media_type::MediaType;
+
+mod representation;
+pub use self::representation::Representation;
+
+mod resource;
+pub use self::resource::Resource;
+
+mod queryable_resource;
+pub use self::queryable_resource::{Error, QueryableResource};
 
 const TEXT_HTML: &str = "text/html;charset=utf-8";
 
@@ -17,123 +30,6 @@ struct BadRequest;
 #[derive(BartDisplay)]
 #[template_string="Internal server error\n"]
 struct InternalServerError;
-
-pub enum Error {
-    BadRequest,
-    InternalServerError,
-}
-
-// String? Really? Maybe Cow or something instead?
-pub enum ETag {
-    Weak(String),
-    Strong(String),
-}
-
-impl fmt::Display for ETag {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        // TODO Escape. Better typing for validating ETags? (IntoETag?)
-        // Reference for ETag grammar: https://stackoverflow.com/a/11572348
-        match self {
-            ETag::Weak(tag) => write!(fmt, "W/\"{}\"", tag),
-            ETag::Strong(tag) => write!(fmt, "\"{}\"", tag),
-        }
-    }
-}
-
-// FIXME Very alloc heavy struct
-// FIXME Verify validity of data on creation
-pub struct MediaType {
-    pub type_category: String,
-    pub subtype: String,
-    pub args: Vec<String>,
-}
-
-impl MediaType {
-    pub fn new(
-        type_category: impl ToString,
-        subtype: impl ToString,
-        args: impl Into<Vec<String>>
-    ) ->
-        MediaType
-    {
-        MediaType {
-            type_category: type_category.to_string(),
-            subtype: subtype.to_string(),
-            args: args.into(),
-        }
-    }
-}
-
-impl fmt::Display for MediaType {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME: Will willingly generate invalid media type strings if the
-        // components are invalid
-
-        write!(fmt, "{}/{}", self.type_category, self.subtype)?;
-
-        for (i, arg) in self.args.iter().enumerate() {
-            if i == 0 {
-                write!(fmt, ";")?;
-            } else {
-                write!(fmt, "&")?;
-            }
-            write!(fmt, "{}", arg)?;
-        }
-
-        Ok(())
-    }
-}
-
-pub trait Representation {
-    fn etag(&self) -> Option<ETag> {
-        None
-    }
-
-    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        None
-    }
-
-    fn body(self: Box<Self>) -> Body;
-}
-
-impl<B: Into<Body>> Representation for B {
-    fn body(self: Box<Self>) -> Body {
-        (*self).into()
-    }
-}
-
-pub trait Resource {
-    fn representations(self: Box<Self>) ->
-        Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>;
-}
-
-impl<T: FnOnce() -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>> Resource for T {
-    fn representations(self: Box<Self>)
-        -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
-    {
-        (*self)()
-    }
-}
-
-impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)> {
-    fn representations(self: Box<Self>)
-        -> Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>
-    {
-        *self
-    }
-}
-
-pub trait QueryableResource {
-    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn Resource>, Error>;
-}
-
-impl<T: 'static + Resource> QueryableResource for T {
-    fn query(self: Box<Self>, _query: Option<&str>)
-        -> Result<Box<dyn Resource>, Error>
-    {
-        Ok(self as _)
-    }
-}
 
 enum ResolveError<'a> {
     MalformedUri(&'a http::Uri),
