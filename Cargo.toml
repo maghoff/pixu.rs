@@ -14,6 +14,7 @@ tokio = "0.1.11"
 bart = "0.1.4"
 bart_derive = "0.1.4"
 chrono = "0.4.6"
+insideout = "0.2.0"
 
 [dependencies.futures-preview]
 version = "0.3.0-alpha.9"

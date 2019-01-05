@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, never_type, transpose_result, unsized_locals)]
+#![feature(async_await, await_macro, futures_api, unsized_locals)]
 
 #[macro_use] extern crate bart_derive;
 #[macro_use] extern crate diesel_migrations;

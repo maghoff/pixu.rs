@@ -1,5 +1,6 @@
 use hyper::http;
 use hyper::{Body, Request, Response};
+use insideout::InsideOut;
 
 // FIXME Reverse dependency
 // I was unable to dependency inject this async function due to an ICE:
@@ -58,7 +59,7 @@ async fn handle_request_core(req: Request<Body>) ->
 
     let _accept = req.headers().get(http::header::ACCEPT)
         .map(|x| x.to_str())
-        .transpose()
+        .inside_out()
         .map_err(|_| Error::BadRequest)?;
 
     let mut representations = resource.representations();
