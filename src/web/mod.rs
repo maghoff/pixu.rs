@@ -49,44 +49,63 @@ async fn resolve_resource(uri: &http::Uri) -> Result<Box<dyn Resource>, ResolveE
     }
 }
 
+fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>) {
+    (
+        http::StatusCode::METHOD_NOT_ALLOWED,
+        vec![(
+            MediaType::new("text", "plain", vec![]),
+            Box::new(move || {
+                Box::new("Method Not Allowed\n") as Box<dyn Representation>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+        )]
+    )
+}
+
 async fn handle_request_core(req: Request<Body>) ->
     Result<Response<Body>, Error>
 {
     let resource = await!(resolve_resource(&req.uri())).map_err(|x| match x {
+        // Change to follow through with "special" resource instances?
+        // Like method_not_allowed() below. This change would make the
+        // function not return a Result at all..! Funny. And good?
         ResolveError::MalformedUri(_) => Error::BadRequest,
         ResolveError::LookupError(_) => Error::InternalServerError,
     })?;
+
+    let etag = resource.etag();
+    let last_modified = resource.last_modified();
+
+    if let Some(_etag) = etag {
+        // Check ETag-related If-headers: If-Match, If-None-Match
+        // Maybe not contingent on the resource giving an ETag
+        unimplemented!();
+    }
+
+    if let Some(_last_modified) = last_modified {
+        // Grammar reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Last-Modified
+        // Handle If-Modified-Since and If-Unmodified-Since
+        // Maybe not contingent on the resource giving a timestamp
+        unimplemented!();
+    }
 
     let _accept = req.headers().get(http::header::ACCEPT)
         .map(|x| x.to_str())
         .inside_out()
         .map_err(|_| Error::BadRequest)?;
 
-    let mut representations = resource.representations();
+    let (status, mut representations) = match req.method() {
+        &hyper::Method::GET => resource.get(),
+        _ => method_not_allowed(),
+    };
+
+    let mut response = Response::builder();
+    response.status(status);
 
     // TODO Implement content type negotiation via Accept
     // Also conditionally set Vary: Accept in response
     let (content_type, rep_builder) = representations.pop().unwrap(); // FIXME: Stub
     let representation = rep_builder();
 
-    let etag = representation.etag();
-    let last_modified = representation.last_modified();
-
-    if let Some(_etag) = etag {
-        // Check ETag-related If-headers: If-Match, If-None-Match
-        // Maybe not contingent on the representation giving an ETag
-        unimplemented!();
-    }
-
-    if let Some(_last_modified) = representation.last_modified() {
-        // Grammar reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Last-Modified
-        // Handle If-Modified-Since and If-Unmodified-Since
-        // Maybe not contingent on the representation giving a timestamp
-        unimplemented!();
-    }
-
-    let mut response = Response::builder();
-    response.status(http::StatusCode::OK);
     response.header("content-type", content_type.to_string());
 
     if let Some(etag) = etag {

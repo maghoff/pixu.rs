@@ -1,18 +1,43 @@
+use hyper::http;
+
 use crate::web::{QueryableResource, Representation, MediaType};
 
-pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
-    let path = path.to_string();
+fn index() -> impl QueryableResource {
+    #[derive(BartDisplay)]
+    #[template_string="You are looking for {{path}}\n"]
+    struct Index<'a> {
+        path: &'a str,
+    }
 
-    Box::new(vec![(
+    vec![(
         MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
         Box::new(move || {
-            #[derive(BartDisplay)]
-            #[template_string="You are looking for {{path}}\n"]
-            struct DummyResponse<'a> {
-                path: &'a str,
-            }
-
-            Box::new(DummyResponse { path: &path }.to_string()) as Box<dyn Representation>
+            Box::new(Index {
+                path: "index"
+            }.to_string()) as Box<dyn Representation>
         }) as Box<dyn FnOnce() -> Box<dyn Representation>>
-    )]) as _
+    )]
+}
+
+fn not_found() -> impl QueryableResource {
+    #[derive(BartDisplay)]
+    #[template_string="Not found!\n"]
+    struct NotFound;
+
+    (
+        http::StatusCode::NOT_FOUND,
+        vec![(
+            MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
+            Box::new(move || {
+                Box::new(NotFound.to_string()) as Box<dyn Representation>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+        )]
+    )
+}
+
+pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
+    match path {
+        "" => Box::new(index()) as _,
+        _ => Box::new(not_found()) as _,
+    }
 }
