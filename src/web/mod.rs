@@ -1,10 +1,11 @@
 use hyper::http;
 use hyper::{Body, Request, Response};
-use insideout::InsideOut;
 
 // FIXME Reverse dependency
 // I was unable to dependency inject this async function due to an ICE:
 // https://github.com/rust-lang/rust/issues/57084
+//
+// But perhaps it would work if I go via a trait?
 use crate::site::lookup;
 
 mod etag;
@@ -21,16 +22,6 @@ pub use self::resource::Resource;
 
 mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
-
-const TEXT_HTML: &str = "text/html;charset=utf-8";
-
-#[derive(BartDisplay)]
-#[template_string="Bad request\n"]
-struct BadRequest;
-
-#[derive(BartDisplay)]
-#[template_string="Internal server error\n"]
-struct InternalServerError;
 
 enum ResolveError<'a> {
     MalformedUri(&'a http::Uri),
@@ -61,16 +52,36 @@ fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -
     )
 }
 
-async fn handle_request_core(req: Request<Body>) ->
-    Result<Response<Body>, Error>
+fn bad_request() -> impl Resource {
+    (
+        http::StatusCode::BAD_REQUEST,
+        vec![(
+            MediaType::new("text", "plain", vec![]),
+            Box::new(move || {
+                Box::new("Bad Request\n") as Box<dyn Representation>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+        )]
+    )
+}
+
+fn internal_server_error() -> impl Resource {
+    (
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        vec![(
+            MediaType::new("text", "plain", vec![]),
+            Box::new(move || {
+                Box::new("Internal Server Error\n") as Box<dyn Representation>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+        )]
+    )
+}
+
+async fn handle_request_core(req: Request<Body>) -> Response<Body>
 {
-    let resource = await!(resolve_resource(&req.uri())).map_err(|x| match x {
-        // Change to follow through with "special" resource instances?
-        // Like method_not_allowed() below. This change would make the
-        // function not return a Result at all..! Funny. And good?
-        ResolveError::MalformedUri(_) => Error::BadRequest,
-        ResolveError::LookupError(_) => Error::InternalServerError,
-    })?;
+    let resource = await!(resolve_resource(&req.uri())).unwrap_or_else(|x| match x {
+        ResolveError::MalformedUri(_) => Box::new(bad_request()),
+        ResolveError::LookupError(_) => Box::new(internal_server_error()),
+    });
 
     let etag = resource.etag();
     let last_modified = resource.last_modified();
@@ -88,10 +99,10 @@ async fn handle_request_core(req: Request<Body>) ->
         unimplemented!();
     }
 
-    let _accept = req.headers().get(http::header::ACCEPT)
-        .map(|x| x.to_str())
-        .inside_out()
-        .map_err(|_| Error::BadRequest)?;
+    // let _accept = req.headers().get(http::header::ACCEPT)
+    //     .map(|x| x.to_str())
+    //     .inside_out()
+    //     .map_err(|_| Error::BadRequest)?;
 
     let (status, mut representations) = match req.method() {
         &hyper::Method::GET => resource.get(),
@@ -119,35 +130,14 @@ async fn handle_request_core(req: Request<Body>) ->
     }
 
     // Create response body
-    Ok(response
+    response
         .body(representation.body())
-        .expect("Success should be guaranteed at type level"))
+        .expect("Success should be guaranteed at type level")
 }
 
+// This exists merely to allow use of .compat() layer for futures 0.1 support
 pub async fn handle_request(req: Request<Body>) ->
     Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
 {
-    match await!(handle_request_core(req)) {
-        Ok(res) => Ok(res),
-        Err(Error::BadRequest) => {
-            let body = BadRequest;
-
-            Ok(Response::builder()
-                .status(http::StatusCode::BAD_REQUEST)
-                .header(http::header::CONTENT_TYPE, TEXT_HTML)
-                .body(Body::from(body.to_string()))
-                .unwrap()
-            )
-        },
-        Err(Error::InternalServerError) => {
-            let body = InternalServerError;
-
-            Ok(Response::builder()
-                .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                .header(http::header::CONTENT_TYPE, TEXT_HTML)
-                .body(Body::from(body.to_string()))
-                .unwrap()
-            )
-        },
-    }
+    Ok(await!(handle_request_core(req)))
 }
