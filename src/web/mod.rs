@@ -1,12 +1,7 @@
+use std::pin::Pin;
+
 use hyper::http;
 use hyper::{Body, Request, Response};
-
-// FIXME Reverse dependency
-// I was unable to dependency inject this async function due to an ICE:
-// https://github.com/rust-lang/rust/issues/57084
-//
-// But perhaps it would work if I go via a trait?
-use crate::site::lookup;
 
 mod etag;
 pub use self::etag::ETag;
@@ -23,16 +18,21 @@ pub use self::resource::Resource;
 mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
 
+pub trait Lookup : Sync + Send {
+    fn lookup(&self, path: &str) ->
+        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync>>;
+}
+
 enum ResolveError<'a> {
     MalformedUri(&'a http::Uri),
     LookupError(Error),
 }
 
-async fn resolve_resource(uri: &http::Uri) -> Result<Box<dyn Resource>, ResolveError> {
+async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
-            let queryable_resource = await!(lookup(&path[1..]));
+            let queryable_resource = await!(lookup.lookup(&path[1..]));
             queryable_resource.query(query)
                 .map_err(ResolveError::LookupError)
         },
@@ -76,9 +76,9 @@ fn internal_server_error() -> impl Resource {
     )
 }
 
-async fn handle_request_core(req: Request<Body>) -> Response<Body>
+async fn handle_request_core<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req: Request<Body>) -> Response<Body>
 {
-    let resource = await!(resolve_resource(&req.uri())).unwrap_or_else(|x| match x {
+    let resource = await!(resolve_resource(site, &req.uri())).unwrap_or_else(|x| match x {
         ResolveError::MalformedUri(_) => Box::new(bad_request()),
         ResolveError::LookupError(_) => Box::new(internal_server_error()),
     });
@@ -136,8 +136,8 @@ async fn handle_request_core(req: Request<Body>) -> Response<Body>
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support
-pub async fn handle_request(req: Request<Body>) ->
+pub async fn handle_request<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req: Request<Body>) ->
     Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
 {
-    Ok(await!(handle_request_core(req)))
+    Ok(await!(handle_request_core(site, req)))
 }

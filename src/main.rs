@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, unsized_locals)]
+#![feature(async_await, await_macro, futures_api, pin, unsized_locals)]
 
 #[macro_use] extern crate bart_derive;
 #[macro_use] extern crate diesel_migrations;
@@ -27,9 +27,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let bind_host = "127.0.0.1".parse().expect("Acceptable IP address");
     let bind_port = 1212;
 
+    let site = site::Site;
+
     let service_fn = || {
         hyper::service::service_fn(
-            |req| web::handle_request(req).boxed().compat()
+            |req| web::handle_request(&site, req).boxed().compat()
         )
     };
 

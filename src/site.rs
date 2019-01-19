@@ -1,6 +1,8 @@
+use std::pin::Pin;
+
 use hyper::http;
 
-use crate::web::{QueryableResource, Representation, MediaType};
+use crate::web::{QueryableResource, Representation, MediaType, Lookup};
 
 fn index() -> impl QueryableResource {
     #[derive(BartDisplay)]
@@ -39,5 +41,19 @@ pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
     match path {
         "" => Box::new(index()) as _,
         _ => Box::new(not_found()) as _,
+    }
+}
+
+use futures::future::FutureExt;
+pub struct Site;
+impl Lookup for Site {
+    fn lookup(&self, path: &str) ->
+        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync>>
+    {
+        let path = path.to_string();
+        async {
+            let path = path;
+            await!{crate::site::lookup(&path)}
+        }.boxed()
     }
 }
