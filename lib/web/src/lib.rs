@@ -1,3 +1,5 @@
+#![feature(async_await, await_macro, futures_api, pin, unsized_locals)]
+
 use std::pin::Pin;
 
 use hyper::http;

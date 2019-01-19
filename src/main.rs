@@ -4,7 +4,6 @@
 #[macro_use] extern crate diesel_migrations;
 
 mod db;
-mod web;
 mod site;
 
 use std::net::SocketAddr;

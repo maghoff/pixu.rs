@@ -1,8 +1,7 @@
 use std::pin::Pin;
 
 use hyper::http;
-
-use crate::web::{QueryableResource, Representation, MediaType, Lookup};
+use web::{QueryableResource, Representation, MediaType, Lookup};
 
 fn index() -> impl QueryableResource {
     #[derive(BartDisplay)]
@@ -44,12 +43,14 @@ pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
     }
 }
 
-use futures::future::FutureExt;
 pub struct Site;
+
 impl Lookup for Site {
     fn lookup(&self, path: &str) ->
         Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync>>
     {
+        use futures::future::FutureExt;
+
         let path = path.to_string();
         async {
             let path = path;
