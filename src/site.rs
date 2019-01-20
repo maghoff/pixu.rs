@@ -46,15 +46,10 @@ pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
 pub struct Site;
 
 impl Lookup for Site {
-    fn lookup(&self, path: &str) ->
-        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync>>
+    fn lookup<'a>(&'a self, path: &'a str) ->
+        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>
     {
         use futures::future::FutureExt;
-
-        let path = path.to_string();
-        async {
-            let path = path;
-            await!{crate::site::lookup(&path)}
-        }.boxed()
+        lookup(&path).boxed()
     }
 }

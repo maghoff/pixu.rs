@@ -21,8 +21,8 @@ mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
 
 pub trait Lookup : Sync + Send {
-    fn lookup(&self, path: &str) ->
-        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync>>;
+    fn lookup<'a>(&'a self, path: &'a str) ->
+        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>;
 }
 
 enum ResolveError<'a> {
