@@ -4,7 +4,7 @@ Experimental stuff
 ==================
 Developed with nightly:
 
-    rustup override set nightly-2018-12-20
+    rustup override set nightly
 
 Run
 ===

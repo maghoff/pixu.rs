@@ -18,7 +18,7 @@ insideout = "0.2.0"
 web = { path = "lib/web" }
 
 [dependencies.futures-preview]
-version = "0.3.0-alpha.9"
+version = "0.3.0-alpha.13"
 features = ["compat"]
 
 [dependencies.diesel]

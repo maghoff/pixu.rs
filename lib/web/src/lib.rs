@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, pin, unsized_locals)]
+#![feature(async_await, await_macro, futures_api, unsized_locals)]
 
 use core::future::Future;
 use std::pin::Pin;
