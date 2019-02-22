@@ -1,5 +1,6 @@
 #![feature(async_await, await_macro, futures_api, pin, unsized_locals)]
 
+use core::future::Future;
 use std::pin::Pin;
 
 use hyper::http;
@@ -22,7 +23,7 @@ pub use self::queryable_resource::{Error, QueryableResource};
 
 pub trait Lookup : Sync + Send {
     fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>;
+        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>;
 }
 
 enum ResolveError<'a> {
@@ -30,7 +31,7 @@ enum ResolveError<'a> {
     LookupError(Error),
 }
 
-async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + 'a>, ResolveError<'a>> {
+async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + Send + Sync + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
@@ -42,14 +43,14 @@ async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: 
     }
 }
 
-fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>) {
+fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>) {
     (
         http::StatusCode::METHOD_NOT_ALLOWED,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Method Not Allowed\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Method Not Allowed\n") as Box<dyn Representation + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>
         )]
     )
 }
@@ -60,8 +61,8 @@ fn bad_request() -> impl Resource {
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Bad Request\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Bad Request\n") as Box<dyn Representation + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>
         )]
     )
 }
@@ -72,13 +73,17 @@ fn internal_server_error() -> impl Resource {
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Internal Server Error\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Internal Server Error\n") as Box<dyn Representation + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>
         )]
     )
 }
 
-async fn handle_request_core<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req: Request<Body>) -> Response<Body>
+async fn handle_request_core<'a>(
+    site: &'a (dyn Lookup + 'a + Send + Sync),
+    req: Request<Body>
+) ->
+    Response<Body>
 {
     let resource = await!(resolve_resource(site, &req.uri())).unwrap_or_else(|x| match x {
         ResolveError::MalformedUri(_) => Box::new(bad_request()),
@@ -107,7 +112,9 @@ async fn handle_request_core<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req:
     //     .map_err(|_| Error::BadRequest)?;
 
     let (status, mut representations) = match req.method() {
+        // TODO: Implement HEAD and OPTIONS in library
         &hyper::Method::GET => resource.get(),
+        &hyper::Method::POST => await!(resource.post()),
         _ => method_not_allowed(),
     };
 

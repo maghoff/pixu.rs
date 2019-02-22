@@ -1,10 +1,26 @@
+use core::future::Future;
+use std::pin::Pin;
+
+use futures::future::FutureExt;
 use hyper::http;
 
 use super::etag::ETag;
 use super::media_type::MediaType;
 use super::representation::Representation;
 
-pub trait Resource {
+fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>) {
+    (
+        http::StatusCode::METHOD_NOT_ALLOWED,
+        vec![(
+            MediaType::new("text", "plain", vec![]),
+            Box::new(move || {
+                Box::new("Method Not Allowed\n") as Box<dyn Representation + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+        )]
+    )
+}
+
+pub trait Resource : Sync + Send {
     fn etag(&self) -> Option<ETag> {
         None
     }
@@ -14,28 +30,44 @@ pub trait Resource {
     }
 
     fn get(self: Box<Self>) ->
-        (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>);
-}
+        (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>);
 
-impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>) {
-    fn get(self: Box<Self>)
-        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>)
+    fn post<'a>(self: Box<Self>) ->
+        Pin<Box<
+            dyn Future<
+                Output=(
+                    http::StatusCode,
+                    Vec<(
+                        MediaType,
+                        Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+                    )>
+                )
+            > + Send + 'a
+        >>
     {
-        *self
+        async { method_not_allowed() }.boxed()
     }
 }
 
-impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)> {
+impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>)>) {
     fn get(self: Box<Self>)
-        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>)
+        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)
     {
-        (http::StatusCode::OK, *self)
+        unimplemented!() //*self
     }
 }
 
-impl<R: Resource, T: FnOnce() -> Box<R>> Resource for T {
+impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>)> {
     fn get(self: Box<Self>)
-        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>)
+        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)
+    {
+        unimplemented!() //(http::StatusCode::OK, *self)
+    }
+}
+
+impl<R: Resource, T: FnOnce() -> Box<R> + Send + Sync> Resource for T {
+    fn get(self: Box<Self>)
+        -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)
     {
         (*self)().get()
     }

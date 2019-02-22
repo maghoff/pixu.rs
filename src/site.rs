@@ -1,23 +1,56 @@
+use core::future::Future;
 use std::pin::Pin;
 
+use futures::future::FutureExt;
 use hyper::http;
-use web::{QueryableResource, Representation, MediaType, Lookup};
+use web::{QueryableResource, Resource, Representation, MediaType, Lookup};
 
-fn index() -> impl QueryableResource {
-    #[derive(BartDisplay)]
-    #[template_string="You are looking for {{path}}\n"]
-    struct Index<'a> {
-        path: &'a str,
+struct Index;
+
+impl Resource for Index {
+    fn get(self: Box<Self>) ->
+        (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)
+    {
+        #[derive(BartDisplay)]
+        #[template="templates/index.html"]
+        struct Template;
+
+        (
+            http::StatusCode::OK,
+            vec![(
+                MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
+                Box::new(move || {
+                    Box::new(Template.to_string()) as Box<dyn Representation + 'static>
+                }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+            )]
+        )
     }
 
-    vec![(
-        MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
-        Box::new(move || {
-            Box::new(Index {
-                path: "index"
-            }.to_string()) as Box<dyn Representation>
-        }) as Box<dyn FnOnce() -> Box<dyn Representation>>
-    )]
+    fn post<'a>(self: Box<Self>) ->
+        Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)> + Send + 'a>>
+    {
+        async {
+            // let this = self;
+
+            #[derive(BartDisplay)]
+            #[template="templates/index-post.html"]
+            struct Template<'a> {
+                email: &'a str
+            }
+
+            (
+                http::StatusCode::OK,
+                vec![(
+                    MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
+                    Box::new(move || {
+                        Box::new(Template {
+                            email: "email",
+                        }.to_string()) as Box<dyn Representation + 'static>
+                    }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+                )]
+            )
+        }.boxed()
+    }
 }
 
 fn not_found() -> impl QueryableResource {
@@ -30,15 +63,15 @@ fn not_found() -> impl QueryableResource {
         vec![(
             MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
             Box::new(move || {
-                Box::new(NotFound.to_string()) as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new(NotFound.to_string()) as Box<dyn Representation + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>
         )]
     )
 }
 
 pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
     match path {
-        "" => Box::new(index()) as _,
+        "" => Box::new(Index) as _,
         _ => Box::new(not_found()) as _,
     }
 }
@@ -47,9 +80,8 @@ pub struct Site;
 
 impl Lookup for Site {
     fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>
+        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>
     {
-        use futures::future::FutureExt;
         lookup(&path).boxed()
     }
 }
