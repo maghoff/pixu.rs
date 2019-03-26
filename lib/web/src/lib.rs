@@ -108,7 +108,7 @@ async fn handle_request_core<'a>(
 
     // let _accept = req.headers().get(http::header::ACCEPT)
     //     .map(|x| x.to_str())
-    //     .inside_out()
+    //     .transpose()
     //     .map_err(|_| Error::BadRequest)?;
 
     let (status, mut representations) = match req.method() {
