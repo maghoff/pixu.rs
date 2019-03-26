@@ -9,7 +9,7 @@ struct Index;
 
 impl Resource for Index {
     fn get(self: Box<Self>) ->
-        (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)
+        (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {
         #[derive(BartDisplay)]
         #[template="templates/index.html"]
@@ -20,14 +20,14 @@ impl Resource for Index {
             vec![(
                 MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
                 Box::new(move || {
-                    Box::new(Template.to_string()) as Box<dyn Representation + 'static>
-                }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+                    Box::new(Template.to_string()) as Box<dyn Representation + Send + 'static>
+                }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
             )]
         )
     }
 
     fn post<'a>(self: Box<Self>) ->
-        Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>)>)> + Send + 'a>>
+        Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)> + Send + 'a>>
     {
         async {
             // let this = self;
@@ -45,8 +45,8 @@ impl Resource for Index {
                     Box::new(move || {
                         Box::new(Template {
                             email: "email",
-                        }.to_string()) as Box<dyn Representation + 'static>
-                    }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + 'static>
+                        }.to_string()) as Box<dyn Representation + Send + 'static>
+                    }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
                 )]
             )
         }.boxed()
@@ -63,8 +63,8 @@ fn not_found() -> impl QueryableResource {
         vec![(
             MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
             Box::new(move || {
-                Box::new(NotFound.to_string()) as Box<dyn Representation + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + 'static> + Send + Sync + 'static>
+                Box::new(NotFound.to_string()) as Box<dyn Representation + Send + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>
         )]
     )
 }
