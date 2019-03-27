@@ -117,18 +117,19 @@ async fn handle_request_core<'a>(
 
     await!(async{()});
 
+    use futures::future::FutureExt;
     let (status, mut representations): (
             http::StatusCode,
             Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>
-        ) = match req.method() {
+        ) = await!(match req.method() {
             // TODO: Implement HEAD and OPTIONS in library
-            &hyper::Method::GET => resource.get(),
-            // &hyper::Method::POST => await!(resource.post()),
+            &hyper::Method::GET => async{resource.get()}.boxed(),
+            &hyper::Method::POST => resource.post(),
             _ => {
-                await!(async{()});
-                method_not_allowed()
+                async{
+                method_not_allowed()}.boxed() as Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)> + Send + 'a>>
             },
-        };
+        });
 
     await!(async{()});
 
