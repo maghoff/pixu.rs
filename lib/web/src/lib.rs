@@ -85,7 +85,9 @@ async fn handle_request_core<'a>(
 ) ->
     Response<Body>
 {
-    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, req.uri())).unwrap_or_else(|x| match x {
+    let (req, body) = req.into_parts();
+
+    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri)).unwrap_or_else(|x| match x {
         ResolveError::MalformedUri(_) => Box::new(bad_request()),
         ResolveError::LookupError(_) => Box::new(internal_server_error()),
     });
@@ -112,10 +114,10 @@ async fn handle_request_core<'a>(
     //     .map_err(|_| Error::BadRequest)?;
 
     use futures::future::FutureExt;
-    let (status, mut representations) = await!(match req.method() {
+    let (status, mut representations) = await!(match req.method {
         // TODO: Implement HEAD and OPTIONS in library
-        &hyper::Method::GET => async { resource.get() }.boxed(),
-        &hyper::Method::POST => resource.post(),
+        hyper::Method::GET => async { resource.get() }.boxed(),
+        hyper::Method::POST => resource.post(body), // TODO pass in Content-Type
         _ => async { method_not_allowed() }.boxed() as _,
     });
 

@@ -3,6 +3,7 @@ use std::pin::Pin;
 
 use futures::future::FutureExt;
 use hyper::http;
+use serde_urlencoded;
 use web::{QueryableResource, Resource, Representation, MediaType, Lookup};
 
 struct Index;
@@ -26,15 +27,25 @@ impl Resource for Index {
         )
     }
 
-    fn post<'a>(self: Box<Self>) ->
+    fn post<'a>(self: Box<Self>, body: hyper::Body) ->
         Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)> + Send + 'a>>
     {
+        #[derive(serde_derive::Deserialize)]
+        struct Args {
+            email: String,
+        }
+
+        #[derive(BartDisplay)]
+        #[template="templates/index-post.html"]
+        struct Template<'a> {
+            email: &'a str
+        }
+
         async {
-            #[derive(BartDisplay)]
-            #[template="templates/index-post.html"]
-            struct Template<'a> {
-                email: &'a str
-            }
+            use futures::compat::Stream01CompatExt;
+            use futures::TryStreamExt;
+            let body = await! { body.compat().try_concat() }.unwrap(); // TODO Error handling
+            let args: Args = serde_urlencoded::from_bytes(&body).unwrap(); // TODO Error handling
 
             (
                 http::StatusCode::OK,
@@ -42,7 +53,7 @@ impl Resource for Index {
                     MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
                     Box::new(move || {
                         Box::new(Template {
-                            email: "email",
+                            email: &args.email,
                         }.to_string()) as Box<dyn Representation + Send + 'static>
                     }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
                 )]

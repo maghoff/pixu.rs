@@ -32,7 +32,7 @@ pub trait Resource : Send {
     fn get(self: Box<Self>) ->
         (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>);
 
-    fn post<'a>(self: Box<Self>) ->
+    fn post<'a>(self: Box<Self>, _body: hyper::Body) ->
         Pin<Box<
             dyn Future<
                 Output=(
