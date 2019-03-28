@@ -62,7 +62,7 @@ fn not_found() -> impl QueryableResource {
             MediaType::new("text", "html", vec![ "charset=utf-8".to_string() ]),
             Box::new(move || {
                 Box::new(NotFound.to_string()) as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
@@ -78,7 +78,7 @@ pub struct Site;
 
 impl Lookup for Site {
     fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>
+        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + 'a>>
     {
         lookup(&path).boxed()
     }

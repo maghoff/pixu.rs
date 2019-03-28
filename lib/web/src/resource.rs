@@ -20,7 +20,7 @@ fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -
     )
 }
 
-pub trait Resource : Sync + Send {
+pub trait Resource : Send {
     fn etag(&self) -> Option<ETag> {
         None
     }
@@ -49,7 +49,7 @@ pub trait Resource : Sync + Send {
     }
 }
 
-impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>)>) {
+impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>) {
     fn get(self: Box<Self>)
         -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {
@@ -70,7 +70,7 @@ impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn
     }
 }
 
-impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>)> {
+impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)> {
     fn get(self: Box<Self>)
         -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {
@@ -91,7 +91,7 @@ impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + S
     }
 }
 
-impl<R: Resource, T: FnOnce() -> Box<R> + Send + Sync> Resource for T {
+impl<R: Resource, T: FnOnce() -> Box<R> + Send> Resource for T {
     fn get(self: Box<Self>)
         -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {

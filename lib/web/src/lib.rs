@@ -21,9 +21,9 @@ pub use self::resource::Resource;
 mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
 
-pub trait Lookup : Sync + Send {
+pub trait Lookup : Send {
     fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>;
+        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + 'a>>;
 }
 
 enum ResolveError<'a> {
@@ -31,7 +31,7 @@ enum ResolveError<'a> {
     LookupError(Error),
 }
 
-async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + Send + Sync + 'a>, ResolveError<'a>> {
+async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + Send + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
@@ -62,7 +62,7 @@ fn bad_request() -> impl Resource {
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
                 Box::new("Bad Request\n") as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
@@ -74,7 +74,7 @@ fn internal_server_error() -> impl Resource {
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
                 Box::new("Internal Server Error\n") as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + Sync + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
@@ -85,7 +85,7 @@ async fn handle_request_core<'a>(
 ) ->
     Response<Body>
 {
-    let resource: Box<dyn Resource + Send + Sync> = await!(resolve_resource(site, req.uri())).unwrap_or_else(|x| match x {
+    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, req.uri())).unwrap_or_else(|x| match x {
         ResolveError::MalformedUri(_) => Box::new(bad_request()),
         ResolveError::LookupError(_) => Box::new(internal_server_error()),
     });
