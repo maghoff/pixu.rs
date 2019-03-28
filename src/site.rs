@@ -30,8 +30,6 @@ impl Resource for Index {
         Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)> + Send + 'a>>
     {
         async {
-            // let this = self;
-
             #[derive(BartDisplay)]
             #[template="templates/index-post.html"]
             struct Template<'a> {
