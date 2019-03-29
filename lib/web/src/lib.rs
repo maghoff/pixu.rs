@@ -117,7 +117,16 @@ async fn handle_request_core<'a>(
     let (status, mut representations) = await!(match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => async { resource.get() }.boxed(),
-        hyper::Method::POST => resource.post(body), // TODO pass in Content-Type
+        hyper::Method::POST => {
+            let content_type = req.headers.get(http::header::CONTENT_TYPE)
+                .map(|x| x.to_str().map(|x| x.to_string())); // TODO should be parsed as a MediaType
+
+            if let Some(Ok(content_type)) = content_type {
+                resource.post(content_type, body)
+            } else {
+                async { Box::new(bad_request()).get() }.boxed()
+            }
+        },
         _ => async { method_not_allowed() }.boxed() as _,
     });
 

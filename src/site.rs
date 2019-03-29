@@ -27,7 +27,7 @@ impl Resource for Index {
         )
     }
 
-    fn post<'a>(self: Box<Self>, body: hyper::Body) ->
+    fn post<'a>(self: Box<Self>, content_type: String, body: hyper::Body) ->
         Pin<Box<dyn Future<Output=(http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)> + Send + 'a>>
     {
         #[derive(serde_derive::Deserialize)]
@@ -44,6 +44,12 @@ impl Resource for Index {
         async {
             use futures::compat::Stream01CompatExt;
             use futures::TryStreamExt;
+
+            let content_type = content_type;
+            if content_type != "application/x-www-form-urlencoded" {
+                eprintln!("Unexpected Content-Type {:?}, parsing as application/x-www-form-urlencoded", content_type);
+            }
+
             let body = await! { body.compat().try_concat() }.unwrap(); // TODO Error handling
             let args: Args = serde_urlencoded::from_bytes(&body).unwrap(); // TODO Error handling
 
