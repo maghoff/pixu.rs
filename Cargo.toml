@@ -14,11 +14,13 @@ tokio = "0.1.11"
 bart = "0.1.4"
 bart_derive = "0.1.4"
 chrono = "0.4.6"
-insideout = "0.2.0"
 web = { path = "lib/web" }
+serde = "1.0.89"
+serde_urlencoded = "0.5.4"
+serde_derive = "1.0.89"
 
 [dependencies.futures-preview]
-version = "0.3.0-alpha.9"
+version = "0.3.0-alpha.13"
 features = ["compat"]
 
 [dependencies.diesel]

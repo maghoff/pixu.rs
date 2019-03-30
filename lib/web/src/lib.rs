@@ -1,5 +1,7 @@
-#![feature(async_await, await_macro, futures_api, pin, unsized_locals)]
+#![feature(async_await, await_macro, futures_api, unsized_locals)]
 
+use core::future::Future;
+use futures::future::FutureExt;
 use std::pin::Pin;
 
 use hyper::http;
@@ -20,9 +22,9 @@ pub use self::resource::Resource;
 mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
 
-pub trait Lookup : Sync + Send {
+pub trait Lookup : Send {
     fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn core::future::Future<Output=Box<dyn QueryableResource>> + Send + Sync + 'a>>;
+        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + 'a>>;
 }
 
 enum ResolveError<'a> {
@@ -30,7 +32,7 @@ enum ResolveError<'a> {
     LookupError(Error),
 }
 
-async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + 'a>, ResolveError<'a>> {
+async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + Send + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
@@ -42,14 +44,14 @@ async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: 
     }
 }
 
-fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation>>)>) {
+fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>) {
     (
         http::StatusCode::METHOD_NOT_ALLOWED,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Method Not Allowed\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Method Not Allowed\n") as Box<dyn Representation + Send + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
@@ -60,8 +62,8 @@ fn bad_request() -> impl Resource {
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Bad Request\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Bad Request\n") as Box<dyn Representation + Send + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
@@ -72,15 +74,21 @@ fn internal_server_error() -> impl Resource {
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
-                Box::new("Internal Server Error\n") as Box<dyn Representation>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation>>
+                Box::new("Internal Server Error\n") as Box<dyn Representation + Send + 'static>
+            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
         )]
     )
 }
 
-async fn handle_request_core<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req: Request<Body>) -> Response<Body>
+async fn handle_request_core<'a>(
+    site: &'a (dyn Lookup + 'a + Send + Sync),
+    req: Request<Body>
+) ->
+    Response<Body>
 {
-    let resource = await!(resolve_resource(site, &req.uri())).unwrap_or_else(|x| match x {
+    let (req, body) = req.into_parts();
+
+    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri)).unwrap_or_else(|x| match x {
         ResolveError::MalformedUri(_) => Box::new(bad_request()),
         ResolveError::LookupError(_) => Box::new(internal_server_error()),
     });
@@ -103,13 +111,24 @@ async fn handle_request_core<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req:
 
     // let _accept = req.headers().get(http::header::ACCEPT)
     //     .map(|x| x.to_str())
-    //     .inside_out()
+    //     .transpose()
     //     .map_err(|_| Error::BadRequest)?;
 
-    let (status, mut representations) = match req.method() {
-        &hyper::Method::GET => resource.get(),
-        _ => method_not_allowed(),
-    };
+    let (status, mut representations) = await!(match req.method {
+        // TODO: Implement HEAD and OPTIONS in library
+        hyper::Method::GET => async { resource.get() }.boxed(),
+        hyper::Method::POST => {
+            let content_type = req.headers.get(http::header::CONTENT_TYPE)
+                .map(|x| x.to_str().map(|x| x.to_string())); // TODO should be parsed as a MediaType
+
+            if let Some(Ok(content_type)) = content_type {
+                resource.post(content_type, body)
+            } else {
+                async { Box::new(bad_request()).get() }.boxed()
+            }
+        },
+        _ => async { method_not_allowed() }.boxed() as _,
+    });
 
     let mut response = Response::builder();
     response.status(status);

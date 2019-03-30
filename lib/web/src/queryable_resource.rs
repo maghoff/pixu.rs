@@ -5,13 +5,13 @@ pub enum Error {
     InternalServerError,
 }
 
-pub trait QueryableResource {
-    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn Resource>, Error>;
+pub trait QueryableResource : Send {
+    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn Resource + Send>, Error>;
 }
 
-impl<T: 'static + Resource> QueryableResource for T {
+impl<T: 'static + Resource + Send> QueryableResource for T {
     fn query(self: Box<Self>, _query: Option<&str>)
-        -> Result<Box<dyn Resource>, Error>
+        -> Result<Box<dyn Resource + Send>, Error>
     {
         Ok(self as _)
     }

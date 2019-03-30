@@ -1,5 +1,11 @@
 Photo sharing web application.
 
+Experimental stuff
+==================
+Developed with nightly:
+
+    rustup override set nightly
+
 Run
 ===
     cargo run -- test.db
