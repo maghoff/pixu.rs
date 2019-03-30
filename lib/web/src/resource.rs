@@ -53,20 +53,7 @@ impl Resource for (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn
     fn get(self: Box<Self>)
         -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {
-        let (media_type, representations) = *self;
-        let representations = unsafe {
-            // TODO Revisit. Can we make do without unsafe?
-            // https://stackoverflow.com/a/55081958/2971
-            let v = Vec::from_raw_parts(
-                representations.as_ptr() as _,
-                representations.len(),
-                representations.capacity()
-            );
-            std::mem::forget(representations);
-            v
-        };
-
-        (media_type, representations)
+        *self
     }
 }
 
@@ -74,20 +61,7 @@ impl Resource for Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + S
     fn get(self: Box<Self>)
         -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>)
     {
-        let representations = *self;
-        let representations = unsafe {
-            // TODO Revisit. Can we make do without unsafe?
-            // https://stackoverflow.com/a/55081958/2971
-            let v = Vec::from_raw_parts(
-                representations.as_ptr() as _,
-                representations.len(),
-                representations.capacity()
-            );
-            std::mem::forget(representations);
-            v
-        };
-
-        (http::StatusCode::OK, representations)
+        (http::StatusCode::OK, *self)
     }
 }
 

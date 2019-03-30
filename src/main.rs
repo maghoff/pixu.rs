@@ -19,23 +19,6 @@ struct Options {
     db: String,
 }
 
-/*
-fn handle_request_compat<'a>(site: &'static (dyn web::Lookup + 'static + Send + Sync), req: hyper::http::Request<hyper::Body>) ->
-    std::pin::Pin<Box<dyn std::future::Future<Output=Result<hyper::http::Response<hyper::Body>, Box<std::error::Error + Send + Sync + 'a>>> + Send + 'a>>
-{
-    async {
-        // let site: &'static (dyn web::Lookup + 'static + Send + Sync) = unsafe {
-        //     let s = site as *const (dyn web::Lookup + Send + Sync);
-        //     (&*s) as (&'static (dyn web::Lookup + 'static + Send + Sync))
-        // };
-        // let site = site;
-        let req = req;
-
-        await!(web::handle_request(site, req))
-    }.boxed()
-}
-*/
-
 fn main() -> Result<(), Box<std::error::Error>> {
     let opt = Options::from_args();
     let _db = db::create_pool(opt.db)?;

@@ -1,6 +1,7 @@
 #![feature(async_await, await_macro, futures_api, unsized_locals)]
 
 use core::future::Future;
+use futures::future::FutureExt;
 use std::pin::Pin;
 
 use hyper::http;
@@ -113,7 +114,6 @@ async fn handle_request_core<'a>(
     //     .transpose()
     //     .map_err(|_| Error::BadRequest)?;
 
-    use futures::future::FutureExt;
     let (status, mut representations) = await!(match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => async { resource.get() }.boxed(),
