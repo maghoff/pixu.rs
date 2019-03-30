@@ -1,7 +1,9 @@
 #![feature(async_await, await_macro, futures_api, unsized_locals)]
 
-#[macro_use] extern crate bart_derive;
-#[macro_use] extern crate diesel_migrations;
+#[macro_use]
+extern crate bart_derive;
+#[macro_use]
+extern crate diesel_migrations;
 
 mod db;
 mod site;
@@ -28,15 +30,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let site = site::Site;
 
-    let service_fn = || {
-        hyper::service::service_fn(
-            |req| web::handle_request(&site, req).boxed().compat()
-        )
-    };
+    let service_fn =
+        || hyper::service::service_fn(|req| web::handle_request(&site, req).boxed().compat());
 
     let server =
-        hyper::server::Server::bind(&SocketAddr::new(bind_host, bind_port))
-            .serve(service_fn);
+        hyper::server::Server::bind(&SocketAddr::new(bind_host, bind_port)).serve(service_fn);
 
     println!("Listening on http://{}", server.local_addr());
 
@@ -51,9 +49,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
     // Alternative: Start a tokio core that's limited to the current thread
     use tokio::runtime::current_thread::Runtime;
     let mut runtime = Runtime::new().unwrap();
-    runtime.block_on(server).map_err(|e| {
-        format!("server error: {}", e)
-    })?;
+    runtime
+        .block_on(server)
+        .map_err(|e| format!("server error: {}", e))?;
 
     Ok(())
 }

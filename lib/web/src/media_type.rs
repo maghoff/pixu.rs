@@ -12,10 +12,8 @@ impl MediaType {
     pub fn new(
         type_category: impl ToString,
         subtype: impl ToString,
-        args: impl Into<Vec<String>>
-    ) ->
-        MediaType
-    {
+        args: impl Into<Vec<String>>,
+    ) -> MediaType {
         MediaType {
             type_category: type_category.to_string(),
             subtype: subtype.to_string(),

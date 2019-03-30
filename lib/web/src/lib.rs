@@ -22,9 +22,11 @@ pub use self::resource::Resource;
 mod queryable_resource;
 pub use self::queryable_resource::{Error, QueryableResource};
 
-pub trait Lookup : Send {
-    fn lookup<'a>(&'a self, path: &'a str) ->
-        Pin<Box<dyn Future<Output=Box<dyn QueryableResource>> + Send + 'a>>;
+pub trait Lookup: Send {
+    fn lookup<'a>(
+        &'a self,
+        path: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Box<dyn QueryableResource>> + Send + 'a>>;
 }
 
 enum ResolveError<'a> {
@@ -32,27 +34,38 @@ enum ResolveError<'a> {
     LookupError(Error),
 }
 
-async fn resolve_resource<'a>(lookup: &'a (dyn Lookup + 'a + Send + Sync), uri: &'a http::Uri) -> Result<Box<dyn Resource + Send + 'a>, ResolveError<'a>> {
+async fn resolve_resource<'a>(
+    lookup: &'a (dyn Lookup + 'a + Send + Sync),
+    uri: &'a http::Uri,
+) -> Result<Box<dyn Resource + Send + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
             let queryable_resource = await!(lookup.lookup(&path[1..]));
-            queryable_resource.query(query)
+            queryable_resource
+                .query(query)
                 .map_err(ResolveError::LookupError)
-        },
+        }
         _ => Err(ResolveError::MalformedUri(uri)),
     }
 }
 
-fn method_not_allowed() -> (http::StatusCode, Vec<(MediaType, Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>)>) {
+fn method_not_allowed() -> (
+    http::StatusCode,
+    Vec<(
+        MediaType,
+        Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+    )>,
+) {
     (
         http::StatusCode::METHOD_NOT_ALLOWED,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
                 Box::new("Method Not Allowed\n") as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
-        )]
+            })
+                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+        )],
     )
 }
 
@@ -61,10 +74,9 @@ fn bad_request() -> impl Resource {
         http::StatusCode::BAD_REQUEST,
         vec![(
             MediaType::new("text", "plain", vec![]),
-            Box::new(move || {
-                Box::new("Bad Request\n") as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
-        )]
+            Box::new(move || Box::new("Bad Request\n") as Box<dyn Representation + Send + 'static>)
+                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+        )],
     )
 }
 
@@ -75,23 +87,23 @@ fn internal_server_error() -> impl Resource {
             MediaType::new("text", "plain", vec![]),
             Box::new(move || {
                 Box::new("Internal Server Error\n") as Box<dyn Representation + Send + 'static>
-            }) as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>
-        )]
+            })
+                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+        )],
     )
 }
 
 async fn handle_request_core<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
-    req: Request<Body>
-) ->
-    Response<Body>
-{
+    req: Request<Body>,
+) -> Response<Body> {
     let (req, body) = req.into_parts();
 
-    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri)).unwrap_or_else(|x| match x {
-        ResolveError::MalformedUri(_) => Box::new(bad_request()),
-        ResolveError::LookupError(_) => Box::new(internal_server_error()),
-    });
+    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
+        .unwrap_or_else(|x| match x {
+            ResolveError::MalformedUri(_) => Box::new(bad_request()),
+            ResolveError::LookupError(_) => Box::new(internal_server_error()),
+        });
 
     let etag = resource.etag();
     let last_modified = resource.last_modified();
@@ -118,7 +130,9 @@ async fn handle_request_core<'a>(
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => async { resource.get() }.boxed(),
         hyper::Method::POST => {
-            let content_type = req.headers.get(http::header::CONTENT_TYPE)
+            let content_type = req
+                .headers
+                .get(http::header::CONTENT_TYPE)
                 .map(|x| x.to_str().map(|x| x.to_string())); // TODO should be parsed as a MediaType
 
             if let Some(Ok(content_type)) = content_type {
@@ -126,7 +140,7 @@ async fn handle_request_core<'a>(
             } else {
                 async { Box::new(bad_request()).get() }.boxed()
             }
-        },
+        }
         _ => async { method_not_allowed() }.boxed() as _,
     });
 
@@ -157,8 +171,9 @@ async fn handle_request_core<'a>(
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support
-pub async fn handle_request<'a>(site: &'a (dyn Lookup + 'a + Send + Sync), req: Request<Body>) ->
-    Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
-{
+pub async fn handle_request<'a>(
+    site: &'a (dyn Lookup + 'a + Send + Sync),
+    req: Request<Body>,
+) -> Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>> {
     Ok(await!(handle_request_core(site, req)))
 }

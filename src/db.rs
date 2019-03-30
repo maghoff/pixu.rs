@@ -20,9 +20,9 @@ impl CustomizeConnection<SqliteConnection, r2d2_diesel::Error> for SqliteInitial
     }
 }
 
-pub fn create_pool(connection_string: impl Into<String>) ->
-    Result<Pool<ConnectionManager<SqliteConnection>>, Box<std::error::Error>>
-{
+pub fn create_pool(
+    connection_string: impl Into<String>,
+) -> Result<Pool<ConnectionManager<SqliteConnection>>, Box<std::error::Error>> {
     let manager = ConnectionManager::<SqliteConnection>::new(connection_string);
     let pool = Pool::builder()
         .connection_customizer(Box::new(SqliteInitializer {}))
