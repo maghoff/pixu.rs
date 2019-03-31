@@ -1,12 +1,127 @@
 use core::future::Future;
 use std::pin::Pin;
 
-use futures::future::FutureExt;
+use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
 use web::{Lookup, MediaType, QueryableResource, Representation, Resource};
 
+enum HandlingError {
+    BadRequest(&'static str),
+    InternalServerError,
+}
+
 struct Index;
+
+impl Index {
+    async fn try_post(
+        self: Box<Self>,
+        content_type: String,
+        body: hyper::Body,
+    ) -> Result<
+        (
+            http::StatusCode,
+            Vec<(
+                MediaType,
+                Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            )>,
+        ),
+        HandlingError,
+    > {
+        #[derive(serde_derive::Deserialize)]
+        struct Args {
+            email: String,
+        }
+
+        #[derive(BartDisplay)]
+        #[template = "templates/index-post.html"]
+        struct Template<'a> {
+            email: &'a str,
+        }
+
+        let content_type = content_type;
+        if content_type != "application/x-www-form-urlencoded" {
+            return Err(HandlingError::BadRequest(
+                "Unacceptable Content-Type, must be application/x-www-form-urlencoded",
+            ));
+        }
+
+        let body = await! { body.compat().try_concat() }
+            .map_err(|_| HandlingError::InternalServerError)?;
+        let args: Args = serde_urlencoded::from_bytes(&body)
+            .map_err(|_| HandlingError::BadRequest("Invalid data"))?;
+
+        Ok((
+            http::StatusCode::OK,
+            vec![(
+                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                Box::new(move || {
+                    Box::new(Template { email: &args.email }.to_string())
+                        as Box<dyn Representation + Send + 'static>
+                })
+                    as Box<
+                        dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static,
+                    >,
+            )],
+        ))
+    }
+
+    async fn post_core(
+        self: Box<Self>,
+        content_type: String,
+        body: hyper::Body,
+    ) -> (
+        http::StatusCode,
+        Vec<(
+            MediaType,
+            Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+        )>,
+    ) {
+        #[derive(BartDisplay)]
+        #[template = "templates/err/bad-request.html"]
+        struct BadRequest<'a> {
+            details: &'a str,
+        }
+
+        #[derive(BartDisplay)]
+        #[template = "templates/err/internal-server-error.html"]
+        struct InternalServerError;
+
+        match await! { self.try_post(content_type, body) } {
+            Ok(x) => x,
+            Err(HandlingError::BadRequest(details)) => (
+                http::StatusCode::BAD_REQUEST,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || {
+                        Box::new(BadRequest { details }.to_string())
+                            as Box<dyn Representation + Send + 'static>
+                    })
+                        as Box<
+                            dyn FnOnce() -> Box<dyn Representation + Send + 'static>
+                                + Send
+                                + 'static,
+                        >,
+                )],
+            ),
+            Err(HandlingError::InternalServerError) => (
+                http::StatusCode::BAD_REQUEST,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || {
+                        Box::new(InternalServerError.to_string())
+                            as Box<dyn Representation + Send + 'static>
+                    })
+                        as Box<
+                            dyn FnOnce() -> Box<dyn Representation + Send + 'static>
+                                + Send
+                                + 'static,
+                        >,
+                )],
+            ),
+        }
+    }
+}
 
 impl Resource for Index {
     fn get(
@@ -58,49 +173,7 @@ impl Resource for Index {
                 + 'a,
         >,
     > {
-        #[derive(serde_derive::Deserialize)]
-        struct Args {
-            email: String,
-        }
-
-        #[derive(BartDisplay)]
-        #[template = "templates/index-post.html"]
-        struct Template<'a> {
-            email: &'a str,
-        }
-
-        async {
-            use futures::compat::Stream01CompatExt;
-            use futures::TryStreamExt;
-
-            let content_type = content_type;
-            if content_type != "application/x-www-form-urlencoded" {
-                eprintln!(
-                    "Unexpected Content-Type {:?}, parsing as application/x-www-form-urlencoded",
-                    content_type
-                );
-            }
-
-            let body = await! { body.compat().try_concat() }.unwrap(); // TODO Error handling
-            let args: Args = serde_urlencoded::from_bytes(&body).unwrap(); // TODO Error handling
-
-            (
-                http::StatusCode::OK,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(Template { email: &args.email }.to_string())
-                            as Box<dyn Representation + Send + 'static>
-                    })
-                        as Box<
-                            dyn FnOnce() -> Box<dyn Representation + Send + 'static>
-                                + Send
-                                + 'static,
-                        >,
-                )],
-            )
-        }
-            .boxed()
+        self.post_core(content_type, body).boxed()
     }
 }
 
