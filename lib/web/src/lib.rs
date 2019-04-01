@@ -1,32 +1,24 @@
 #![feature(async_await, await_macro, futures_api, unsized_locals)]
 
-use core::future::Future;
 use futures::future::FutureExt;
-use std::pin::Pin;
 
 use hyper::http;
 use hyper::{Body, Request, Response};
 
 mod etag;
-pub use self::etag::ETag;
-
 mod media_type;
-pub use self::media_type::MediaType;
-
-mod representation;
-pub use self::representation::Representation;
-
-mod resource;
-pub use self::resource::Resource;
-
 mod queryable_resource;
+mod representation;
+mod resource;
+
+pub use self::etag::ETag;
+pub use self::media_type::MediaType;
 pub use self::queryable_resource::{Error, QueryableResource};
+pub use self::representation::Representation;
+pub use self::resource::*;
 
 pub trait Lookup: Send {
-    fn lookup<'a>(
-        &'a self,
-        path: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Box<dyn QueryableResource>> + Send + 'a>>;
+    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryableResource>>;
 }
 
 enum ResolveError<'a> {
@@ -50,21 +42,12 @@ async fn resolve_resource<'a>(
     }
 }
 
-fn method_not_allowed() -> (
-    http::StatusCode,
-    Vec<(
-        MediaType,
-        Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
-    )>,
-) {
+fn method_not_allowed() -> (http::StatusCode, RepresentationsVec) {
     (
         http::StatusCode::METHOD_NOT_ALLOWED,
         vec![(
             MediaType::new("text", "plain", vec![]),
-            Box::new(move || {
-                Box::new("Method Not Allowed\n") as Box<dyn Representation + Send + 'static>
-            })
-                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
         )],
     )
 }
@@ -74,8 +57,7 @@ fn bad_request() -> impl Resource {
         http::StatusCode::BAD_REQUEST,
         vec![(
             MediaType::new("text", "plain", vec![]),
-            Box::new(move || Box::new("Bad Request\n") as Box<dyn Representation + Send + 'static>)
-                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            Box::new(move || Box::new("Bad Request\n") as RepresentationBox) as _,
         )],
     )
 }
@@ -85,10 +67,7 @@ fn internal_server_error() -> impl Resource {
         http::StatusCode::INTERNAL_SERVER_ERROR,
         vec![(
             MediaType::new("text", "plain", vec![]),
-            Box::new(move || {
-                Box::new("Internal Server Error\n") as Box<dyn Representation + Send + 'static>
-            })
-                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            Box::new(move || Box::new("Internal Server Error\n") as RepresentationBox) as _,
         )],
     )
 }
