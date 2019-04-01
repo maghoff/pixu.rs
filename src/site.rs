@@ -6,6 +6,8 @@ use hyper::http;
 use serde_urlencoded;
 use web::{Lookup, MediaType, QueryableResource, Representation, Resource};
 
+type RepresentationBox = Box<dyn Representation + Send + 'static>;
+
 enum HandlingError {
     BadRequest(&'static str),
     InternalServerError,
@@ -23,7 +25,7 @@ impl Index {
             http::StatusCode,
             Vec<(
                 MediaType,
-                Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+                Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
             )>,
         ),
         HandlingError,
@@ -56,8 +58,7 @@ impl Index {
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
-                    Box::new(Template { email: &args.email }.to_string())
-                        as Box<dyn Representation + Send + 'static>
+                    Box::new(Template { email: &args.email }.to_string()) as RepresentationBox
                 }) as _,
             )],
         ))
@@ -71,7 +72,7 @@ impl Index {
         http::StatusCode,
         Vec<(
             MediaType,
-            Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
         )>,
     ) {
         #[derive(BartDisplay)]
@@ -91,8 +92,7 @@ impl Index {
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                     Box::new(move || {
-                        Box::new(BadRequest { details }.to_string())
-                            as Box<dyn Representation + Send + 'static>
+                        Box::new(BadRequest { details }.to_string()) as RepresentationBox
                     }) as _,
                 )],
             ),
@@ -100,10 +100,8 @@ impl Index {
                 http::StatusCode::BAD_REQUEST,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(InternalServerError.to_string())
-                            as Box<dyn Representation + Send + 'static>
-                    }) as _,
+                    Box::new(move || Box::new(InternalServerError.to_string()) as RepresentationBox)
+                        as _,
                 )],
             ),
         }
@@ -117,7 +115,7 @@ impl Resource for Index {
         http::StatusCode,
         Vec<(
             MediaType,
-            Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
         )>,
     ) {
         #[derive(BartDisplay)]
@@ -128,9 +126,7 @@ impl Resource for Index {
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || {
-                    Box::new(Template.to_string()) as Box<dyn Representation + Send + 'static>
-                }) as _,
+                Box::new(move || Box::new(Template.to_string()) as RepresentationBox) as _,
             )],
         )
     }
@@ -146,11 +142,7 @@ impl Resource for Index {
                         http::StatusCode,
                         Vec<(
                             MediaType,
-                            Box<
-                                dyn FnOnce() -> Box<dyn Representation + Send + 'static>
-                                    + Send
-                                    + 'static,
-                            >,
+                            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
                         )>,
                     ),
                 > + Send
@@ -170,9 +162,7 @@ fn not_found() -> impl QueryableResource {
         http::StatusCode::NOT_FOUND,
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-            Box::new(move || {
-                Box::new(NotFound.to_string()) as Box<dyn Representation + Send + 'static>
-            }) as _,
+            Box::new(move || Box::new(NotFound.to_string()) as RepresentationBox) as _,
         )],
     )
 }
