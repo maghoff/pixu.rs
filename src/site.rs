@@ -58,10 +58,7 @@ impl Index {
                 Box::new(move || {
                     Box::new(Template { email: &args.email }.to_string())
                         as Box<dyn Representation + Send + 'static>
-                })
-                    as Box<
-                        dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static,
-                    >,
+                }) as _,
             )],
         ))
     }
@@ -96,12 +93,7 @@ impl Index {
                     Box::new(move || {
                         Box::new(BadRequest { details }.to_string())
                             as Box<dyn Representation + Send + 'static>
-                    })
-                        as Box<
-                            dyn FnOnce() -> Box<dyn Representation + Send + 'static>
-                                + Send
-                                + 'static,
-                        >,
+                    }) as _,
                 )],
             ),
             Err(HandlingError::InternalServerError) => (
@@ -111,12 +103,7 @@ impl Index {
                     Box::new(move || {
                         Box::new(InternalServerError.to_string())
                             as Box<dyn Representation + Send + 'static>
-                    })
-                        as Box<
-                            dyn FnOnce() -> Box<dyn Representation + Send + 'static>
-                                + Send
-                                + 'static,
-                        >,
+                    }) as _,
                 )],
             ),
         }
@@ -143,10 +130,7 @@ impl Resource for Index {
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
                     Box::new(Template.to_string()) as Box<dyn Representation + Send + 'static>
-                })
-                    as Box<
-                        dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static,
-                    >,
+                }) as _,
             )],
         )
     }
@@ -188,8 +172,7 @@ fn not_found() -> impl QueryableResource {
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
             Box::new(move || {
                 Box::new(NotFound.to_string()) as Box<dyn Representation + Send + 'static>
-            })
-                as Box<dyn FnOnce() -> Box<dyn Representation + Send + 'static> + Send + 'static>,
+            }) as _,
         )],
     )
 }
