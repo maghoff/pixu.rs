@@ -7,6 +7,8 @@ use serde_urlencoded;
 use web::{Lookup, MediaType, QueryableResource, Representation, Resource};
 
 type RepresentationBox = Box<dyn Representation + Send + 'static>;
+type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
+type RepresentationsVec = Vec<(MediaType, RendererBox)>;
 
 enum HandlingError {
     BadRequest(&'static str),
@@ -20,16 +22,7 @@ impl Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> Result<
-        (
-            http::StatusCode,
-            Vec<(
-                MediaType,
-                Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
-            )>,
-        ),
-        HandlingError,
-    > {
+    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
         #[derive(serde_derive::Deserialize)]
         struct Args {
             email: String,
@@ -68,13 +61,7 @@ impl Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> (
-        http::StatusCode,
-        Vec<(
-            MediaType,
-            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
-        )>,
-    ) {
+    ) -> (http::StatusCode, RepresentationsVec) {
         #[derive(BartDisplay)]
         #[template = "templates/err/bad-request.html"]
         struct BadRequest<'a> {
@@ -109,15 +96,7 @@ impl Index {
 }
 
 impl Resource for Index {
-    fn get(
-        self: Box<Self>,
-    ) -> (
-        http::StatusCode,
-        Vec<(
-            MediaType,
-            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
-        )>,
-    ) {
+    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
         #[derive(BartDisplay)]
         #[template = "templates/index.html"]
         struct Template;
@@ -135,20 +114,7 @@ impl Resource for Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> Pin<
-        Box<
-            dyn Future<
-                    Output = (
-                        http::StatusCode,
-                        Vec<(
-                            MediaType,
-                            Box<dyn FnOnce() -> RepresentationBox + Send + 'static>,
-                        )>,
-                    ),
-                > + Send
-                + 'a,
-        >,
-    > {
+    ) -> Pin<Box<dyn Future<Output = (http::StatusCode, RepresentationsVec)> + Send + 'a>> {
         self.post_core(content_type, body).boxed()
     }
 }
