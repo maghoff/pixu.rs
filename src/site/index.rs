@@ -1,17 +1,9 @@
-use core::future::Future;
-use std::pin::Pin;
-
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{MediaType, Representation, Resource};
+use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
 use super::handling_error::HandlingError;
-
-type RepresentationBox = Box<dyn Representation + Send + 'static>;
-type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
-type RepresentationsVec = Vec<(MediaType, RendererBox)>;
-type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a>>;
 
 pub struct Index;
 

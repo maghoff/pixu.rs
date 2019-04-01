@@ -1,17 +1,11 @@
 mod handling_error;
 mod index;
 
-use core::future::Future;
-use std::pin::Pin;
-
 use futures::FutureExt;
 use hyper::http;
-use web::{Lookup, MediaType, QueryableResource, Representation};
+use web::{FutureBox, Lookup, MediaType, QueryableResource, RepresentationBox};
 
 use index::Index;
-
-type RepresentationBox = Box<dyn Representation + Send + 'static>;
-type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a>>;
 
 fn not_found() -> impl QueryableResource {
     // TODO: This one seems to only reply to GET, but should give the same

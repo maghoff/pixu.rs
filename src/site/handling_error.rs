@@ -1,9 +1,5 @@
 use hyper::http::StatusCode;
-use web::{MediaType, Representation};
-
-type RepresentationBox = Box<dyn Representation + Send + 'static>;
-type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
-type RepresentationsVec = Vec<(MediaType, RendererBox)>;
+use web::{MediaType, RepresentationBox, RepresentationsVec};
 
 pub enum HandlingError {
     BadRequest(&'static str),
