@@ -7,23 +7,27 @@ use super::handling_error::HandlingError;
 
 pub struct Index;
 
+#[derive(BartDisplay)]
+#[template = "templates/index.html"]
+struct Get;
+
+#[derive(serde_derive::Deserialize)]
+struct PostArgs {
+    email: String,
+}
+
+#[derive(BartDisplay)]
+#[template = "templates/index-post.html"]
+struct Post<'a> {
+    email: &'a str,
+}
+
 impl Index {
     async fn try_post(
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
     ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
-        #[derive(serde_derive::Deserialize)]
-        struct Args {
-            email: String,
-        }
-
-        #[derive(BartDisplay)]
-        #[template = "templates/index-post.html"]
-        struct Template<'a> {
-            email: &'a str,
-        }
-
         let content_type = content_type;
         if content_type != "application/x-www-form-urlencoded" {
             return Err(HandlingError::BadRequest(
@@ -33,15 +37,15 @@ impl Index {
 
         let body = await! { body.compat().try_concat() }
             .map_err(|_| HandlingError::InternalServerError)?;
-        let args: Args = serde_urlencoded::from_bytes(&body)
-            .map_err(|_| HandlingError::BadRequest("Invalid data"))?;
+        let args: PostArgs = serde_urlencoded::from_bytes(&body)
+            .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
 
         Ok((
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
-                    Box::new(Template { email: &args.email }.to_string()) as RepresentationBox
+                    Box::new(Post { email: &args.email }.to_string()) as RepresentationBox
                 }) as _,
             )],
         ))
@@ -58,15 +62,11 @@ impl Index {
 
 impl Resource for Index {
     fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        #[derive(BartDisplay)]
-        #[template = "templates/index.html"]
-        struct Template;
-
         (
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new(Template.to_string()) as RepresentationBox) as _,
+                Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
             )],
         )
     }
