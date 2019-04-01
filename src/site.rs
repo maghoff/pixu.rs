@@ -18,6 +18,40 @@ enum HandlingError {
 
 struct Index;
 
+#[derive(BartDisplay)]
+#[template = "templates/err/bad-request.html"]
+struct BadRequest<'a> {
+    details: &'a str,
+}
+
+#[derive(BartDisplay)]
+#[template = "templates/err/internal-server-error.html"]
+struct InternalServerError;
+
+impl HandlingError {
+    fn render(self) -> (http::StatusCode, RepresentationsVec) {
+        match self {
+            HandlingError::BadRequest(details) => (
+                http::StatusCode::BAD_REQUEST,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || {
+                        Box::new(BadRequest { details }.to_string()) as RepresentationBox
+                    }) as _,
+                )],
+            ),
+            HandlingError::InternalServerError => (
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || Box::new(InternalServerError.to_string()) as RepresentationBox)
+                        as _,
+                )],
+            ),
+        }
+    }
+}
+
 impl Index {
     async fn try_post(
         self: Box<Self>,
@@ -63,36 +97,7 @@ impl Index {
         content_type: String,
         body: hyper::Body,
     ) -> (http::StatusCode, RepresentationsVec) {
-        #[derive(BartDisplay)]
-        #[template = "templates/err/bad-request.html"]
-        struct BadRequest<'a> {
-            details: &'a str,
-        }
-
-        #[derive(BartDisplay)]
-        #[template = "templates/err/internal-server-error.html"]
-        struct InternalServerError;
-
-        match await! { self.try_post(content_type, body) } {
-            Ok(x) => x,
-            Err(HandlingError::BadRequest(details)) => (
-                http::StatusCode::BAD_REQUEST,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(BadRequest { details }.to_string()) as RepresentationBox
-                    }) as _,
-                )],
-            ),
-            Err(HandlingError::InternalServerError) => (
-                http::StatusCode::BAD_REQUEST,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new(InternalServerError.to_string()) as RepresentationBox)
-                        as _,
-                )],
-            ),
-        }
+        await!(self.try_post(content_type, body)).unwrap_or_else(|e| e.render())
     }
 }
 
