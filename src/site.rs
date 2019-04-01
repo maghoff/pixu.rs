@@ -9,6 +9,7 @@ use web::{Lookup, MediaType, QueryableResource, Representation, Resource};
 type RepresentationBox = Box<dyn Representation + Send + 'static>;
 type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
 type RepresentationsVec = Vec<(MediaType, RendererBox)>;
+type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a>>;
 
 enum HandlingError {
     BadRequest(&'static str),
@@ -114,7 +115,7 @@ impl Resource for Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> Pin<Box<dyn Future<Output = (http::StatusCode, RepresentationsVec)> + Send + 'a>> {
+    ) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
         self.post_core(content_type, body).boxed()
     }
 }
@@ -143,10 +144,7 @@ pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
 pub struct Site;
 
 impl Lookup for Site {
-    fn lookup<'a>(
-        &'a self,
-        path: &'a str,
-    ) -> Pin<Box<dyn Future<Output = Box<dyn QueryableResource>> + Send + 'a>> {
+    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryableResource>> {
         lookup(&path).boxed()
     }
 }
