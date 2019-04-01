@@ -4,53 +4,16 @@ use std::pin::Pin;
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{Lookup, MediaType, QueryableResource, Representation, Resource};
+use web::{MediaType, Representation, Resource};
+
+use super::handling_error::HandlingError;
 
 type RepresentationBox = Box<dyn Representation + Send + 'static>;
 type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
 type RepresentationsVec = Vec<(MediaType, RendererBox)>;
 type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a>>;
 
-enum HandlingError {
-    BadRequest(&'static str),
-    InternalServerError,
-}
-
-struct Index;
-
-#[derive(BartDisplay)]
-#[template = "templates/err/bad-request.html"]
-struct BadRequest<'a> {
-    details: &'a str,
-}
-
-#[derive(BartDisplay)]
-#[template = "templates/err/internal-server-error.html"]
-struct InternalServerError;
-
-impl HandlingError {
-    fn render(self) -> (http::StatusCode, RepresentationsVec) {
-        match self {
-            HandlingError::BadRequest(details) => (
-                http::StatusCode::BAD_REQUEST,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(BadRequest { details }.to_string()) as RepresentationBox
-                    }) as _,
-                )],
-            ),
-            HandlingError::InternalServerError => (
-                http::StatusCode::INTERNAL_SERVER_ERROR,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new(InternalServerError.to_string()) as RepresentationBox)
-                        as _,
-                )],
-            ),
-        }
-    }
-}
+pub struct Index;
 
 impl Index {
     async fn try_post(
@@ -122,34 +85,5 @@ impl Resource for Index {
         body: hyper::Body,
     ) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
         self.post_core(content_type, body).boxed()
-    }
-}
-
-fn not_found() -> impl QueryableResource {
-    #[derive(BartDisplay)]
-    #[template_string = "Not found!\n"]
-    struct NotFound;
-
-    (
-        http::StatusCode::NOT_FOUND,
-        vec![(
-            MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-            Box::new(move || Box::new(NotFound.to_string()) as RepresentationBox) as _,
-        )],
-    )
-}
-
-pub async fn lookup(path: &str) -> Box<dyn QueryableResource> {
-    match path {
-        "" => Box::new(Index) as _,
-        _ => Box::new(not_found()) as _,
-    }
-}
-
-pub struct Site;
-
-impl Lookup for Site {
-    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryableResource>> {
-        lookup(&path).boxed()
     }
 }
