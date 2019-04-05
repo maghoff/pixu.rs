@@ -74,9 +74,20 @@ fn avg_color(src: &RgbImageF32) -> Rgb<f32> {
     acc.map(|x| x / pixels)
 }
 
+fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    let mut encoder = image::jpeg::JPEGEncoder::new_with_quality(&mut buf, quality);
+    let (width, height) = (img.width(), img.height());
+    encoder.encode(&img.into_raw(), width, height, image::ColorType::RGB(8))?;
+    Ok(buf)
+}
+
 fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
     let img = image::open(file.as_ref())?.to_rgb();
     let img = image_srgb_to_linear(&img);
+
+    // To consider: Always store the original, to be able to render new sizes?
+    // Also: To be able to order photo prints based on collections in pixu.rs?
 
     let large = if img.width() > 2560 {
         let nwidth = 2560;
@@ -86,17 +97,26 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
         img
     };
 
-    let _large_srgb = image_linear_to_srgb(&large);
-    // Store _large_srgb
+    let large_srgb = image_linear_to_srgb(&large);
+    let large_jpeg = encode_jpeg(large_srgb, 80)?;
+    // TODO Store large_srgb
+    // Use value, for benchmarking:
+    println!("{}", large_jpeg[100]);
 
     let nwidth = 320;
     let nheight = nwidth * large.height() / large.width();
     let small = image::imageops::resize(&large, nwidth, nheight, image::imageops::Lanczos3);
-    let _small_srgb = image_linear_to_srgb(&small);
-    // Store _small_srgb
+    let small_srgb = image_linear_to_srgb(&small);
+    let small_jpeg = encode_jpeg(small_srgb, 20)?;
+    // TODO Store small_srgb
+    // Use value, for benchmarking:
+    println!("{}", small_jpeg[100]);
 
-    let _col = avg_color(&small);
-    // Store _col
+    let col = px_linear_to_srgb(&avg_color(&small));
+    // TODO Store col
+    // Use value, for benchmarking
+    let ch = col.channels();
+    println!("rgb({}, {}, {})", ch[0], ch[1], ch[2]);
 
     Ok(())
 }
