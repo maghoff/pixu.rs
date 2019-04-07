@@ -2,9 +2,9 @@
 extern crate quote;
 
 use std::env;
-use std::path::Path;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 fn srgb_to_linear(s: u8) -> f32 {
     match s as f32 / 255. {
@@ -20,7 +20,12 @@ fn main() {
 
     let srgb_to_linear_vec: Vec<_> = (0..=255).map(srgb_to_linear).collect();
 
-    write!(f, "{}", quote! {
-        const SRGB_TO_LINEAR: [f32; 256] = [#(#srgb_to_linear_vec),*];
-    }).unwrap();
+    write!(
+        f,
+        "{}",
+        quote! {
+            const SRGB_TO_LINEAR: [f32; 256] = [#(#srgb_to_linear_vec),*];
+        }
+    )
+    .unwrap();
 }
