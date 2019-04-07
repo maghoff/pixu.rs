@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use stopwatch::Stopwatch;
 use structopt::StructOpt;
 
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
@@ -84,62 +85,99 @@ fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
 }
 
 fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
-    println!("XXX open");
+    let sw = Stopwatch::start_new();
     let img = image::open(file.as_ref())?.to_rgb();
-    println!("XXX color space");
+    eprintln!(
+        "ORG: Decoded original jpeg {}x{} in {}ms",
+        img.width(),
+        img.height(),
+        sw.elapsed_ms()
+    );
+
+    let sw = Stopwatch::start_new();
     let img = image_srgb_to_linear(img.clone());
-    println!("XXX resize");
+    eprintln!(
+        "ORG: Converted original to linear color space in {}ms",
+        sw.elapsed_ms()
+    );
 
     // To consider: Always store the original, to be able to render new sizes?
     // Also: To be able to order photo prints based on collections in pixu.rs?
 
     let large = if img.width() > 2560 {
+        let sw = Stopwatch::start_new();
         let nwidth = 2560;
         let nheight = nwidth * img.height() / img.width();
-        image::imageops::resize(&img, nwidth, nheight, image::imageops::Lanczos3)
+        let img = image::imageops::resize(&img, nwidth, nheight, image::imageops::Lanczos3);
+        eprintln!(
+            "LRG: Downscaled to {}x{} in {}ms",
+            nwidth,
+            nheight,
+            sw.elapsed_ms()
+        );
+        img
     } else {
         img
     };
-    println!("XXX");
 
     let (r1, r2) = rayon::join(
         || -> Result<(), std::io::Error> {
-            println!("AAA color space");
+            let sw = Stopwatch::start_new();
             let large_srgb = image_linear_to_srgb(large.clone());
-            println!("AAA jpeg");
+            eprintln!("LRG: Converted to sRGB in {}ms", sw.elapsed_ms());
+
+            let sw = Stopwatch::start_new();
             let large_jpeg = encode_jpeg(large_srgb, 80)?;
-            // TODO Store large_srgb
-            // Use value, for benchmarking:
-            println!("AAA {}", large_jpeg[100]);
+            eprintln!(
+                "LRG: Encoded as JPEG in {}ms (proof: {})",
+                sw.elapsed_ms(),
+                large_jpeg[100]
+            );
+
+            // TODO Store large_srgb. In the mean time, print value to foil optimizer
 
             Ok(())
         },
         || -> Result<(), std::io::Error> {
-            println!("BBB");
-
+            let sw = Stopwatch::start_new();
             let nwidth = 320;
             let nheight = nwidth * large.height() / large.width();
             let small = image::imageops::resize(&large, nwidth, nheight, image::imageops::Lanczos3);
+            eprintln!(
+                "SML: Downscaled to {}x{} in {}ms",
+                nwidth,
+                nheight,
+                sw.elapsed_ms()
+            );
+
             let (r1, _) = rayon::join(
                 || -> Result<(), std::io::Error> {
-                    println!("CCC");
-
+                    let sw = Stopwatch::start_new();
                     let small_srgb = image_linear_to_srgb(small.clone());
                     let small_jpeg = encode_jpeg(small_srgb, 20)?;
                     // TODO Store small_srgb
                     // Use value, for benchmarking:
-                    println!("CCC {}", small_jpeg[100]);
+                    eprintln!(
+                        "SML: Converted and encoded as JPEG in {}ms (proof: {})",
+                        sw.elapsed_ms(),
+                        small_jpeg[100]
+                    );
 
                     Ok(())
                 },
                 || {
-                    println!("DDD");
-
+                    let sw = Stopwatch::start_new();
                     let col = px_linear_to_srgb(&avg_color(&small));
                     // TODO Store col
                     // Use value, for benchmarking
                     let ch = col.channels();
-                    println!("DDD rgb({}, {}, {})", ch[0], ch[1], ch[2]);
+                    eprintln!(
+                        "AVG: Found average color in {}ms: rgb({}, {}, {})",
+                        sw.elapsed_ms(),
+                        ch[0],
+                        ch[1],
+                        ch[2]
+                    );
                 },
             );
 
@@ -166,11 +204,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ok = true;
 
     for file in args.files {
-        let res = ingest(&file);
-
-        if let Err(err) = res {
-            ok = false;
-            eprintln!("Error ingesting {}: {}", file.display(), err);
+        let sw = Stopwatch::start_new();
+        match ingest(&file) {
+            Ok(()) => eprintln!("Ingested {} in {}ms", file.display(), sw.elapsed_ms()),
+            Err(err) => {
+                ok = false;
+                eprintln!("Error ingesting {}: {}", file.display(), err);
+            }
         }
     }
 
