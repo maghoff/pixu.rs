@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use rayon::prelude::*;
 use stopwatch::Stopwatch;
 use structopt::StructOpt;
 
@@ -49,8 +50,7 @@ fn image_srgb_to_linear(src: RgbImage) -> RgbImageF32 {
     let (width, height) = src.dimensions();
     let data = src.into_raw();
 
-    // let data: Vec<_> = data.into_par_iter().map(|x| srgb_to_linear(x)).collect();
-    let data: Vec<_> = data.into_iter().map(|x| srgb_to_linear(x)).collect();
+    let data: Vec<_> = data.into_par_iter().map(|x| srgb_to_linear(x)).collect();
 
     RgbImageF32::from_raw(width, height, data).unwrap()
 }
@@ -59,8 +59,7 @@ fn image_linear_to_srgb(src: RgbImageF32) -> RgbImage {
     let (width, height) = src.dimensions();
     let data = src.into_raw();
 
-    // let data: Vec<_> = data.into_par_iter().map(|x| linear_to_srgb(x)).collect();
-    let data: Vec<_> = data.into_iter().map(|x| linear_to_srgb(x)).collect();
+    let data: Vec<_> = data.into_par_iter().map(|x| linear_to_srgb(x)).collect();
 
     RgbImage::from_raw(width, height, data).unwrap()
 }
