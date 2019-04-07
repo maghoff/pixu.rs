@@ -5,18 +5,21 @@ use structopt::StructOpt;
 
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
 
-include!(concat!(env!("OUT_DIR"), "/srgb_to_linear.rs"));
+include!(concat!(env!("OUT_DIR"), "/srgb.rs"));
 
 fn srgb_to_linear(s: u8) -> f32 {
     SRGB_TO_LINEAR[s as usize]
 }
 
-fn linear_to_srgb(l: f32) -> u8 {
-    // match SRGB_TO_LINEAR.binary_search_by(|x| x.partial_cmp(&l).unwrap()) {
-    //     Ok(i) => i as u8,
-    //     Err(i) => i as u8,
-    // }
+#[cfg(none)]
+fn linear_to_srgb_binary_search(l: f32) -> u8 {
+    match SRGB_TO_LINEAR.binary_search_by(|x| x.partial_cmp(&l).unwrap()) {
+        Ok(i) => i as u8,
+        Err(i) => i as u8, // Not exactly right
+    }
+}
 
+fn linear_to_srgb_calculate(l: f32) -> u8 {
     let l = match l {
         l if l < 0. => 0.,
         l if l > 1. => 1.,
@@ -25,6 +28,10 @@ fn linear_to_srgb(l: f32) -> u8 {
     };
 
     (l * 255.) as u8
+}
+
+fn linear_to_srgb(l: f32) -> u8 {
+    linear_to_srgb_calculate(l)
 }
 
 fn px_linear_to_srgb(l: &Rgb<f32>) -> Rgb<u8> {
