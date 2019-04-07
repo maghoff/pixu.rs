@@ -5,14 +5,18 @@ use structopt::StructOpt;
 
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
 
+include!(concat!(env!("OUT_DIR"), "/srgb_to_linear.rs"));
+
 fn srgb_to_linear(s: u8) -> f32 {
-    match s as f32 / 255. {
-        s if s < 0.04045 => s / 12.92,
-        s => ((s + 0.055) / 1.055).powf(2.4),
-    }
+    SRGB_TO_LINEAR[s as usize]
 }
 
 fn linear_to_srgb(l: f32) -> u8 {
+    // match SRGB_TO_LINEAR.binary_search_by(|x| x.partial_cmp(&l).unwrap()) {
+    //     Ok(i) => i as u8,
+    //     Err(i) => i as u8,
+    // }
+
     let l = match l {
         l if l < 0. => 0.,
         l if l > 1. => 1.,
@@ -21,16 +25,6 @@ fn linear_to_srgb(l: f32) -> u8 {
     };
 
     (l * 255.) as u8
-}
-
-fn px_srgb_to_linear(s: &Rgb<u8>) -> Rgb<f32> {
-    let ch = s.channels();
-    Rgb::from_channels(
-        srgb_to_linear(ch[0]),
-        srgb_to_linear(ch[1]),
-        srgb_to_linear(ch[2]),
-        0.,
-    )
 }
 
 fn px_linear_to_srgb(l: &Rgb<f32>) -> Rgb<u8> {
@@ -43,24 +37,24 @@ fn px_linear_to_srgb(l: &Rgb<f32>) -> Rgb<u8> {
     )
 }
 
-fn image_srgb_to_linear(src: &RgbImage) -> RgbImageF32 {
-    let mut img = ImageBuffer::new(src.width(), src.height());
+fn image_srgb_to_linear(src: RgbImage) -> RgbImageF32 {
+    let (width, height) = src.dimensions();
+    let data = src.into_raw();
 
-    for (to, from) in img.pixels_mut().zip(src.pixels()) {
-        *to = px_srgb_to_linear(from);
-    }
+    // let data: Vec<_> = data.into_par_iter().map(|x| srgb_to_linear(x)).collect();
+    let data: Vec<_> = data.into_iter().map(|x| srgb_to_linear(x)).collect();
 
-    img
+    RgbImageF32::from_raw(width, height, data).unwrap()
 }
 
-fn image_linear_to_srgb(src: &RgbImageF32) -> RgbImage {
-    let mut img = ImageBuffer::new(src.width(), src.height());
+fn image_linear_to_srgb(src: RgbImageF32) -> RgbImage {
+    let (width, height) = src.dimensions();
+    let data = src.into_raw();
 
-    for (to, from) in img.pixels_mut().zip(src.pixels()) {
-        *to = px_linear_to_srgb(from);
-    }
+    // let data: Vec<_> = data.into_par_iter().map(|x| linear_to_srgb(x)).collect();
+    let data: Vec<_> = data.into_iter().map(|x| linear_to_srgb(x)).collect();
 
-    img
+    RgbImage::from_raw(width, height, data).unwrap()
 }
 
 fn avg_color(src: &RgbImageF32) -> Rgb<f32> {
@@ -83,8 +77,11 @@ fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
 }
 
 fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("XXX open");
     let img = image::open(file.as_ref())?.to_rgb();
-    let img = image_srgb_to_linear(&img);
+    println!("XXX color space");
+    let img = image_srgb_to_linear(img.clone());
+    println!("XXX resize");
 
     // To consider: Always store the original, to be able to render new sizes?
     // Also: To be able to order photo prints based on collections in pixu.rs?
@@ -96,27 +93,57 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         img
     };
+    println!("XXX");
 
-    let large_srgb = image_linear_to_srgb(&large);
-    let large_jpeg = encode_jpeg(large_srgb, 80)?;
-    // TODO Store large_srgb
-    // Use value, for benchmarking:
-    println!("{}", large_jpeg[100]);
+    let (r1, r2) = rayon::join(
+        || -> Result<(), std::io::Error> {
+            println!("AAA color space");
+            let large_srgb = image_linear_to_srgb(large.clone());
+            println!("AAA jpeg");
+            let large_jpeg = encode_jpeg(large_srgb, 80)?;
+            // TODO Store large_srgb
+            // Use value, for benchmarking:
+            println!("AAA {}", large_jpeg[100]);
 
-    let nwidth = 320;
-    let nheight = nwidth * large.height() / large.width();
-    let small = image::imageops::resize(&large, nwidth, nheight, image::imageops::Lanczos3);
-    let small_srgb = image_linear_to_srgb(&small);
-    let small_jpeg = encode_jpeg(small_srgb, 20)?;
-    // TODO Store small_srgb
-    // Use value, for benchmarking:
-    println!("{}", small_jpeg[100]);
+            Ok(())
+        },
+        || -> Result<(), std::io::Error> {
+            println!("BBB");
 
-    let col = px_linear_to_srgb(&avg_color(&small));
-    // TODO Store col
-    // Use value, for benchmarking
-    let ch = col.channels();
-    println!("rgb({}, {}, {})", ch[0], ch[1], ch[2]);
+            let nwidth = 320;
+            let nheight = nwidth * large.height() / large.width();
+            let small = image::imageops::resize(&large, nwidth, nheight, image::imageops::Lanczos3);
+            let (r1, _) = rayon::join(
+                || -> Result<(), std::io::Error> {
+                    println!("CCC");
+
+                    let small_srgb = image_linear_to_srgb(small.clone());
+                    let small_jpeg = encode_jpeg(small_srgb, 20)?;
+                    // TODO Store small_srgb
+                    // Use value, for benchmarking:
+                    println!("CCC {}", small_jpeg[100]);
+
+                    Ok(())
+                },
+                || {
+                    println!("DDD");
+
+                    let col = px_linear_to_srgb(&avg_color(&small));
+                    // TODO Store col
+                    // Use value, for benchmarking
+                    let ch = col.channels();
+                    println!("DDD rgb({}, {}, {})", ch[0], ch[1], ch[2]);
+                },
+            );
+
+            r1?;
+
+            Ok(())
+        },
+    );
+
+    r1?;
+    r2?;
 
     Ok(())
 }
