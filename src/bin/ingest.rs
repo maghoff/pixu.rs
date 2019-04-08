@@ -23,12 +23,12 @@ fn linear_to_srgb_binary_search(l: f32) -> u8 {
 
 #[allow(unused)]
 fn linear_to_srgb_lookup(l: f32) -> u8 {
-    fn to_10_bits(f: f32) -> u32 {
+    fn to_12_bits(f: f32) -> u32 {
         const MANTISSA: u32 = 0x00ffffff;
 
         let u = (f + 1.).to_bits();
         let u = u & (MANTISSA >> 1); // Discard topmost bit to subtract 1
-        let u = u >> (24 - 1 - 10); // Keep 10 remaining topmost bits
+        let u = u >> (24 - 1 - 12); // Keep 12 remaining topmost bits
 
         u
     }
@@ -36,7 +36,7 @@ fn linear_to_srgb_lookup(l: f32) -> u8 {
     match l {
         l if l < 0. => 0,
         l if l >= 1. => 255,
-        l => LINEAR_TO_SRGB[to_10_bits(l) as usize],
+        l => LINEAR_TO_SRGB[to_12_bits(l) as usize],
     }
 }
 
