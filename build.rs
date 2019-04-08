@@ -21,7 +21,7 @@ fn linear_to_srgb(l: f32) -> u8 {
         l => 1.055 * l.powf(1.0 / 2.4) - 0.055,
     };
 
-    (l * 255.) as u8
+    (l * 255.).round() as u8
 }
 
 fn main() {
