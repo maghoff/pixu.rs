@@ -13,7 +13,7 @@ fn srgb_to_linear(s: u8) -> f32 {
     SRGB_TO_LINEAR[s as usize]
 }
 
-#[cfg(none)]
+#[allow(unused)]
 fn linear_to_srgb_binary_search(l: f32) -> u8 {
     match SRGB_TO_LINEAR.binary_search_by(|x| x.partial_cmp(&l).unwrap()) {
         Ok(i) => i as u8,
@@ -21,6 +21,26 @@ fn linear_to_srgb_binary_search(l: f32) -> u8 {
     }
 }
 
+#[allow(unused)]
+fn linear_to_srgb_lookup(l: f32) -> u8 {
+    fn to_10_bits(f: f32) -> u32 {
+        const MANTISSA: u32 = 0x00ffffff;
+
+        let u = (f + 1.).to_bits();
+        let u = u & (MANTISSA >> 1); // Discard topmost bit to subtract 1
+        let u = u >> (24 - 1 - 10); // Keep 10 remaining topmost bits
+
+        u
+    }
+
+    match l {
+        l if l < 0. => 0,
+        l if l >= 1. => 255,
+        l => LINEAR_TO_SRGB[to_10_bits(l) as usize],
+    }
+}
+
+#[allow(unused)]
 fn linear_to_srgb_calculate(l: f32) -> u8 {
     let l = match l {
         l if l < 0. => 0.,
@@ -33,7 +53,7 @@ fn linear_to_srgb_calculate(l: f32) -> u8 {
 }
 
 fn linear_to_srgb(l: f32) -> u8 {
-    linear_to_srgb_calculate(l)
+    linear_to_srgb_lookup(l)
 }
 
 fn px_linear_to_srgb(l: &Rgb<f32>) -> Rgb<u8> {
