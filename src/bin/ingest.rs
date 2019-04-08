@@ -26,16 +26,16 @@ fn linear_to_srgb_lookup(l: f32) -> u8 {
     fn to_12_bits(f: f32) -> u32 {
         const MANTISSA: u32 = 0x00ffffff;
 
-        let u = (f + 1.).to_bits();
+        let u = f.to_bits();
         let u = u & (MANTISSA >> 1); // Discard topmost bit to subtract 1
         let u = u >> (24 - 1 - 12); // Keep 12 remaining topmost bits
 
         u
     }
 
-    match l {
-        l if l < 0. => 0,
-        l if l >= 1. => 255,
+    match l + 1. {
+        l if l < 1. => 0,
+        l if l >= 2. => 255,
         l => LINEAR_TO_SRGB[to_12_bits(l) as usize],
     }
 }
