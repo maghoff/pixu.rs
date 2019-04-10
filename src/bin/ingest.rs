@@ -1,9 +1,22 @@
+#[macro_use]
+extern crate diesel_migrations;
+#[macro_use]
+extern crate diesel;
+
 use std::path::{Path, PathBuf};
 
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
+use r2d2::Pool;
+use r2d2_diesel::ConnectionManager;
 use rayon::prelude::*;
 use stopwatch::Stopwatch;
 use structopt::StructOpt;
+
+#[path = "../db/mod.rs"]
+mod db;
+use db::schema::*;
 
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
 
@@ -103,7 +116,10 @@ fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
+fn ingest(
+    file: impl AsRef<Path>,
+    db_pool: Pool<ConnectionManager<SqliteConnection>>,
+) -> Result<i32, Box<dyn std::error::Error>> {
     let sw = Stopwatch::start_new();
     let img = image::open(file.as_ref())?.to_rgb();
     eprintln!(
@@ -139,8 +155,8 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
         img
     };
 
-    let (r1, r2) = rayon::join(
-        || -> Result<(), std::io::Error> {
+    let (large_jpeg, r2) = rayon::join(
+        || -> Result<Vec<u8>, std::io::Error> {
             let sw = Stopwatch::start_new();
             let large_srgb = image_linear_to_srgb(large.clone());
             eprintln!("LRG: Converted to sRGB in {}ms", sw.elapsed_ms());
@@ -155,9 +171,9 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
 
             // TODO Store large_srgb. In the mean time, print value to foil optimizer
 
-            Ok(())
+            Ok(large_jpeg)
         },
-        || -> Result<(), std::io::Error> {
+        || -> Result<_, std::io::Error> {
             let sw = Stopwatch::start_new();
             let nwidth = 320;
             let nheight = nwidth * large.height() / large.width();
@@ -169,8 +185,8 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
                 sw.elapsed_ms()
             );
 
-            let (r1, _) = rayon::join(
-                || -> Result<(), std::io::Error> {
+            let (small_jpeg, col) = rayon::join(
+                || -> Result<_, std::io::Error> {
                     let sw = Stopwatch::start_new();
                     let small_srgb = image_linear_to_srgb(small.clone());
                     let small_jpeg = encode_jpeg(small_srgb, 20)?;
@@ -182,7 +198,7 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
                         small_jpeg[100]
                     );
 
-                    Ok(())
+                    Ok(small_jpeg)
                 },
                 || {
                     let sw = Stopwatch::start_new();
@@ -197,35 +213,127 @@ fn ingest(file: impl AsRef<Path>) -> Result<(), Box<dyn std::error::Error>> {
                         ch[1],
                         ch[2]
                     );
+
+                    col
                 },
             );
 
-            r1?;
-
-            Ok(())
+            Ok((small_jpeg?, col))
         },
     );
 
-    r1?;
-    r2?;
+    let large_jpeg = large_jpeg?;
+    let (small_jpeg, col) = r2?;
 
-    Ok(())
+    use diesel::expression::sql_literal::sql;
+
+    let db_connection = db_pool.get()?;
+    db_connection.transaction(|| {
+        #[derive(Insertable)]
+        #[table_name = "thumbs"]
+        struct Thumb<'a> {
+            media_type: &'a str,
+            data: &'a [u8],
+        }
+
+        diesel::insert_into(thumbs::table)
+            .values(&Thumb {
+                media_type: "image/jpeg",
+                data: &small_jpeg,
+            })
+            .execute(&*db_connection)?;
+
+        let thumbs_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
+            .load::<i32>(&*db_connection)?
+            .pop()
+            .expect("Statement must evaluate to an integer");
+
+        #[derive(Insertable)]
+        #[table_name = "pixurs"]
+        struct Pixur {
+            average_color: i32,
+            thumbs_id: i32,
+        }
+
+        diesel::insert_into(pixurs::table)
+            .values(&Pixur {
+                average_color: col.channels()[0] as i32
+                    + ((col.channels()[1] as i32) << 8)
+                    + ((col.channels()[2] as i32) << 16),
+                thumbs_id,
+            })
+            .execute(&*db_connection)?;
+
+        let pixurs_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
+            .load::<i32>(&*db_connection)?
+            .pop()
+            .expect("Statement must evaluate to an integer");
+
+        #[derive(Insertable)]
+        #[table_name = "images"]
+        struct Image<'a> {
+            media_type: &'a str,
+            data: &'a [u8],
+        }
+
+        diesel::insert_into(images::table)
+            .values(&Image {
+                media_type: "image/jpeg",
+                data: &large_jpeg,
+            })
+            .execute(&*db_connection)?;
+
+        let images_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
+            .load::<i32>(&*db_connection)?
+            .pop()
+            .expect("Statement must evaluate to an integer");
+
+        #[derive(Insertable)]
+        #[table_name = "images_meta"]
+        struct ImageMeta {
+            id: i32,
+            width: i32,
+            height: i32,
+            pixurs_id: i32,
+        }
+
+        diesel::insert_into(images_meta::table)
+            .values(&ImageMeta {
+                id: images_id,
+                width: large.width() as i32,
+                height: large.height() as i32,
+                pixurs_id,
+            })
+            .execute(&*db_connection)?;
+
+        Ok(pixurs_id)
+    })
 }
 
 #[derive(StructOpt)]
 struct Params {
+    /// SQLite database file
+    #[structopt(long = "db", name = "DB")]
+    db: String,
+
     files: Vec<PathBuf>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Params::from_args();
+    let db_pool = db::create_pool(args.db)?;
 
     let mut ok = true;
 
     for file in args.files {
         let sw = Stopwatch::start_new();
-        match ingest(&file) {
-            Ok(()) => eprintln!("Ingested {} in {}ms", file.display(), sw.elapsed_ms()),
+        match ingest(&file, db_pool.clone()) {
+            Ok(id) => eprintln!(
+                "Ingested {} in {}ms as ID {}",
+                file.display(),
+                sw.elapsed_ms(),
+                id
+            ),
             Err(err) => {
                 ok = false;
                 eprintln!("Error ingesting {}: {}", file.display(), err);
