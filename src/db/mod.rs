@@ -5,6 +5,8 @@ use diesel::SqliteConnection;
 use r2d2::{CustomizeConnection, Pool};
 use r2d2_diesel::{self, ConnectionManager};
 
+pub mod schema;
+
 embed_migrations!();
 
 #[derive(Debug)]
