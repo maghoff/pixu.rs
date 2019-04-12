@@ -1,10 +1,11 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
@@ -19,7 +20,9 @@ impl Thumbnail {
         Thumbnail { db_pool, id }
     }
 
-    fn try_get(self: Box<Self>) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
+    async fn try_get(
+        self: Box<Self>,
+    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
         let db_connection = self
             .db_pool
             .get()
@@ -33,6 +36,7 @@ impl Thumbnail {
             data: Vec<u8>,
         }
 
+        // TODO Schedule IO operation on some kind of background thread
         let pix: Thumbnail = thumbs::table
             .filter(thumbs::id.eq(self.id))
             .first(&*db_connection)
@@ -47,15 +51,13 @@ impl Thumbnail {
         ))
     }
 
-    fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        self.try_get().unwrap_or_else(|e| e.render())
+    async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
+        await!(self.try_get()).unwrap_or_else(|e| e.render())
     }
 }
 
 impl Resource for Thumbnail {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        // TODO Async GET handling
-
-        self.get_core()
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+        self.get_core().boxed()
     }
 }

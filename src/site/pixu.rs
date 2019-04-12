@@ -1,10 +1,11 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
+use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
@@ -27,7 +28,9 @@ impl Pixu {
         Pixu { db_pool, id }
     }
 
-    fn try_get(self: Box<Self>) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
+    async fn try_get(
+        self: Box<Self>,
+    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
         let db_connection = self
             .db_pool
             .get()
@@ -40,6 +43,8 @@ impl Pixu {
             average_color: i32,
             thumbs_id: i32,
         }
+
+        // TODO Schedule IO operations on some kind of background thread
 
         let pix: Pixurs = pixurs::table
             .filter(pixurs::id.eq(self.id))
@@ -71,15 +76,13 @@ impl Pixu {
         ))
     }
 
-    fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        self.try_get().unwrap_or_else(|e| e.render())
+    async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
+        await!(self.try_get()).unwrap_or_else(|e| e.render())
     }
 }
 
 impl Resource for Pixu {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        // TODO Async GET handling
-
-        self.get_core()
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+        self.get_core().boxed()
     }
 }

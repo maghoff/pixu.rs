@@ -32,7 +32,7 @@ pub trait Resource: Send {
         None
     }
 
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec);
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)>;
 
     fn post<'a>(
         self: Box<Self>,
@@ -44,19 +44,19 @@ pub trait Resource: Send {
 }
 
 impl Resource for (http::StatusCode, RepresentationsVec) {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        *self
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+        async { *self }.boxed()
     }
 }
 
 impl Resource for RepresentationsVec {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        (http::StatusCode::OK, *self)
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+        async { (http::StatusCode::OK, *self) }.boxed()
     }
 }
 
 impl<R: Resource, T: FnOnce() -> Box<R> + Send> Resource for T {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
         (*self)().get()
     }
 }

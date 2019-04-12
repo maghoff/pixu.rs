@@ -61,14 +61,17 @@ impl Index {
 }
 
 impl Resource for Index {
-    fn get(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        (
-            http::StatusCode::OK,
-            vec![(
-                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
-            )],
-        )
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+        async {
+            (
+                http::StatusCode::OK,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
+                )],
+            )
+        }
+            .boxed()
     }
 
     fn post<'a>(
