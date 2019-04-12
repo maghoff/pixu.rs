@@ -1,5 +1,7 @@
 use std::fmt;
 
+// FIXME Rework entire module. Is there a reusable media type type in the ecosystem?
+
 // FIXME Very alloc heavy struct
 // FIXME Verify validity of data on creation
 pub struct MediaType {
@@ -18,6 +20,15 @@ impl MediaType {
             type_category: type_category.to_string(),
             subtype: subtype.to_string(),
             args: args.into(),
+        }
+    }
+
+    pub fn parse(src: &str) -> MediaType {
+        let parts = src.splitn(2, '/').collect::<Vec<_>>();
+        MediaType {
+            type_category: parts[0].to_string(),
+            subtype: parts[1].to_string(),
+            args: vec![],
         }
     }
 }

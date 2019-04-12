@@ -164,18 +164,16 @@ fn ingest(
             let sw = Stopwatch::start_new();
             let large_jpeg = encode_jpeg(large_srgb, 80)?;
             eprintln!(
-                "LRG: Encoded as JPEG in {}ms (proof: {})",
+                "LRG: Encoded as JPEG in {}ms, {}b",
                 sw.elapsed_ms(),
-                large_jpeg[100]
+                large_jpeg.len()
             );
-
-            // TODO Store large_srgb. In the mean time, print value to foil optimizer
 
             Ok(large_jpeg)
         },
         || -> Result<_, std::io::Error> {
             let sw = Stopwatch::start_new();
-            let nwidth = 320;
+            let nwidth = 160;
             let nheight = nwidth * large.height() / large.width();
             let small = image::imageops::resize(&large, nwidth, nheight, image::imageops::Lanczos3);
             eprintln!(
@@ -190,12 +188,10 @@ fn ingest(
                     let sw = Stopwatch::start_new();
                     let small_srgb = image_linear_to_srgb(small.clone());
                     let small_jpeg = encode_jpeg(small_srgb, 20)?;
-                    // TODO Store small_srgb
-                    // Use value, for benchmarking:
                     eprintln!(
-                        "SML: Converted and encoded as JPEG in {}ms (proof: {})",
+                        "SML: Converted and encoded as JPEG in {}ms, {}b",
                         sw.elapsed_ms(),
-                        small_jpeg[100]
+                        small_jpeg.len()
                     );
 
                     Ok(small_jpeg)
@@ -203,16 +199,7 @@ fn ingest(
                 || {
                     let sw = Stopwatch::start_new();
                     let col = px_linear_to_srgb(&avg_color(&small));
-                    // TODO Store col
-                    // Use value, for benchmarking
-                    let ch = col.channels();
-                    eprintln!(
-                        "AVG: Found average color in {}ms: rgb({}, {}, {})",
-                        sw.elapsed_ms(),
-                        ch[0],
-                        ch[1],
-                        ch[2]
-                    );
+                    eprintln!("AVG: Found average color in {}ms", sw.elapsed_ms());
 
                     col
                 },
@@ -257,9 +244,9 @@ fn ingest(
 
         diesel::insert_into(pixurs::table)
             .values(&Pixur {
-                average_color: col.channels()[0] as i32
+                average_color: ((col.channels()[0] as i32) << 16)
                     + ((col.channels()[1] as i32) << 8)
-                    + ((col.channels()[2] as i32) << 16),
+                    + ((col.channels()[2] as i32) << 0),
                 thumbs_id,
             })
             .execute(&*db_connection)?;

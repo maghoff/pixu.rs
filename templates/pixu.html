@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>pixu.rs</title>
+<style>
+html, body { padding: 0; margin: 0; }
+
+.photo {
+    height: 97vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.photo--img-container {
+    margin-left: auto;
+    margin-right: auto;
+
+    width: 100%;
+    height: 100%;
+    max-width: 100vh;
+
+    position: relative;
+}
+
+.photo--img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+
+    background-position: 50% 50%;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.photo--thumbnail {
+    filter: blur(2vmax);
+}
+</style>
+</head>
+
+<body>
+    <div class="photo" style="background: {{average_color}}">
+        <div class="photo--img-container">
+            <div class="photo--img photo--thumbnail" style="background-image: url({{thumb_url}})"></div>
+            <div class="photo--img photo--large" style="background-image: url({{large_url}})"></div>
+        </div>
+    </div>
+    <div class="photo" style="background: {{average_color}}">
+        <div class="photo--img-container">
+            <div class="photo--img photo--thumbnail" style="background-image: url({{thumb_url}})"></div>
+            <div class="photo--img photo--large" style="background-image: url({{large_url}})"></div>
+        </div>
+    </div>
+</body>
+
+</html>

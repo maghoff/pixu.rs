@@ -4,6 +4,8 @@
 extern crate bart_derive;
 #[macro_use]
 extern crate diesel_migrations;
+#[macro_use]
+extern crate diesel;
 
 mod db;
 mod site;
@@ -23,12 +25,12 @@ struct Options {
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let opt = Options::from_args();
-    let _db = db::create_pool(opt.db)?;
+    let db_pool = db::create_pool(opt.db)?;
 
     let bind_host = "127.0.0.1".parse().expect("Acceptable IP address");
     let bind_port = 1212;
 
-    let site = site::Site;
+    let site = site::Site::new(db_pool);
 
     let service_fn =
         || hyper::service::service_fn(|req| web::handle_request(&site, req).boxed().compat());
