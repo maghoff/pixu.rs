@@ -42,11 +42,16 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     // The following implicitly starts a thread pool which in turn blocks
     // propagation of panics. I'm not sure I want to deal with panics that
-    // way yet.
-    //
-    // tokio::run(server.map_err(|e| {
-    //     eprintln!("server error: {}", e);
-    // }));
+    // way yet. Also, I can't get it working with the site borrow. Hm...
+
+    // use futures::compat::Future01CompatExt;
+    // tokio::run(
+    //     server
+    //         .compat()
+    //         .map_err(|e| eprintln!("server error: {}", e))
+    //         .boxed()
+    //         .compat(),
+    // );
 
     // Alternative: Start a tokio core that's limited to the current thread
     use tokio::runtime::current_thread::Runtime;
