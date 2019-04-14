@@ -6,6 +6,8 @@ extern crate bart_derive;
 extern crate diesel_migrations;
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate lazy_static;
 
 mod db;
 mod site;
