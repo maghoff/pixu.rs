@@ -10,7 +10,7 @@ use futures::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use regex::RegexSet;
+use regex::{Regex, RegexSet};
 use web::{FutureBox, Lookup, MediaType, QueryableResource, RepresentationBox};
 
 use self::image::Image;
@@ -40,18 +40,22 @@ pub struct Site {
 }
 
 macro_rules! regex_routes {
-    ( $path:expr, $($pat:expr => $res:expr),*, _ => $not:expr ) => {
+    ( $path:expr, $($pat:expr, $m:ident => $res:expr),*, _ => $not:expr ) => {
+        let path = $path;
+
         lazy_static! {
             static ref ROUTES: RegexSet = RegexSet::new(&[$($pat),*]).unwrap();
         }
 
-        let route = ROUTES.matches($path).into_iter().next();
+        let route = ROUTES.matches(path).into_iter().next();
 
         let mut i = 0;
 
         if let Some(r) = route {
             $(
                 if r == i {
+                    let re = Regex::new($pat).unwrap(); // TODO Memoize
+                    let $m = re.captures(path).unwrap();
                     return $res;
                 }
                 i += 1;
@@ -73,10 +77,16 @@ impl Site {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            r"^$" => Box::new(Index) as _,
-            r"^example$" => Box::new(Pixu::new(self.db_pool.clone(), 1)) as _,
-            r"^thumb/1$" => Box::new(Thumbnail::new(self.db_pool.clone(), 1)) as _,
-            r"^img/1$" => Box::new(Image::new(self.db_pool.clone(), 1)) as _,
+            r"^$", _m => Box::new(Index) as _,
+            r"^example$", _m => Box::new(Pixu::new(self.db_pool.clone(), 1)) as _,
+            r"^thumb/(\d+)$", m => {
+                let id = m[1].parse().unwrap();
+                Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
+            },
+            r"^img/(\d+)$", m => {
+                let id = m[1].parse().unwrap();
+                Box::new(Image::new(self.db_pool.clone(), id)) as _
+            },
             _ => Box::new(not_found()) as _
         }
     }
