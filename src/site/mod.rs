@@ -40,7 +40,7 @@ pub struct Site {
 }
 
 macro_rules! regex_routes {
-    ( $path:expr, $($pat:expr, $m:ident => $res:expr),*, _ => $not:expr ) => {
+    ( $path:expr, $($m:pat = $pat:expr => $res:expr,)* ! => $not:expr ) => {
         let path = $path;
 
         lazy_static! {
@@ -54,6 +54,7 @@ macro_rules! regex_routes {
         if let Some(r) = route {
             $(
                 if r == i {
+                    // TODO Avoid reparsing when $m is not used. Somehow.
                     let re = Regex::new($pat).unwrap(); // TODO Memoize
                     let $m = re.captures(path).unwrap();
                     return $res;
@@ -77,17 +78,17 @@ impl Site {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            r"^$", _m => Box::new(Index) as _,
-            r"^example$", _m => Box::new(Pixu::new(self.db_pool.clone(), 1)) as _,
-            r"^thumb/(\d+)$", m => {
+            _ = r"^$" => Box::new(Index) as _,
+            _ = r"^example$" => Box::new(Pixu::new(self.db_pool.clone(), 1)) as _,
+            m = r"^thumb/(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
             },
-            r"^img/(\d+)$", m => {
+            m = r"^img/(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 Box::new(Image::new(self.db_pool.clone(), id)) as _
             },
-            _ => Box::new(not_found()) as _
+            ! => Box::new(not_found()) as _
         }
     }
 }
