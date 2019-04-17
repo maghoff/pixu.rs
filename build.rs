@@ -30,7 +30,9 @@ fn main() {
     let mut f = File::create(&dest_path).unwrap();
 
     let srgb_to_linear_vec: Vec<_> = (0..=255).map(srgb_to_linear).collect();
-    let linear_to_srgb_vec: Vec<_> = (0..4096).map(|x| linear_to_srgb((x as f32 + 0.5) / 4096.)).collect();
+    let linear_to_srgb_vec: Vec<_> = (0..4096)
+        .map(|x| linear_to_srgb((x as f32 + 0.5) / 4096.))
+        .collect();
 
     write!(
         f,
