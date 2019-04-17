@@ -32,10 +32,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let bind_host = "127.0.0.1".parse().expect("Acceptable IP address");
     let bind_port = 1212;
 
-    let site = site::Site::new(db_pool);
+    use std::sync::Arc;
+    let site = Arc::new(site::Site::new(db_pool));
 
-    let service_fn =
-        || hyper::service::service_fn(|req| web::handle_request(&site, req).boxed().compat());
+    let service_fn = move || {
+        let site = Arc::clone(&site);
+        hyper::service::service_fn(move |req| {
+            web::handle_request(Arc::clone(&site), req).boxed().compat()
+        })
+    };
 
     let server =
         hyper::server::Server::bind(&SocketAddr::new(bind_host, bind_port)).serve(service_fn);

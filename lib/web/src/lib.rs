@@ -150,9 +150,12 @@ async fn handle_request_core<'a>(
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support
-pub async fn handle_request<'a>(
-    site: &'a (dyn Lookup + 'a + Send + Sync),
+pub async fn handle_request<'a, L>(
+    site: std::sync::Arc<L>,
     req: Request<Body>,
-) -> Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>> {
-    Ok(await!(handle_request_core(site, req)))
+) -> Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
+where
+    L: Lookup + 'a + Send + Sync,
+{
+    Ok(await!(handle_request_core(&*site, req)))
 }
