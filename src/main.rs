@@ -47,25 +47,19 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     println!("Listening on http://{}", server.local_addr());
 
-    // The following implicitly starts a thread pool which in turn blocks
-    // propagation of panics. I'm not sure I want to deal with panics that
-    // way yet. Also, I can't get it working with the site borrow. Hm...
+    // The following implicitly starts a thread pool. This, in turn, blocks
+    // propagation of panics..! However, it looks like propagation of panics
+    // out to/of tokio::run is planned, see
+    //   https://github.com/tokio-rs/tokio/pull/1052
 
-    // use futures::compat::Future01CompatExt;
-    // tokio::run(
-    //     server
-    //         .compat()
-    //         .map_err(|e| eprintln!("server error: {}", e))
-    //         .boxed()
-    //         .compat(),
-    // );
-
-    // Alternative: Start a tokio core that's limited to the current thread
-    use tokio::runtime::current_thread::Runtime;
-    let mut runtime = Runtime::new().unwrap();
-    runtime
-        .block_on(server)
-        .map_err(|e| format!("server error: {}", e))?;
+    use futures::compat::Future01CompatExt;
+    tokio::run(
+        server
+            .compat()
+            .map_err(|e| eprintln!("server error: {}", e))
+            .boxed()
+            .compat(),
+    );
 
     Ok(())
 }
