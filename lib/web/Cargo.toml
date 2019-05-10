@@ -11,3 +11,7 @@ chrono = "0.4.6"
 [dependencies.futures-preview]
 version = "0.3.0-alpha.9"
 features = ["compat"]
+
+[dependencies.cookie]
+version = "0.12.0"
+features = ["percent-encode"]

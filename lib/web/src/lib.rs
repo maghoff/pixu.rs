@@ -92,7 +92,12 @@ async fn try_handle_request<'a>(
 ) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
     let (req, body) = req.into_parts();
 
-    let _cookie = req.headers.get_ascii(http::header::COOKIE)?;
+    let _cookie = req
+        .headers
+        .get_ascii(http::header::COOKIE)?
+        .map(cookie::Cookie::parse_encoded)
+        .transpose()
+        .map_err(|_| Error::BadRequest)?;
 
     let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
         .unwrap_or_else(|x| match x {
