@@ -28,10 +28,6 @@ pub trait Resource: Send {
         None
     }
 
-    fn last_modified(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-        None
-    }
-
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)>;
 
     fn post<'a>(

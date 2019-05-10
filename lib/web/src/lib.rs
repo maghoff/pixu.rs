@@ -72,11 +72,27 @@ fn internal_server_error() -> impl Resource {
     )
 }
 
-async fn handle_request_core<'a>(
+trait HeaderMapExt {
+    // Yields Err(Error::BadRequest) when header is present with non-ASCII data
+    fn get_ascii(&self, name: http::header::HeaderName) -> Result<Option<&str>, Error>;
+}
+
+impl HeaderMapExt for http::HeaderMap<http::header::HeaderValue> {
+    fn get_ascii(&self, name: http::header::HeaderName) -> Result<Option<&str>, Error> {
+        self.get(name)
+            .map(|x| x.to_str()) // Validates that the given data is ASCII
+            .transpose()
+            .map_err(|_| Error::BadRequest)
+    }
+}
+
+async fn try_handle_request<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
-) -> Response<Body> {
+) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
     let (req, body) = req.into_parts();
+
+    let _cookie = req.headers.get_ascii(http::header::COOKIE)?;
 
     let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
         .unwrap_or_else(|x| match x {
@@ -85,27 +101,39 @@ async fn handle_request_core<'a>(
         });
 
     let etag = resource.etag();
-    let last_modified = resource.last_modified();
 
-    if let Some(_etag) = etag {
-        // Check ETag-related If-headers: If-Match, If-None-Match
-        // Maybe not contingent on the resource giving an ETag
+    if let Some(_if_match) = req.headers.get_ascii(http::header::IF_MATCH)? {
         unimplemented!();
+
+        /*
+        https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match
+
+        If none of the given ETags match the etag from the resource, return 412 Precondition Failed
+        (Has interesting combination with Range-requests)
+        In case of no ETag on resource, always 412
+        */
     }
 
-    if let Some(_last_modified) = last_modified {
-        // Grammar reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Last-Modified
-        // Handle If-Modified-Since and If-Unmodified-Since
-        // Maybe not contingent on the resource giving a timestamp
+    if let Some(_if_none_match) = req.headers.get_ascii(http::header::IF_NONE_MATCH)? {
         unimplemented!();
+
+        /*
+        https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match
+
+        If any of the given ETags match the etag from the resource and the verb is
+            GET, HEAD => 304 Not Modified
+            PUT, POST, DELETE => 412 Precondition Failed
+            OPTIONS => Uh..?
+
+        Note that the server generating a 304 response MUST generate any of the following header
+        fields that would have been sent in a 200 (OK) response to the same request: Cache-Control,
+        Content-Location, Date, ETag, Expires, and Vary.
+        */
     }
 
-    // let _accept = req.headers().get(http::header::ACCEPT)
-    //     .map(|x| x.to_str())
-    //     .transpose()
-    //     .map_err(|_| Error::BadRequest)?;
+    let _accept = req.headers.get_ascii(http::header::ACCEPT)?;
 
-    let (status, mut representations) = await!(match req.method {
+    let (status, representations) = await!(match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => resource.get(),
         hyper::Method::POST => {
@@ -123,11 +151,24 @@ async fn handle_request_core<'a>(
         _ => async { method_not_allowed() }.boxed() as _,
     });
 
+    Ok((etag, status, representations))
+}
+
+use hyper::http::StatusCode;
+
+async fn build_response(
+    etag: Option<ETag>,
+    status: StatusCode,
+    mut representations: RepresentationsVec,
+) -> Response<Body> {
     let mut response = Response::builder();
     response.status(status);
 
-    // TODO Implement content type negotiation via Accept
-    // Also conditionally set Vary: Accept in response
+    if representations.len() > 1 {
+        response.header("vary", "accept");
+    }
+
+    // Implement content type negotiation via Accept
     let (content_type, rep_builder) = representations.pop().unwrap(); // FIXME: Stub
     let representation = rep_builder();
 
@@ -137,16 +178,24 @@ async fn handle_request_core<'a>(
         response.header("etag", etag.to_string());
     }
 
-    if let Some(last_modified) = last_modified {
-        // See timestamp format: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Last-Modified
-        response.header("last-modified", last_modified.to_string());
-        unimplemented!("Missing correct datetime formatter");
-    }
+    // Optionally set Cache-Control
 
-    // Create response body
     response
         .body(representation.body())
         .expect("Success should be guaranteed at type level")
+}
+
+async fn handle_request_core<'a>(
+    site: &'a (dyn Lookup + 'a + Send + Sync),
+    req: Request<Body>,
+) -> Response<Body> {
+    let (etag, status, representations) =
+        await!(try_handle_request(site, req)).unwrap_or_else(|err| match err {
+            Error::BadRequest => unimplemented!(),
+            Error::InternalServerError => unimplemented!(),
+        });
+
+    await!(build_response(etag, status, representations))
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support
