@@ -86,6 +86,10 @@ impl HeaderMapExt for http::HeaderMap<http::header::HeaderValue> {
     }
 }
 
+fn parse_cookie_header(src: &str) -> Result<Vec<cookie::Cookie>, cookie::ParseError> {
+    src.split("; ").map(cookie::Cookie::parse_encoded).collect()
+}
+
 async fn try_handle_request<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
@@ -95,7 +99,7 @@ async fn try_handle_request<'a>(
     let _cookie = req
         .headers
         .get_ascii(http::header::COOKIE)?
-        .map(cookie::Cookie::parse_encoded)
+        .map(parse_cookie_header)
         .transpose()
         .map_err(|_| Error::BadRequest)?;
 
