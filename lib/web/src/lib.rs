@@ -109,6 +109,7 @@ async fn try_handle_request<'a>(
     let read_cookies = resource.read_cookies();
     if read_cookies.len() > 0 {
         // TODO Set Vary: Cookie
+        // Propagate this via return value? Change to struct?
 
         let mut cookies = vec![None; read_cookies.len()];
 
