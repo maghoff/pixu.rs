@@ -7,6 +7,7 @@ use hyper::http;
 use super::etag::ETag;
 use super::media_type::MediaType;
 use super::representation::Representation;
+use super::queryable_resource::Error;
 
 pub type RepresentationBox = Box<dyn Representation + Send + 'static>;
 pub type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
@@ -31,7 +32,7 @@ pub trait Resource: Send {
     }
 
     // The values are given in the same order as the keys listed by read_cookies()
-    fn cookies(&mut self, _values: &[Option<&str>]) {}
+    fn cookies(&mut self, _values: &[Option<&str>]) -> Result<(), Error> { Ok(()) }
 
     fn etag(&self) -> Option<ETag> {
         None

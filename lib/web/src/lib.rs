@@ -124,7 +124,7 @@ async fn try_handle_request<'a>(
             }
         }
 
-        resource.cookies(&cookies); // TODO Allow Bad Request
+        resource.cookies(&cookies)?;
     }
 
     let etag = resource.etag();
