@@ -86,8 +86,12 @@ impl HeaderMapExt for http::HeaderMap<http::header::HeaderValue> {
     }
 }
 
-fn parse_cookie_header(src: &str) -> Result<Vec<cookie::Cookie>, cookie::ParseError> {
-    src.split("; ").map(cookie::Cookie::parse_encoded).collect()
+fn parse_cookie_header(
+    src: &str,
+) -> impl Iterator<Item = Result<(&str, &str), cookie::ParseError>> {
+    src.split("; ").map(|raw| {
+        cookie::Cookie::parse(raw).map(|c| (c.name_raw().unwrap(), c.value_raw().unwrap()))
+    })
 }
 
 async fn try_handle_request<'a>(
@@ -96,18 +100,32 @@ async fn try_handle_request<'a>(
 ) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
     let (req, body) = req.into_parts();
 
-    let _cookie = req
-        .headers
-        .get_ascii(http::header::COOKIE)?
-        .map(parse_cookie_header)
-        .transpose()
-        .map_err(|_| Error::BadRequest)?;
-
-    let resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
+    let mut resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
         .unwrap_or_else(|x| match x {
             ResolveError::MalformedUri(_) => Box::new(bad_request()),
             ResolveError::LookupError(_) => Box::new(internal_server_error()),
         });
+
+    let read_cookies = resource.read_cookies();
+    if read_cookies.len() > 0 {
+        // TODO Set Vary: Cookie
+
+        let mut cookies = vec![None; read_cookies.len()];
+
+        let cookie_header = req.headers.get_ascii(http::header::COOKIE)?;
+
+        if let Some(cookie_header) = cookie_header {
+            for cookie in parse_cookie_header(cookie_header) {
+                let (key, value) = cookie.map_err(|_| Error::BadRequest)?;
+                let index = read_cookies.iter().position(|&given| given == key);
+                if let Some(index) = index {
+                    cookies[index] = Some(value);
+                }
+            }
+        }
+
+        resource.cookies(&cookies); // TODO Allow Bad Request
+    }
 
     let etag = resource.etag();
 
