@@ -5,12 +5,14 @@ use futures::future::FutureExt;
 use hyper::http;
 use hyper::{Body, Request, Response};
 
+mod cookie_handler;
 mod etag;
 mod media_type;
 mod queryable_resource;
 mod representation;
 mod resource;
 
+pub use self::cookie_handler::CookieHandler;
 pub use self::etag::ETag;
 pub use self::media_type::MediaType;
 pub use self::queryable_resource::{Error, QueryableResource};
@@ -29,7 +31,7 @@ enum ResolveError<'a> {
 async fn resolve_resource<'a>(
     lookup: &'a (dyn Lookup + 'a + Send + Sync),
     uri: &'a http::Uri,
-) -> Result<Box<dyn Resource + Send + 'a>, ResolveError<'a>> {
+) -> Result<Box<dyn CookieHandler + Send + 'a>, ResolveError<'a>> {
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
@@ -100,14 +102,15 @@ async fn try_handle_request<'a>(
 ) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
     let (req, body) = req.into_parts();
 
-    let mut resource: Box<dyn Resource + Send> = await!(resolve_resource(site, &req.uri))
-        .unwrap_or_else(|x| match x {
-            ResolveError::MalformedUri(_) => Box::new(bad_request()),
-            ResolveError::LookupError(_) => Box::new(internal_server_error()),
-        });
+    let cookie_handler: Box<dyn CookieHandler + Send> = await!(resolve_resource(site, &req.uri))
+        .map_err(|x| match x {
+            ResolveError::MalformedUri(_) => Error::BadRequest,
+            ResolveError::LookupError(_) => Error::InternalServerError,
+        })?;
 
-    let read_cookies = resource.read_cookies();
-    if read_cookies.len() > 0 {
+    let read_cookies = cookie_handler.read_cookies();
+
+    let cookies = if read_cookies.len() > 0 {
         // TODO Set Vary: Cookie
         // Propagate this via return value? Change to struct?
 
@@ -125,8 +128,12 @@ async fn try_handle_request<'a>(
             }
         }
 
-        resource.cookies(&cookies)?;
-    }
+        cookies
+    } else {
+        vec![] // Allocation should be unnecessary
+    };
+
+    let resource = await!(cookie_handler.cookies(&cookies))?;
 
     let etag = resource.etag();
 

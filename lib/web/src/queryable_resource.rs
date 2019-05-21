@@ -1,4 +1,4 @@
-use super::resource::Resource;
+use super::CookieHandler;
 
 pub enum Error {
     BadRequest,
@@ -6,11 +6,14 @@ pub enum Error {
 }
 
 pub trait QueryableResource: Send {
-    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn Resource + Send>, Error>;
+    fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn CookieHandler + Send>, Error>;
 }
 
-impl<T: 'static + Resource + Send> QueryableResource for T {
-    fn query(self: Box<Self>, _query: Option<&str>) -> Result<Box<dyn Resource + Send>, Error> {
+impl<T: 'static + CookieHandler + Send> QueryableResource for T {
+    fn query(
+        self: Box<Self>,
+        _query: Option<&str>,
+    ) -> Result<Box<dyn CookieHandler + Send>, Error> {
         Ok(self as _)
     }
 }

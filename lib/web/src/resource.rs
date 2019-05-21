@@ -7,7 +7,6 @@ use hyper::http;
 use super::etag::ETag;
 use super::media_type::MediaType;
 use super::representation::Representation;
-use super::queryable_resource::Error;
 
 pub type RepresentationBox = Box<dyn Representation + Send + 'static>;
 pub type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
@@ -25,15 +24,6 @@ fn method_not_allowed() -> (http::StatusCode, RepresentationsVec) {
 }
 
 pub trait Resource: Send {
-    // TODO Consider moving read_cookies and cookies to a separate trait and
-    // let fn cookies consume Box<Self> and return Box<dyn Resource>
-    fn read_cookies(&self) -> &[&str] {
-        &[]
-    }
-
-    // The values are given in the same order as the keys listed by read_cookies()
-    fn cookies(&mut self, _values: &[Option<&str>]) -> Result<(), Error> { Ok(()) }
-
     fn etag(&self) -> Option<ETag> {
         None
     }

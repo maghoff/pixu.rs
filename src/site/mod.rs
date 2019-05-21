@@ -1,3 +1,4 @@
+mod auth;
 mod handling_error;
 mod image;
 mod index;
@@ -79,7 +80,12 @@ impl Site {
 
         regex_routes! { path,
             _ = r"^$" => Box::new(Index) as _,
-            _ = r"^example$" => Box::new(Pixu::new(self.db_pool.clone(), 1)) as _,
+            _ = r"^example$" => {
+                let db = self.db_pool.clone();
+                let inner = async move || Pixu::new(db, 1);
+                let auth = auth::AuthorizationProvider::new(inner);
+                Box::new(auth) as _
+            },
             m = r"^thumb/(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
