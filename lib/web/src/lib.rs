@@ -8,19 +8,19 @@ use hyper::{Body, Request, Response};
 mod cookie_handler;
 mod etag;
 mod media_type;
-mod queryable_resource;
+mod query_handler;
 mod representation;
 mod resource;
 
 pub use self::cookie_handler::CookieHandler;
 pub use self::etag::ETag;
 pub use self::media_type::MediaType;
-pub use self::queryable_resource::{Error, QueryableResource};
+pub use self::query_handler::{Error, QueryHandler};
 pub use self::representation::Representation;
 pub use self::resource::*;
 
 pub trait Lookup: Send {
-    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryableResource>>;
+    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryHandler>>;
 }
 
 enum ResolveError<'a> {

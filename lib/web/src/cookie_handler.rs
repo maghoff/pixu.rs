@@ -1,8 +1,6 @@
 use futures::future::FutureExt;
 
-use super::Resource;
-use super::queryable_resource::Error;
-use super::FutureBox;
+use super::{Resource, Error, FutureBox};
 
 pub trait CookieHandler: Send {
     fn read_cookies(&self) -> &[&str];

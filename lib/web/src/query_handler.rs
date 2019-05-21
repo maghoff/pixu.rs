@@ -5,11 +5,11 @@ pub enum Error {
     InternalServerError,
 }
 
-pub trait QueryableResource: Send {
+pub trait QueryHandler: Send {
     fn query(self: Box<Self>, query: Option<&str>) -> Result<Box<dyn CookieHandler + Send>, Error>;
 }
 
-impl<T: 'static + CookieHandler + Send> QueryableResource for T {
+impl<T: 'static + CookieHandler + Send> QueryHandler for T {
     fn query(
         self: Box<Self>,
         _query: Option<&str>,

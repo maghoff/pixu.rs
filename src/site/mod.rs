@@ -12,14 +12,14 @@ use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use regex::{Regex, RegexSet};
-use web::{FutureBox, Lookup, MediaType, QueryableResource, RepresentationBox};
+use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
 use self::image::Image;
 use index::Index;
 use pixu::Pixu;
 use thumbnail::Thumbnail;
 
-fn not_found() -> impl QueryableResource {
+fn not_found() -> impl QueryHandler {
     // TODO: This one seems to only reply to GET, but should give the same
     // response to the other verbs
 
@@ -75,7 +75,7 @@ impl Site {
         Site { db_pool }
     }
 
-    async fn lookup<'a>(&'a self, path: &'a str) -> Box<dyn QueryableResource + 'static> {
+    async fn lookup<'a>(&'a self, path: &'a str) -> Box<dyn QueryHandler + 'static> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
@@ -100,7 +100,7 @@ impl Site {
 }
 
 impl Lookup for Site {
-    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryableResource>> {
+    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryHandler>> {
         self.lookup(&path).boxed()
     }
 }
