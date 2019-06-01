@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, unsized_locals)]
+#![feature(async_await, unsized_locals)]
 
 #[macro_use]
 extern crate bart_derive;
@@ -25,7 +25,7 @@ struct Options {
     db: String,
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Options::from_args();
     let db_pool = db::create_pool(opt.db)?;
 

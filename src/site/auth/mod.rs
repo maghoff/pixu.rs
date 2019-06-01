@@ -24,7 +24,7 @@ where
         let let_me_in = values[0] == Some("yes");
         // TODO Decode JWT instead
 
-        await!(self.consumer.authorization(let_me_in))
+        self.consumer.authorization(let_me_in).await
     }
 }
 
@@ -80,7 +80,6 @@ impl<R: 'static + Resource> AuthorizationConsumer for SimpleBoolAuthConsumer<R> 
     }
 }
 
-
 /*
 
 AuthorizationProvider --AuthorizationData--> AuthorizationConsumer -> Resource
@@ -91,9 +90,9 @@ AuthorizationProvider --AuthorizationData--> AuthorizationConsumer -> Resource
 mod test {
     use super::*;
     use futures::executor::block_on;
-    use web::{MediaType, RepresentationBox};
 
     async fn qr() -> impl Resource {
+        use web::{MediaType, RepresentationBox};
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
             Box::new(move || Box::new("Ok") as RepresentationBox) as _,
@@ -103,10 +102,10 @@ mod test {
     #[test]
     fn when_successful_then_status_ok() {
         block_on(async {
-            let c = SimpleBoolAuthConsumer::new(await!(qr()));
+            let c = SimpleBoolAuthConsumer::new(qr().await);
             let a = Box::new(AuthorizationProvider::new(c));
-            let resource = await!(a.cookies(&[Some("yes")])).unwrap();
-            let (status, _) = await!(resource.get());
+            let resource = a.cookies(&[Some("yes")]).await.unwrap();
+            let (status, _) = resource.get().await;
             assert_eq!(status, 200);
         });
     }

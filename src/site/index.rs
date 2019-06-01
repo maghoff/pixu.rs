@@ -35,7 +35,10 @@ impl Index {
             ));
         }
 
-        let body = await! { body.compat().try_concat() }
+        let body = body
+            .compat()
+            .try_concat()
+            .await
             .map_err(|_| HandlingError::InternalServerError)?;
         let args: PostArgs = serde_urlencoded::from_bytes(&body)
             .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
@@ -56,7 +59,9 @@ impl Index {
         content_type: String,
         body: hyper::Body,
     ) -> (http::StatusCode, RepresentationsVec) {
-        await!(self.try_post(content_type, body)).unwrap_or_else(|e| e.render())
+        self.try_post(content_type, body)
+            .await
+            .unwrap_or_else(|e| e.render())
     }
 }
 

@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, unsized_locals)]
+#![feature(async_await, unsized_locals)]
 
 use futures::future::FutureExt;
 
@@ -35,7 +35,7 @@ async fn resolve_resource<'a>(
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
-            let queryable_resource = await!(lookup.lookup(&path[1..]));
+            let queryable_resource = lookup.lookup(&path[1..]).await;
             queryable_resource
                 .query(query)
                 .map_err(ResolveError::LookupError)
@@ -102,7 +102,8 @@ async fn try_handle_request<'a>(
 ) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
     let (req, body) = req.into_parts();
 
-    let cookie_handler: Box<dyn CookieHandler + Send> = await!(resolve_resource(site, &req.uri))
+    let cookie_handler: Box<dyn CookieHandler + Send> = resolve_resource(site, &req.uri)
+        .await
         .map_err(|x| match x {
             ResolveError::MalformedUri(_) => Error::BadRequest,
             ResolveError::LookupError(_) => Error::InternalServerError,
@@ -133,7 +134,7 @@ async fn try_handle_request<'a>(
         vec![] // Allocation should be unnecessary
     };
 
-    let resource = await!(cookie_handler.cookies(&cookies))?;
+    let resource = cookie_handler.cookies(&cookies).await?;
 
     let etag = resource.etag();
 
@@ -168,7 +169,7 @@ async fn try_handle_request<'a>(
 
     let _accept = req.headers.get_ascii(http::header::ACCEPT)?;
 
-    let (status, representations) = await!(match req.method {
+    let (status, representations) = match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => resource.get(),
         hyper::Method::POST => {
@@ -184,7 +185,8 @@ async fn try_handle_request<'a>(
             }
         }
         _ => async { method_not_allowed() }.boxed() as _,
-    });
+    }
+    .await;
 
     Ok((etag, status, representations))
 }
@@ -225,21 +227,23 @@ async fn handle_request_core<'a>(
     req: Request<Body>,
 ) -> Response<Body> {
     let (etag, status, representations) =
-        await!(try_handle_request(site, req)).unwrap_or_else(|err| match err {
-            Error::BadRequest => unimplemented!(),
-            Error::InternalServerError => unimplemented!(),
-        });
+        try_handle_request(site, req)
+            .await
+            .unwrap_or_else(|err| match err {
+                Error::BadRequest => unimplemented!(),
+                Error::InternalServerError => unimplemented!(),
+            });
 
-    await!(build_response(etag, status, representations))
+    build_response(etag, status, representations).await
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support
 pub async fn handle_request<'a, L>(
     site: std::sync::Arc<L>,
     req: Request<Body>,
-) -> Result<Response<Body>, Box<std::error::Error + Send + Sync + 'static>>
+) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     L: Lookup + 'a + Send + Sync,
 {
-    Ok(await!(handle_request_core(&*site, req)))
+    Ok(handle_request_core(&*site, req).await)
 }

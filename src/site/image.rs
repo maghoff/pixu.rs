@@ -52,7 +52,7 @@ impl Image {
     }
 
     async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
-        await!(self.try_get()).unwrap_or_else(|e| e.render())
+        self.try_get().await.unwrap_or_else(|e| e.render())
     }
 }
 

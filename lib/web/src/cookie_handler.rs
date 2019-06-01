@@ -1,6 +1,6 @@
 use futures::future::FutureExt;
 
-use super::{Resource, Error, FutureBox};
+use super::{Error, FutureBox, Resource};
 
 pub trait CookieHandler: Send {
     fn read_cookies(&self) -> &[&str];
@@ -27,4 +27,3 @@ where
         async { Ok(self as _) }.boxed()
     }
 }
-
