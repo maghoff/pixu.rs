@@ -1,5 +1,6 @@
 use super::CookieHandler;
 
+#[derive(Debug)]
 pub enum Error {
     BadRequest,
     InternalServerError,
