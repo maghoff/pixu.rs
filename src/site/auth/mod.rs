@@ -1,17 +1,21 @@
 use futures::future::FutureExt;
+use serde::de::DeserializeOwned;
+use serde_derive::{Deserialize, Serialize};
 
 use web::{CookieHandler, Error, FutureBox, Resource};
 
-pub struct AuthorizationProvider<Consumer>
+pub struct AuthorizationProvider<Consumer, Claims>
 where
-    Consumer: AuthorizationConsumer,
+    Consumer: AuthorizationConsumer<Authorization = Claims>,
+    Claims: DeserializeOwned,
 {
     consumer: Consumer,
 }
 
-impl<Consumer> AuthorizationProvider<Consumer>
+impl<Consumer, Claims> AuthorizationProvider<Consumer, Claims>
 where
-    Consumer: AuthorizationConsumer<Authorization = bool> + Send,
+    Consumer: AuthorizationConsumer<Authorization = Claims> + Send,
+    Claims: DeserializeOwned,
 {
     pub fn new(consumer: Consumer) -> Self {
         AuthorizationProvider { consumer }
@@ -21,16 +25,31 @@ where
         self: Box<Self>,
         values: &'a [Option<&'a str>],
     ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
-        let let_me_in = values[0] == Some("yes");
-        // TODO Decode JWT instead
+        let token_data = if let Some(jwt) = values[0] {
+            use jsonwebtoken::{Algorithm, Validation};
 
-        self.consumer.authorization(let_me_in).await
+            jsonwebtoken::decode::<Claims>(
+                jwt,
+                "secret".as_ref(),
+                &Validation {
+                    algorithms: vec![Algorithm::HS256],
+                    validate_exp: false,
+                    ..Default::default()
+                },
+            )
+            .unwrap_or_else(|_| unimplemented!())
+        } else {
+            unimplemented!()
+        };
+
+        self.consumer.authorization(token_data.claims).await
     }
 }
 
-impl<Consumer> CookieHandler for AuthorizationProvider<Consumer>
+impl<Consumer, Claims> CookieHandler for AuthorizationProvider<Consumer, Claims>
 where
-    Consumer: 'static + AuthorizationConsumer<Authorization = bool> + Send,
+    Consumer: 'static + AuthorizationConsumer<Authorization = Claims> + Send,
+    Claims: 'static + DeserializeOwned + Send,
 {
     fn read_cookies(&self) -> &[&str] {
         &["let-me-in"]
@@ -55,24 +74,29 @@ pub trait AuthorizationConsumer {
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>>;
 }
 
-pub struct SimpleBoolAuthConsumer<R: Resource> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    sub: String,
+}
+
+pub struct SimpleAuthConsumer<R: Resource> {
     ok: R,
 }
 
-impl<R: Resource> SimpleBoolAuthConsumer<R> {
-    pub fn new(ok: R) -> SimpleBoolAuthConsumer<R> {
-        SimpleBoolAuthConsumer { ok }
+impl<R: Resource> SimpleAuthConsumer<R> {
+    pub fn new(ok: R) -> SimpleAuthConsumer<R> {
+        SimpleAuthConsumer { ok }
     }
 }
 
-impl<R: 'static + Resource> AuthorizationConsumer for SimpleBoolAuthConsumer<R> {
-    type Authorization = bool;
+impl<R: 'static + Resource> AuthorizationConsumer for SimpleAuthConsumer<R> {
+    type Authorization = Claims;
 
     fn authorization<'a>(
         self,
-        authorized: Self::Authorization,
+        claims: Self::Authorization,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        if authorized {
+        if claims.sub == "let-me-in" {
             async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
         } else {
             unimplemented!()
@@ -102,9 +126,21 @@ mod test {
     #[test]
     fn when_successful_then_status_ok() {
         block_on(async {
-            let c = SimpleBoolAuthConsumer::new(qr().await);
+            use jsonwebtoken::Header;
+
+            let token = jsonwebtoken::encode(
+                &Header::default(),
+                &Claims {
+                    sub: "let-me-in".to_owned(),
+                },
+                "secret".as_ref(),
+            )
+            .unwrap();
+            let token = &[Some(token.as_str())];
+
+            let c = SimpleAuthConsumer::new(qr().await);
             let a = Box::new(AuthorizationProvider::new(c));
-            let resource = a.cookies(&[Some("yes")]).await.unwrap();
+            let resource = a.cookies(token).await.unwrap();
             let (status, _) = resource.get().await;
             assert_eq!(status, 200);
         });

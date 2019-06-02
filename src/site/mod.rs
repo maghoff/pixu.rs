@@ -82,7 +82,7 @@ impl Site {
             _ = r"^$" => Box::new(Index) as _,
             _ = r"^example$" => {
                 let db = self.db_pool.clone();
-                let inner = auth::SimpleBoolAuthConsumer::new(Pixu::new(db, 1));
+                let inner = auth::SimpleAuthConsumer::new(Pixu::new(db, 1));
                 let auth = auth::AuthorizationProvider::new(inner);
                 Box::new(auth) as _
             },
