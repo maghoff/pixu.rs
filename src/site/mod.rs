@@ -82,8 +82,8 @@ impl Site {
             _ = r"^$" => Box::new(Index) as _,
             _ = r"^example$" => {
                 let db = self.db_pool.clone();
-                let inner = auth::SimpleAuthConsumer::new(Pixu::new(db, 1));
-                let auth = auth::AuthorizationProvider::new(inner);
+                let inner = auth::AuthorizationHandler::new(Pixu::new(db, 1));
+                let auth = auth::JwtCookieHandler::new(inner);
                 Box::new(auth) as _
             },
             m = r"^thumb/(\d+)$" => {

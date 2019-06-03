@@ -4,21 +4,21 @@ use serde_derive::{Deserialize, Serialize};
 
 use web::{CookieHandler, Error, FutureBox, Resource};
 
-pub struct AuthorizationProvider<Consumer, Claims>
+pub struct JwtCookieHandler<Consumer, Claims>
 where
-    Consumer: AuthorizationConsumer<Authorization = Claims>,
+    Consumer: ClaimsConsumer<Claims = Claims>,
     Claims: DeserializeOwned,
 {
     consumer: Consumer,
 }
 
-impl<Consumer, Claims> AuthorizationProvider<Consumer, Claims>
+impl<Consumer, Claims> JwtCookieHandler<Consumer, Claims>
 where
-    Consumer: AuthorizationConsumer<Authorization = Claims> + Send,
+    Consumer: ClaimsConsumer<Claims = Claims> + Send,
     Claims: DeserializeOwned,
 {
     pub fn new(consumer: Consumer) -> Self {
-        AuthorizationProvider { consumer }
+        JwtCookieHandler { consumer }
     }
 
     async fn cookies_async<'a>(
@@ -46,9 +46,9 @@ where
     }
 }
 
-impl<Consumer, Claims> CookieHandler for AuthorizationProvider<Consumer, Claims>
+impl<Consumer, Claims> CookieHandler for JwtCookieHandler<Consumer, Claims>
 where
-    Consumer: 'static + AuthorizationConsumer<Authorization = Claims> + Send,
+    Consumer: 'static + ClaimsConsumer<Claims = Claims> + Send,
     Claims: 'static + DeserializeOwned + Send,
 {
     fn read_cookies(&self) -> &[&str] {
@@ -63,14 +63,12 @@ where
     }
 }
 
-pub trait AuthorizationConsumer {
-    // Forward cookies?
-
-    type Authorization;
+pub trait ClaimsConsumer {
+    type Claims;
 
     fn authorization<'a>(
         self,
-        authorization: Self::Authorization,
+        claims: Self::Claims,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>>;
 }
 
@@ -79,22 +77,22 @@ pub struct Claims {
     sub: String,
 }
 
-pub struct SimpleAuthConsumer<R: Resource> {
+pub struct AuthorizationHandler<R: Resource> {
     ok: R,
 }
 
-impl<R: Resource> SimpleAuthConsumer<R> {
-    pub fn new(ok: R) -> SimpleAuthConsumer<R> {
-        SimpleAuthConsumer { ok }
+impl<R: Resource> AuthorizationHandler<R> {
+    pub fn new(ok: R) -> AuthorizationHandler<R> {
+        AuthorizationHandler { ok }
     }
 }
 
-impl<R: 'static + Resource> AuthorizationConsumer for SimpleAuthConsumer<R> {
-    type Authorization = Claims;
+impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
+    type Claims = Claims;
 
     fn authorization<'a>(
         self,
-        claims: Self::Authorization,
+        claims: Self::Claims,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
         if claims.sub == "let-me-in" {
             async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
@@ -103,12 +101,6 @@ impl<R: 'static + Resource> AuthorizationConsumer for SimpleAuthConsumer<R> {
         }
     }
 }
-
-/*
-
-AuthorizationProvider --AuthorizationData--> AuthorizationConsumer -> Resource
-
-*/
 
 #[cfg(test)]
 mod test {
@@ -138,8 +130,8 @@ mod test {
             .unwrap();
             let token = &[Some(token.as_str())];
 
-            let c = SimpleAuthConsumer::new(qr().await);
-            let a = Box::new(AuthorizationProvider::new(c));
+            let c = AuthorizationHandler::new(qr().await);
+            let a = Box::new(JwtCookieHandler::new(c));
             let resource = a.cookies(token).await.unwrap();
             let (status, _) = resource.get().await;
             assert_eq!(status, 200);
