@@ -1,7 +1,7 @@
 use futures::future::FutureExt;
 use serde_derive::{Deserialize, Serialize};
 
-use web::{CookieHandler, Error, FutureBox, Resource};
+use web::{Error, FutureBox, Resource};
 
 mod claims_consumer;
 mod jwt_cookie_handler;
@@ -43,6 +43,7 @@ impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
 mod test {
     use super::*;
     use futures::executor::block_on;
+    use web::CookieHandler;
 
     async fn qr() -> impl Resource {
         use web::{MediaType, RepresentationBox};
