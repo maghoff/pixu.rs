@@ -43,7 +43,7 @@ where
             unimplemented!()
         };
 
-        self.consumer.authorization(token_data.claims).await
+        self.consumer.claims(token_data.claims).await
     }
 }
 

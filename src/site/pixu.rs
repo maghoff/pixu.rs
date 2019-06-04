@@ -86,3 +86,21 @@ impl Resource for Pixu {
         self.get_core().boxed()
     }
 }
+
+use super::auth;
+use web::Error;
+
+impl auth::ClaimsConsumer for Pixu {
+    type Claims = auth::Claims;
+
+    fn claims<'a>(
+        self,
+        claims: Self::Claims,
+    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
+        if claims.sub == "let-me-in" {
+            async { Ok(Box::new(self) as Box<dyn Resource + Send + 'static>) }.boxed() as _
+        } else {
+            unimplemented!()
+        }
+    }
+}

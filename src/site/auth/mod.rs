@@ -11,7 +11,7 @@ pub use jwt_cookie_handler::JwtCookieHandler;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,
+    pub sub: String,
 }
 
 pub struct AuthorizationHandler<R: Resource> {
@@ -27,7 +27,7 @@ impl<R: Resource> AuthorizationHandler<R> {
 impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
     type Claims = Claims;
 
-    fn authorization<'a>(
+    fn claims<'a>(
         self,
         claims: Self::Claims,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
