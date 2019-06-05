@@ -1,6 +1,7 @@
 use hyper::http::StatusCode;
 use web::{MediaType, RepresentationBox, RepresentationsVec};
 
+#[derive(Debug)]
 pub enum HandlingError {
     BadRequest(&'static str),
     InternalServerError,

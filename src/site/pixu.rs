@@ -97,7 +97,22 @@ impl auth::ClaimsConsumer for Pixu {
         self,
         claims: Self::Claims,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        if claims.sub == "let-me-in" {
+        let db_connection = self
+            .db_pool
+            .get()
+            .map_err(|_| HandlingError::InternalServerError)
+            .unwrap();
+
+        let authorized: bool = pixur_authorizations::table
+            .filter(pixur_authorizations::pixur_id.eq(self.id))
+            .filter(pixur_authorizations::sub.eq(dbg!(claims.sub)))
+            .count()
+            .first::<i64>(&*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)
+            .unwrap()
+            != 0;
+
+        if authorized {
             async { Ok(Box::new(self) as Box<dyn Resource + Send + 'static>) }.boxed() as _
         } else {
             unimplemented!()

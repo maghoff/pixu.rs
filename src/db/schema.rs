@@ -16,6 +16,13 @@ table! {
 }
 
 table! {
+    pixur_authorizations (pixur_id, sub) {
+        pixur_id -> Integer,
+        sub -> Text,
+    }
+}
+
+table! {
     pixurs (id) {
         id -> Integer,
         average_color -> Integer,
@@ -33,11 +40,13 @@ table! {
 
 joinable!(images_meta -> images (id));
 joinable!(images_meta -> pixurs (pixurs_id));
+joinable!(pixur_authorizations -> pixurs (pixur_id));
 joinable!(pixurs -> thumbs (thumbs_id));
 
 allow_tables_to_appear_in_same_query!(
     images,
     images_meta,
+    pixur_authorizations,
     pixurs,
     thumbs,
 );
