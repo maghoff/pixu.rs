@@ -5,8 +5,9 @@ use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{Error, FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
+use super::auth;
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
 
@@ -79,6 +80,27 @@ impl Pixu {
     async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
         self.try_get().await.unwrap_or_else(|e| e.render())
     }
+
+    async fn claims_core<'a>(
+        self,
+        claims: auth::Claims,
+    ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
+        let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
+
+        let authorized: bool = pixur_authorizations::table
+            .filter(pixur_authorizations::pixur_id.eq(self.id))
+            .filter(pixur_authorizations::sub.eq(claims.sub))
+            .count()
+            .first::<i64>(&*db_connection)
+            .map_err(|_| Error::InternalServerError)?
+            != 0;
+
+        if authorized {
+            Ok(Box::new(self) as Box<dyn Resource + Send + 'static>)
+        } else {
+            unimplemented!()
+        }
+    }
 }
 
 impl Resource for Pixu {
@@ -87,9 +109,6 @@ impl Resource for Pixu {
     }
 }
 
-use super::auth;
-use web::Error;
-
 impl auth::ClaimsConsumer for Pixu {
     type Claims = auth::Claims;
 
@@ -97,25 +116,6 @@ impl auth::ClaimsConsumer for Pixu {
         self,
         claims: Self::Claims,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        let db_connection = self
-            .db_pool
-            .get()
-            .map_err(|_| HandlingError::InternalServerError)
-            .unwrap();
-
-        let authorized: bool = pixur_authorizations::table
-            .filter(pixur_authorizations::pixur_id.eq(self.id))
-            .filter(pixur_authorizations::sub.eq(dbg!(claims.sub)))
-            .count()
-            .first::<i64>(&*db_connection)
-            .map_err(|_| HandlingError::InternalServerError)
-            .unwrap()
-            != 0;
-
-        if authorized {
-            async { Ok(Box::new(self) as Box<dyn Resource + Send + 'static>) }.boxed() as _
-        } else {
-            unimplemented!()
-        }
+        self.claims_core(claims).boxed()
     }
 }
