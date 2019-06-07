@@ -15,6 +15,7 @@ use regex::{Regex, RegexSet};
 use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
 use self::image::Image;
+use auth::JwtCookieHandler;
 use index::IndexLoader;
 use pixu::Pixu;
 use thumbnail::Thumbnail;
@@ -79,15 +80,11 @@ impl Site {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            _ = r"^$" => {
-                let auth = auth::JwtCookieHandler::new(IndexLoader);
-                Box::new(auth) as _
-            },
+            _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader)) as _,
             _ = r"^example$" => {
                 let db = self.db_pool.clone();
                 let inner = Pixu::new(db, 1);
-                let auth = auth::JwtCookieHandler::new(inner);
-                Box::new(auth) as _
+                Box::new(JwtCookieHandler::new(inner)) as _
             },
             m = r"^thumb/(\d+)$" => {
                 let id = m[1].parse().unwrap();

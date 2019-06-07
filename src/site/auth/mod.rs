@@ -1,7 +1,4 @@
-use futures::future::FutureExt;
 use serde_derive::{Deserialize, Serialize};
-
-use web::{Error, FutureBox, Resource};
 
 mod claims_consumer;
 mod jwt_cookie_handler;
@@ -14,36 +11,38 @@ pub struct Claims {
     pub sub: String,
 }
 
-pub struct AuthorizationHandler<R: Resource> {
-    ok: R,
-}
-
-impl<R: Resource> AuthorizationHandler<R> {
-    pub fn new(ok: R) -> AuthorizationHandler<R> {
-        AuthorizationHandler { ok }
-    }
-}
-
-impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
-    type Claims = Claims;
-
-    fn claims<'a>(
-        self,
-        claims: Self::Claims,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        if claims.sub == "let-me-in" {
-            async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
-        } else {
-            unimplemented!()
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use futures::executor::block_on;
+    use futures::future::FutureExt;
     use web::CookieHandler;
+    use web::{Error, FutureBox, Resource};
+
+    pub struct AuthorizationHandler<R: Resource> {
+        ok: R,
+    }
+
+    impl<R: Resource> AuthorizationHandler<R> {
+        pub fn new(ok: R) -> AuthorizationHandler<R> {
+            AuthorizationHandler { ok }
+        }
+    }
+
+    impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
+        type Claims = Claims;
+
+        fn claims<'a>(
+            self,
+            claims: Self::Claims,
+        ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
+            if claims.sub == "let-me-in" {
+                async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
+            } else {
+                unimplemented!()
+            }
+        }
+    }
 
     async fn qr() -> impl Resource {
         use web::{MediaType, RepresentationBox};
