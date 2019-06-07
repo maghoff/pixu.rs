@@ -15,7 +15,7 @@ use regex::{Regex, RegexSet};
 use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
 use self::image::Image;
-use index::Index;
+use index::IndexLoader;
 use pixu::Pixu;
 use thumbnail::Thumbnail;
 
@@ -79,7 +79,10 @@ impl Site {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            _ = r"^$" => Box::new(Index) as _,
+            _ = r"^$" => {
+                let auth = auth::JwtCookieHandler::new(IndexLoader);
+                Box::new(auth) as _
+            },
             _ = r"^example$" => {
                 let db = self.db_pool.clone();
                 let inner = Pixu::new(db, 1);

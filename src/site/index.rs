@@ -1,15 +1,20 @@
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{Error, FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
 use super::handling_error::HandlingError;
+use super::auth;
 
-pub struct Index;
+pub struct Index {
+    claims: auth::Claims
+}
 
 #[derive(BartDisplay)]
 #[template = "templates/index.html"]
-struct Get;
+struct Get<'a> {
+    claims: &'a auth::Claims
+}
 
 #[derive(serde_derive::Deserialize)]
 struct PostArgs {
@@ -72,7 +77,7 @@ impl Resource for Index {
                 http::StatusCode::OK,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
+                    Box::new(move || Box::new(Get { claims: &self.claims }.to_string()) as RepresentationBox) as _,
                 )],
             )
         }
@@ -85,5 +90,18 @@ impl Resource for Index {
         body: hyper::Body,
     ) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
         self.post_core(content_type, body).boxed()
+    }
+}
+
+pub struct IndexLoader;
+
+impl auth::ClaimsConsumer for IndexLoader {
+    type Claims = auth::Claims;
+
+    fn claims<'a>(
+        self,
+        claims: Self::Claims,
+    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
+        async { Ok(Box::new(Index { claims }) as Box<dyn Resource + Send + 'static>) }.boxed() as _
     }
 }
