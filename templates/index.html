@@ -8,11 +8,11 @@
     <p>Login: {{.sub}}</p>
     {{/claims}}
     {{^claims}}
-    <p>Not logged in.</p>
+    <p>Ikke innlogget.</p>
     {{/claims}}
 
-    <form method="POST" style="text-decoration: line-through">
-    Logg inn med epostadresse: <input type="email" name="email">
+    <form method="POST">
+    Logg inn med nullfaktorautentisering som <input type="text" name="username">
     <button type="submit">Send inn</button>
     </form>
 </body>

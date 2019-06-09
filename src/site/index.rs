@@ -3,28 +3,29 @@ use hyper::http;
 use serde_urlencoded;
 use web::{Error, FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
 
-use super::handling_error::HandlingError;
 use super::auth;
+use super::handling_error::HandlingError;
 
 pub struct Index {
-    claims: Option<auth::Claims>
+    claims: Option<auth::Claims>,
 }
 
 #[derive(BartDisplay)]
 #[template = "templates/index.html"]
 struct Get<'a> {
-    claims: &'a Option<auth::Claims>
+    claims: &'a Option<auth::Claims>,
 }
 
 #[derive(serde_derive::Deserialize)]
 struct PostArgs {
-    email: String,
+    username: String,
 }
 
 #[derive(BartDisplay)]
 #[template = "templates/index-post.html"]
 struct Post<'a> {
-    email: &'a str,
+    username: &'a str,
+    jwt: &'a str,
 }
 
 impl Index {
@@ -48,12 +49,30 @@ impl Index {
         let args: PostArgs = serde_urlencoded::from_bytes(&body)
             .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
 
+        use jsonwebtoken::{encode, Header};
+
+        #[derive(serde_derive::Serialize)]
+        struct Claims<'a> {
+            sub: &'a str,
+        }
+        let claims = Claims {
+            sub: &args.username,
+        };
+
+        let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
+
         Ok((
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
-                    Box::new(Post { email: &args.email }.to_string()) as RepresentationBox
+                    Box::new(
+                        Post {
+                            username: &args.username,
+                            jwt: &token,
+                        }
+                        .to_string(),
+                    ) as RepresentationBox
                 }) as _,
             )],
         ))
@@ -77,7 +96,14 @@ impl Resource for Index {
                 http::StatusCode::OK,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new(Get { claims: &self.claims }.to_string()) as RepresentationBox) as _,
+                    Box::new(move || {
+                        Box::new(
+                            Get {
+                                claims: &self.claims,
+                            }
+                            .to_string(),
+                        ) as RepresentationBox
+                    }) as _,
                 )],
             )
         }
