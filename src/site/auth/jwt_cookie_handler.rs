@@ -26,7 +26,7 @@ where
         self: Box<Self>,
         values: &'a [Option<&'a str>],
     ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
-        let token_data = if let Some(jwt) = values[0] {
+        let token_data = values[0].and_then(|jwt| {
             use jsonwebtoken::{Algorithm, Validation};
 
             jsonwebtoken::decode::<Claims>(
@@ -38,12 +38,11 @@ where
                     ..Default::default()
                 },
             )
-            .unwrap_or_else(|_| unimplemented!())
-        } else {
-            unimplemented!()
-        };
+            .map(|x| x.claims) // Invalid JWTs are ignored
+            .ok()
+        });
 
-        self.consumer.claims(token_data.claims).await
+        self.consumer.claims(token_data).await
     }
 }
 

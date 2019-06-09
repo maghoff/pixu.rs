@@ -4,7 +4,12 @@
     <title>pixu.rs</title>
 </head>
 <body>
-    <p>Login: {{claims.sub}}</p>
+    {{#claims}}
+    <p>Login: {{.sub}}</p>
+    {{/claims}}
+    {{^claims}}
+    <p>Not logged in.</p>
+    {{/claims}}
 
     <form method="POST" style="text-decoration: line-through">
     Logg inn med epostadresse: <input type="email" name="email">

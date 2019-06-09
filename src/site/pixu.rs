@@ -83,17 +83,21 @@ impl Pixu {
 
     async fn claims_core<'a>(
         self,
-        claims: auth::Claims,
+        claims: Option<auth::Claims>,
     ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
         let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
 
-        let authorized: bool = pixur_authorizations::table
-            .filter(pixur_authorizations::pixur_id.eq(self.id))
-            .filter(pixur_authorizations::sub.eq(claims.sub))
-            .count()
-            .first::<i64>(&*db_connection)
-            .map_err(|_| Error::InternalServerError)?
-            != 0;
+        let authorized: bool = claims.map(|claims| -> Result<_, Error> {
+            Ok(pixur_authorizations::table
+                .filter(pixur_authorizations::pixur_id.eq(self.id))
+                .filter(pixur_authorizations::sub.eq(claims.sub))
+                .count()
+                .first::<i64>(&*db_connection)
+                .map_err(|_| Error::InternalServerError)?
+                != 0)
+        })
+        .transpose()?
+        .unwrap_or(false);
 
         if authorized {
             Ok(Box::new(self) as Box<dyn Resource + Send + 'static>)
@@ -114,7 +118,7 @@ impl auth::ClaimsConsumer for Pixu {
 
     fn claims<'a>(
         self,
-        claims: Self::Claims,
+        claims: Option<Self::Claims>,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
         self.claims_core(claims).boxed()
     }

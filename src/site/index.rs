@@ -7,13 +7,13 @@ use super::handling_error::HandlingError;
 use super::auth;
 
 pub struct Index {
-    claims: auth::Claims
+    claims: Option<auth::Claims>
 }
 
 #[derive(BartDisplay)]
 #[template = "templates/index.html"]
 struct Get<'a> {
-    claims: &'a auth::Claims
+    claims: &'a Option<auth::Claims>
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -100,7 +100,7 @@ impl auth::ClaimsConsumer for IndexLoader {
 
     fn claims<'a>(
         self,
-        claims: Self::Claims,
+        claims: Option<Self::Claims>,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
         async { Ok(Box::new(Index { claims }) as Box<dyn Resource + Send + 'static>) }.boxed() as _
     }

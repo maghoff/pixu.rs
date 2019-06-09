@@ -34,9 +34,11 @@ mod test {
 
         fn claims<'a>(
             self,
-            claims: Self::Claims,
+            claims: Option<Self::Claims>,
         ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-            if claims.sub == "let-me-in" {
+            let sub = claims.as_ref().map(|x| x.sub.as_str());
+
+            if sub == Some("let-me-in") {
                 async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
             } else {
                 unimplemented!()

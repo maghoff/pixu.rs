@@ -5,6 +5,6 @@ pub trait ClaimsConsumer {
 
     fn claims<'a>(
         self,
-        claims: Self::Claims,
+        claims: Option<Self::Claims>,
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>>;
 }
