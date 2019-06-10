@@ -80,10 +80,11 @@ impl Site {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader)) as _,
-            _ = r"^example$" => {
+            _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader { db_pool: self.db_pool.clone() })) as _,
+            m = r"^(\d+)$" => {
+                let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
-                let inner = Pixu::new(db, 1);
+                let inner = Pixu::new(db, id);
                 Box::new(JwtCookieHandler::new(inner)) as _
             },
             m = r"^thumb/(\d+)$" => {
