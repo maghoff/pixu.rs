@@ -2,7 +2,7 @@
 
 use futures::future::FutureExt;
 
-use cookie::Cookie;
+pub use cookie::Cookie;
 use hyper::http;
 use hyper::{Body, Request};
 

@@ -1,7 +1,7 @@
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
+use web::{Cookie, Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -25,7 +25,6 @@ struct PostArgs {
 #[template = "templates/index-post.html"]
 struct Post<'a> {
     username: &'a str,
-    jwt: &'a str,
 }
 
 impl Index {
@@ -60,22 +59,25 @@ impl Index {
         };
 
         let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
+        let cookie = Cookie::build("let-me-in", token)
+            .http_only(true)
+            .finish();
 
-        Ok(Response::new(
-            http::StatusCode::OK,
-            vec![(
+        Ok(Response {
+            status: http::StatusCode::OK,
+            representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
                     Box::new(
                         Post {
                             username: &args.username,
-                            jwt: &token,
                         }
                         .to_string(),
                     ) as RepresentationBox
                 }) as _,
             )],
-        ))
+            cookies: vec![cookie],
+        })
     }
 
     async fn post_core(
