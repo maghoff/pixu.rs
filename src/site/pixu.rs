@@ -5,7 +5,7 @@ use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
+use web::{Error, FutureBox, MediaType, RendererBox, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -24,14 +24,16 @@ struct Get<'a> {
     large_url: &'a str,
 }
 
+#[derive(BartDisplay)]
+#[template = "templates/not-authorized.html"]
+struct NotAuthorized;
+
 impl Pixu {
     pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: i32) -> Pixu {
         Pixu { db_pool, id }
     }
 
-    async fn try_get(
-        self: Box<Self>,
-    ) -> Result<Response, HandlingError> {
+    async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
             .get()
@@ -87,22 +89,30 @@ impl Pixu {
     ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
         let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
 
-        let authorized: bool = claims.map(|claims| -> Result<_, Error> {
-            Ok(pixur_authorizations::table
-                .filter(pixur_authorizations::pixur_id.eq(self.id))
-                .filter(pixur_authorizations::sub.eq(claims.sub))
-                .count()
-                .first::<i64>(&*db_connection)
-                .map_err(|_| Error::InternalServerError)?
-                != 0)
-        })
-        .transpose()?
-        .unwrap_or(false);
+        let authorized: bool = claims
+            .map(|claims| -> Result<_, Error> {
+                Ok(pixur_authorizations::table
+                    .filter(pixur_authorizations::pixur_id.eq(self.id))
+                    .filter(pixur_authorizations::sub.eq(claims.sub))
+                    .count()
+                    .first::<i64>(&*db_connection)
+                    .map_err(|_| Error::InternalServerError)?
+                    != 0)
+            })
+            .transpose()?
+            .unwrap_or(false);
 
         if authorized {
             Ok(Box::new(self) as Box<dyn Resource + Send + 'static>)
         } else {
-            unimplemented!()
+            Ok(Box::new((
+                http::StatusCode::UNAUTHORIZED,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || Box::new(NotAuthorized.to_string()) as RepresentationBox)
+                        as RendererBox,
+                )],
+            )) as _)
         }
     }
 }
