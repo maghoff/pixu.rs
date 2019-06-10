@@ -1,7 +1,7 @@
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{Cookie, Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
+use web::{Cookie, Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -59,9 +59,7 @@ impl Index {
         };
 
         let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
-        let cookie = Cookie::build("let-me-in", token)
-            .http_only(true)
-            .finish();
+        let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
 
         Ok(Response {
             status: http::StatusCode::OK,
