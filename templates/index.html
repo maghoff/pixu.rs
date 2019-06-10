@@ -11,6 +11,13 @@
     <p>Ikke innlogget.</p>
     {{/claims}}
 
+    <p>Tilgjengelige pixer:</p>
+    <ul>
+    {{#authorized_pixurs}}
+        <li><a href="{{.}}">Pixur {{.}}</a></li>
+    {{/authorized_pixurs}}
+    </ul>
+
     <form method="POST">
     Logg inn med nullfaktorautentisering som <input type="text" name="username">
     <button type="submit">Send inn</button>
