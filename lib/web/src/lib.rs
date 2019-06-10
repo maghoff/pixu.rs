@@ -2,6 +2,7 @@
 
 use futures::future::FutureExt;
 
+use cookie::Cookie;
 use hyper::http;
 use hyper::{Body, Request};
 
@@ -99,7 +100,15 @@ fn parse_cookie_header(
 async fn try_handle_request<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
-) -> Result<(Option<ETag>, http::StatusCode, RepresentationsVec), Error> {
+) -> Result<
+    (
+        Option<ETag>,
+        http::StatusCode,
+        RepresentationsVec,
+        Vec<Cookie<'static>>,
+    ),
+    Error,
+> {
     let (req, body) = req.into_parts();
 
     let cookie_handler: Box<dyn CookieHandler + Send> = resolve_resource(site, &req.uri)
@@ -169,7 +178,11 @@ async fn try_handle_request<'a>(
 
     let _accept = req.headers.get_ascii(http::header::ACCEPT)?;
 
-    let resource::Response { status, representations } = match req.method {
+    let resource::Response {
+        status,
+        representations,
+        cookies,
+    } = match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => resource.get(),
         hyper::Method::POST => {
@@ -188,7 +201,7 @@ async fn try_handle_request<'a>(
     }
     .await;
 
-    Ok((etag, status, representations))
+    Ok((etag, status, representations, cookies))
 }
 
 use hyper::http::StatusCode;
@@ -197,6 +210,7 @@ async fn build_response(
     etag: Option<ETag>,
     status: StatusCode,
     mut representations: RepresentationsVec,
+    cookies: Vec<Cookie<'static>>,
 ) -> hyper::Response<Body> {
     let mut response = hyper::Response::builder();
     response.status(status);
@@ -217,6 +231,17 @@ async fn build_response(
 
     // Optionally set Cache-Control
 
+    if cookies.len() > 0 {
+        response.header(
+            "set-cookie",
+            cookies
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join("; "),
+        );
+    }
+
     response
         .body(representation.body())
         .expect("Success should be guaranteed at type level")
@@ -226,15 +251,14 @@ async fn handle_request_core<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
 ) -> hyper::Response<Body> {
-    let (etag, status, representations) =
-        try_handle_request(site, req)
-            .await
-            .unwrap_or_else(|err| match err {
-                Error::BadRequest => unimplemented!(),
-                Error::InternalServerError => unimplemented!(),
-            });
+    let (etag, status, representations, cookies) = try_handle_request(site, req)
+        .await
+        .unwrap_or_else(|err| match err {
+            Error::BadRequest => unimplemented!(),
+            Error::InternalServerError => unimplemented!(),
+        });
 
-    build_response(etag, status, representations).await
+    build_response(etag, status, representations, cookies).await
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support

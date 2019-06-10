@@ -3,6 +3,7 @@ use std::pin::Pin;
 
 use futures::future::FutureExt;
 use hyper::http;
+use cookie::Cookie;
 
 use super::etag::ETag;
 use super::media_type::MediaType;
@@ -16,6 +17,7 @@ pub type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a
 pub struct Response {
     pub status: http::StatusCode,
     pub representations: RepresentationsVec,
+    pub cookies: Vec<Cookie<'static>>,
 }
 
 impl Response {
@@ -23,6 +25,7 @@ impl Response {
         Response {
             status,
             representations,
+            cookies: vec![],
         }
     }
 }
