@@ -5,7 +5,7 @@ use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{FutureBox, MediaType, RepresentationBox, Response, Resource};
 
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
@@ -22,7 +22,7 @@ impl Image {
 
     async fn try_get(
         self: Box<Self>,
-    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
+    ) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
             .get()
@@ -42,7 +42,7 @@ impl Image {
             .first(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        Ok((
+        Ok(Response::new(
             http::StatusCode::OK,
             vec![(
                 MediaType::parse(&pix.media_type),
@@ -51,13 +51,13 @@ impl Image {
         ))
     }
 
-    async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
+    async fn get_core(self: Box<Self>) -> Response {
         self.try_get().await.unwrap_or_else(|e| e.render())
     }
 }
 
 impl Resource for Image {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         self.get_core().boxed()
     }
 }

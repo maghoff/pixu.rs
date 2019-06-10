@@ -3,7 +3,7 @@
 use futures::future::FutureExt;
 
 use hyper::http;
-use hyper::{Body, Request, Response};
+use hyper::{Body, Request};
 
 mod cookie_handler;
 mod etag;
@@ -44,8 +44,8 @@ async fn resolve_resource<'a>(
     }
 }
 
-fn method_not_allowed() -> (http::StatusCode, RepresentationsVec) {
-    (
+fn method_not_allowed() -> resource::Response {
+    resource::Response::new(
         http::StatusCode::METHOD_NOT_ALLOWED,
         vec![(
             MediaType::new("text", "plain", vec![]),
@@ -169,7 +169,7 @@ async fn try_handle_request<'a>(
 
     let _accept = req.headers.get_ascii(http::header::ACCEPT)?;
 
-    let (status, representations) = match req.method {
+    let resource::Response { status, representations } = match req.method {
         // TODO: Implement HEAD and OPTIONS in library
         hyper::Method::GET => resource.get(),
         hyper::Method::POST => {
@@ -197,8 +197,8 @@ async fn build_response(
     etag: Option<ETag>,
     status: StatusCode,
     mut representations: RepresentationsVec,
-) -> Response<Body> {
-    let mut response = Response::builder();
+) -> hyper::Response<Body> {
+    let mut response = hyper::Response::builder();
     response.status(status);
 
     if representations.len() > 1 {
@@ -225,7 +225,7 @@ async fn build_response(
 async fn handle_request_core<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
-) -> Response<Body> {
+) -> hyper::Response<Body> {
     let (etag, status, representations) =
         try_handle_request(site, req)
             .await
@@ -241,7 +241,7 @@ async fn handle_request_core<'a>(
 pub async fn handle_request<'a, L>(
     site: std::sync::Arc<L>,
     req: Request<Body>,
-) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync + 'static>>
+) -> Result<hyper::Response<Body>, Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     L: Lookup + 'a + Send + Sync,
 {

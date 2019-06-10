@@ -5,7 +5,7 @@ use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -31,7 +31,7 @@ impl Pixu {
 
     async fn try_get(
         self: Box<Self>,
-    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
+    ) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
             .get()
@@ -59,7 +59,7 @@ impl Pixu {
             .first(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        Ok((
+        Ok(Response::new(
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -77,7 +77,7 @@ impl Pixu {
         ))
     }
 
-    async fn get_core(self: Box<Self>) -> (http::StatusCode, RepresentationsVec) {
+    async fn get_core(self: Box<Self>) -> Response {
         self.try_get().await.unwrap_or_else(|e| e.render())
     }
 
@@ -108,7 +108,7 @@ impl Pixu {
 }
 
 impl Resource for Pixu {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         self.get_core().boxed()
     }
 }

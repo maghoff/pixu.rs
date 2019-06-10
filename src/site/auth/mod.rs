@@ -16,8 +16,7 @@ mod test {
     use super::*;
     use futures::executor::block_on;
     use futures::future::FutureExt;
-    use web::CookieHandler;
-    use web::{Error, FutureBox, Resource};
+    use web::{CookieHandler, Error, FutureBox, Resource, Response};
 
     pub struct AuthorizationHandler<R: Resource> {
         ok: R,
@@ -72,7 +71,7 @@ mod test {
             let c = AuthorizationHandler::new(qr().await);
             let a = Box::new(JwtCookieHandler::new(c));
             let resource = a.cookies(token).await.unwrap();
-            let (status, _) = resource.get().await;
+            let Response { status, .. } = resource.get().await;
             assert_eq!(status, 200);
         });
     }

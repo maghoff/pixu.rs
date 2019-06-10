@@ -1,7 +1,7 @@
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
 use serde_urlencoded;
-use web::{Error, FutureBox, MediaType, RepresentationBox, RepresentationsVec, Resource};
+use web::{Error, FutureBox, MediaType, RepresentationBox, Response, Resource};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -33,7 +33,7 @@ impl Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> Result<(http::StatusCode, RepresentationsVec), HandlingError> {
+    ) -> Result<Response, HandlingError> {
         let content_type = content_type;
         if content_type != "application/x-www-form-urlencoded" {
             return Err(HandlingError::BadRequest(
@@ -61,7 +61,7 @@ impl Index {
 
         let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
 
-        Ok((
+        Ok(Response::new(
             http::StatusCode::OK,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -82,7 +82,7 @@ impl Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> (http::StatusCode, RepresentationsVec) {
+    ) -> Response {
         self.try_post(content_type, body)
             .await
             .unwrap_or_else(|e| e.render())
@@ -90,9 +90,9 @@ impl Index {
 }
 
 impl Resource for Index {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         async {
-            (
+            Response::new(
                 http::StatusCode::OK,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -114,7 +114,7 @@ impl Resource for Index {
         self: Box<Self>,
         content_type: String,
         body: hyper::Body,
-    ) -> FutureBox<'a, (http::StatusCode, RepresentationsVec)> {
+    ) -> FutureBox<'a, Response> {
         self.post_core(content_type, body).boxed()
     }
 }

@@ -1,5 +1,5 @@
 use hyper::http::StatusCode;
-use web::{MediaType, RepresentationBox, RepresentationsVec};
+use web::{MediaType, RepresentationBox, Response};
 
 #[derive(Debug)]
 pub enum HandlingError {
@@ -18,9 +18,9 @@ struct BadRequest<'a> {
 struct InternalServerError;
 
 impl HandlingError {
-    pub fn render(self) -> (StatusCode, RepresentationsVec) {
+    pub fn render(self) -> Response {
         match self {
-            HandlingError::BadRequest(details) => (
+            HandlingError::BadRequest(details) => Response::new(
                 StatusCode::BAD_REQUEST,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -29,7 +29,7 @@ impl HandlingError {
                     }) as _,
                 )],
             ),
-            HandlingError::InternalServerError => (
+            HandlingError::InternalServerError => Response::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
