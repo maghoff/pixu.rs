@@ -3,6 +3,21 @@
 <head>
     <title>pixu.rs</title>
 </head>
+<style>
+img {
+    width: 80px;
+}
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+li {
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+}
+</style>
 <body>
     {{#claims}}
     <p>Login: {{.sub}}</p>
@@ -14,7 +29,7 @@
     <p>Tilgjengelige pixer:</p>
     <ul>
     {{#authorized_pixurs}}
-        <li><a href="{{.}}">Pixur {{.}}</a></li>
+        <li><a href="{{.}}"><img src="thumb/{{.}}" alt="Pixur {{.}}"></a></li>
     {{/authorized_pixurs}}
     </ul>
 

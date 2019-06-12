@@ -26,7 +26,9 @@ struct Get<'a> {
 
 #[derive(BartDisplay)]
 #[template = "templates/not-authorized.html"]
-struct NotAuthorized;
+struct NotAuthorized {
+    claims: Option<auth::Claims>,
+}
 
 impl Pixu {
     pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: i32) -> Pixu {
@@ -90,10 +92,11 @@ impl Pixu {
         let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
 
         let authorized: bool = claims
+            .as_ref()
             .map(|claims| -> Result<_, Error> {
                 Ok(pixur_authorizations::table
                     .filter(pixur_authorizations::pixur_id.eq(self.id))
-                    .filter(pixur_authorizations::sub.eq(claims.sub))
+                    .filter(pixur_authorizations::sub.eq(&claims.sub))
                     .count()
                     .first::<i64>(&*db_connection)
                     .map_err(|_| Error::InternalServerError)?
@@ -109,8 +112,9 @@ impl Pixu {
                 http::StatusCode::UNAUTHORIZED,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new(NotAuthorized.to_string()) as RepresentationBox)
-                        as RendererBox,
+                    Box::new(move || {
+                        Box::new(NotAuthorized { claims: claims }.to_string()) as RepresentationBox
+                    }) as RendererBox,
                 )],
             )) as _)
         }

@@ -4,6 +4,13 @@
     <title>pixu.rs</title>
 </head>
 <body>
-    Ikke tilgjengelig. Kanskje du må <a href=".">logge inn</a>?
+    <p>Utilgjengelig.</p>
+
+    {{#claims}}
+    <p>Du er logget inn som {{.sub}}. Vil du <a href=".">prøve en annen innlogging</a>?</p>
+    {{/claims}}
+    {{^claims}}
+    <p>Kanskje du må <a href=".">logge inn</a>?</p>
+    {{/claims}}
 </body>
 </html>
