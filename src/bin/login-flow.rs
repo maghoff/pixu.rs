@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
 
-use chrono::Utc;
+use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{Algorithm, Header, Validation};
 use structopt::StructOpt;
 
@@ -10,12 +10,8 @@ const KEY: &[u8] = b"secret";
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 struct NumberDate(i64);
 
-impl NumberDate {
-    fn _now() -> NumberDate {
-        NumberDate(Utc::now().timestamp())
-    }
-
-    fn from(datetime: chrono::DateTime<chrono::Utc>) -> NumberDate {
+impl From<DateTime<Utc>> for NumberDate {
+    fn from(datetime: DateTime<Utc>) -> Self {
         NumberDate(datetime.timestamp())
     }
 }
@@ -44,7 +40,7 @@ fn issue(email: String) {
     let claims = Claims {
         phase: AuthPhase::Validation,
         sub: email.clone(),
-        exp: NumberDate::from(chrono::Utc::now() + chrono::Duration::hours(2)),
+        exp: (Utc::now() + Duration::hours(2)).into(),
         jti: rand::random(),
     };
     let token = jsonwebtoken::encode(&Header::default(), &claims, KEY).unwrap();
