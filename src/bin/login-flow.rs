@@ -22,8 +22,7 @@ impl NumberDate {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 enum AuthPhase {
-    ValidationA,
-    ValidationB,
+    Validation,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,56 +41,43 @@ enum Options {
 }
 
 fn issue(email: String) {
-    let claims_a = Claims {
-        phase: AuthPhase::ValidationA,
+    let claims = Claims {
+        phase: AuthPhase::Validation,
         sub: email.clone(),
         exp: NumberDate::from(chrono::Utc::now() + chrono::Duration::hours(2)),
         jti: rand::random(),
     };
-    let token_a = jsonwebtoken::encode(&Header::default(), &claims_a, KEY).unwrap();
-    println!("{}", token_a);
+    let token = jsonwebtoken::encode(&Header::default(), &claims, KEY).unwrap();
 
-    let claims_b = Claims {
-        phase: AuthPhase::ValidationB,
-        ..claims_a
-    };
+    let parts = token.rsplitn(2, '.').collect::<Vec<_>>();
 
-    let token_b = jsonwebtoken::encode(&Header::default(), &claims_b, KEY).unwrap();
-    println!("{}", token_b);
+    println!("{}\n{}", parts[1], parts[0]);
 }
 
-fn verify(token_a: &str, token_b: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let claims_a = jsonwebtoken::decode::<Claims>(
-        &token_a,
+fn verify_core(base_token: &str, signature: &str) -> Result<Claims, Box<dyn std::error::Error>> {
+    let token = format!("{}.{}", base_token, signature);
+
+    let token = jsonwebtoken::decode::<Claims>(
+        &token,
         KEY,
         &Validation {
             algorithms: vec![Algorithm::HS256],
             ..Default::default()
         },
-    )?.claims;
+    )?;
 
-    let claims_b = jsonwebtoken::decode::<Claims>(
-        &token_b,
-        KEY,
-        &Validation {
-            algorithms: vec![Algorithm::HS256],
-            ..Default::default()
-        },
-    )?.claims;
-
-    let phases_ok = claims_a.phase == AuthPhase::ValidationA && claims_b.phase == AuthPhase::ValidationB;
-    let sub_ok = claims_a.sub == claims_b.sub;
-    let jti_ok = claims_a.jti == claims_b.jti;
-
-    let ok = phases_ok && sub_ok && jti_ok;
-
-    let login = if ok {
-        Ok(claims_a.sub)
+    if token.claims.phase == AuthPhase::Validation {
+        Ok(token.claims)
     } else {
-        Err("Validation token mismatch")
-    }?;
+        Err("Wrong AuthPhase".into())
+    }
+}
 
-    println!("Valid login for {}", login);
+fn verify(base_token: &str, signature: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "Valid login for {}",
+        verify_core(base_token, signature)?.sub
+    );
 
     Ok(())
 }
