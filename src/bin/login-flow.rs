@@ -33,7 +33,7 @@ struct Claims {
 #[structopt(name = "login-flow")]
 enum Options {
     Issue { email: String },
-    Verify { a: String, b: String },
+    Verify { head_sign: String, claims: String },
 }
 
 fn issue(email: String) {
@@ -45,13 +45,22 @@ fn issue(email: String) {
     };
     let token = jsonwebtoken::encode(&Header::default(), &claims, KEY).unwrap();
 
-    let parts = token.rsplitn(2, '.').collect::<Vec<_>>();
+    let mut parts = token.split('.');
 
-    println!("{}\n{}", parts[1], parts[0]);
+    let head = parts.next().unwrap();
+    let claims = parts.next().unwrap();
+    let sign = parts.next().unwrap();
+
+    println!("head_sign: {}.{}", head, sign);
+    println!("claims: {}", claims);
 }
 
-fn verify_core(base_token: &str, signature: &str) -> Result<Claims, Box<dyn std::error::Error>> {
-    let token = format!("{}.{}", base_token, signature);
+fn verify_core(head_sign: &str, claims: &str) -> Result<Claims, Box<dyn std::error::Error>> {
+    let mut head_sign = head_sign.splitn(2, '.');
+    let head = head_sign.next().unwrap();
+    let sign = head_sign.next().ok_or("Missing . in head_sign")?;
+
+    let token = format!("{}.{}.{}", head, claims, sign);
 
     let token = jsonwebtoken::decode::<Claims>(
         &token,
@@ -69,11 +78,8 @@ fn verify_core(base_token: &str, signature: &str) -> Result<Claims, Box<dyn std:
     }
 }
 
-fn verify(base_token: &str, signature: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!(
-        "Valid login for {}",
-        verify_core(base_token, signature)?.sub
-    );
+fn verify(head_sign: &str, claims: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Valid login for {}", verify_core(head_sign, claims)?.sub);
 
     Ok(())
 }
@@ -83,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match opt {
         Options::Issue { email } => issue(email),
-        Options::Verify { a, b } => verify(&a, &b)?,
+        Options::Verify { head_sign, claims } => verify(&head_sign, &claims)?,
     };
 
     Ok(())
