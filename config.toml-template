@@ -1,0 +1,15 @@
+[email]
+
+# SMTP server:
+host =
+
+# Defaults to 25
+port =
+
+# SMTP server login:
+user =
+password =
+
+# Email sender identity:
+sender_name =
+sender_email =
