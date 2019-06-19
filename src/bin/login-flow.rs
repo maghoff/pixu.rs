@@ -1,7 +1,13 @@
+#![feature(async_await)]
+
 #[macro_use]
 extern crate serde_derive;
 
 use chrono::{DateTime, Duration, Utc};
+use futures::{
+    executor::ThreadPool,
+    task::{Spawn, SpawnExt},
+};
 use jsonwebtoken::{Algorithm, Header, Validation};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -75,8 +81,8 @@ fn is_registered_user(_email: &str) -> bool {
     true
 }
 
-fn maybe_send_email(email: &str, claims: &str, mailer: &mut SmtpTransport, sender: Mailbox) {
-    if !is_registered_user(email) {
+fn maybe_send_email(email: String, claims: String, mut mailer: SmtpTransport, sender: Mailbox) {
+    if !is_registered_user(&email) {
         return;
     }
 
@@ -96,7 +102,7 @@ fn maybe_send_email(email: &str, claims: &str, mailer: &mut SmtpTransport, sende
     mailer.send(email.into()).unwrap();
 }
 
-fn issue(email: String, mailer: &mut SmtpTransport, sender: Mailbox) {
+async fn issue(email: String, mailer: SmtpTransport, sender: Mailbox, mut spawn: impl Spawn) {
     let claims = Claims {
         phase: AuthPhase::Validation,
         sub: email.clone(),
@@ -108,10 +114,17 @@ fn issue(email: String, mailer: &mut SmtpTransport, sender: Mailbox) {
     let mut parts = token.split('.');
 
     let head = parts.next().unwrap();
-    let claims = parts.next().unwrap();
+    let claims = parts.next().unwrap().to_string();
     let sign = parts.next().unwrap();
 
-    maybe_send_email(&email, claims, mailer, sender);
+    // TODO: replace spawn_with_handle with spawn and remove .await. We must
+    // .await in this test code, or else the executor would terminate prematurely
+    spawn
+        .spawn_with_handle(async {
+            maybe_send_email(email, claims, mailer, sender);
+        })
+        .unwrap()
+        .await;
 
     println!("Set-Cookie: let-me-in={}.{}", head, sign);
 }
@@ -152,7 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = toml::from_str(&config)?;
     let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
-    let mut mailer = SmtpClient::new(
+    let mailer = SmtpClient::new(
         (config.email.host.as_str(), config.email.port),
         ClientSecurity::None,
     )?
@@ -162,8 +175,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
     .transport();
 
+    let mut executor = ThreadPool::new()?;
+
     match opt.operation {
-        Operation::Issue { email } => issue(email, &mut mailer, sender),
+        Operation::Issue { email } => {
+            executor.run(issue(email, mailer, sender, executor.clone()));
+        }
         Operation::Verify { head_sign, claims } => verify(&head_sign, &claims)?,
     };
 
