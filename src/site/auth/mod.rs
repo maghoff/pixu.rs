@@ -2,9 +2,11 @@ use serde_derive::{Deserialize, Serialize};
 
 mod claims_consumer;
 mod jwt_cookie_handler;
+mod resource;
 
 pub use claims_consumer::ClaimsConsumer;
 pub use jwt_cookie_handler::JwtCookieHandler;
+pub use resource::AuthLoader;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {

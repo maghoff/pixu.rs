@@ -4,13 +4,18 @@
     <title>pixu.rs</title>
 </head>
 <body>
-    <p>Utilgjengelig.</p>
-
+    <p>Denne siden er utilgjengelig.</p>
     {{#claims}}
-    <p>Du er logget inn som {{.sub}}. Vil du <a href=".">prøve en annen innlogging</a>?</p>
+    <p>Du er logget inn som {{.sub}}.</p>
+    <p>Du kan se hva du har tilgang til <a href=".">på forsiden</a>.</p>
     {{/claims}}
     {{^claims}}
-    <p>Kanskje du må <a href=".">logge inn</a>?</p>
+    <p>Du er ikke logget inn.</p>
+    <form action="auth" method="POST">
+        <input type="hidden" name="redirect" value="{{self_url}}">
+        <label for="email">Epostaddresse: </label><input id="email" type="email" name="email" required>
+        <button type="submit">Logg inn</button>
+    </form>
     {{/claims}}
 </body>
 </html>

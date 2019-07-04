@@ -26,8 +26,9 @@ struct Get<'a> {
 
 #[derive(BartDisplay)]
 #[template = "templates/not-authorized.html"]
-struct NotAuthorized {
+struct NotAuthorized<'a> {
     claims: Option<auth::Claims>,
+    self_url: &'a str,
 }
 
 impl Pixu {
@@ -113,7 +114,13 @@ impl Pixu {
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                     Box::new(move || {
-                        Box::new(NotAuthorized { claims: claims }.to_string()) as RepresentationBox
+                        Box::new(
+                            NotAuthorized {
+                                claims: claims,
+                                self_url: &self.id.to_string(),
+                            }
+                            .to_string(),
+                        ) as RepresentationBox
                     }) as RendererBox,
                 )],
             )) as _)

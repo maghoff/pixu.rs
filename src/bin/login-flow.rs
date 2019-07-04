@@ -163,7 +163,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = std::fs::read_to_string(opt.config)?;
     let config: Config = toml::from_str(&config)?;
-    let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
     let mailer = SmtpClient::new(
         (config.email.host.as_str(), config.email.port),
@@ -174,6 +173,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .authentication_mechanism(Mechanism::Plain)
     .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
     .transport();
+
+    let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
     let mut executor = ThreadPool::new()?;
 

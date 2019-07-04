@@ -7,15 +7,19 @@ mod thumbnail;
 
 use diesel;
 use diesel::sqlite::SqliteConnection;
+use futures::task::Spawn;
 use futures::FutureExt;
 use hyper::http;
+use lettre::SmtpTransport;
+use lettre_email::Mailbox;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use regex::{Regex, RegexSet};
+use std::sync::{Arc, Mutex};
 use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
 use self::image::Image;
-use auth::JwtCookieHandler;
+use auth::{AuthLoader, JwtCookieHandler};
 use index::IndexLoader;
 use pixu::Pixu;
 use thumbnail::Thumbnail;
@@ -37,8 +41,11 @@ fn not_found() -> impl QueryHandler {
     )
 }
 
-pub struct Site {
+pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    mailer: Arc<Mutex<SmtpTransport>>,
+    sender: Mailbox,
+    spawn: S,
 }
 
 macro_rules! regex_routes {
@@ -71,9 +78,19 @@ macro_rules! regex_routes {
     };
 }
 
-impl Site {
-    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>) -> Site {
-        Site { db_pool }
+impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
+    pub fn new(
+        db_pool: Pool<ConnectionManager<SqliteConnection>>,
+        mailer: SmtpTransport,
+        sender: Mailbox,
+        spawn: S,
+    ) -> Site<S> {
+        Site {
+            db_pool,
+            mailer: Arc::new(Mutex::new(mailer)),
+            sender,
+            spawn,
+        }
     }
 
     async fn lookup<'a>(&'a self, path: &'a str) -> Box<dyn QueryHandler + 'static> {
@@ -81,6 +98,12 @@ impl Site {
 
         regex_routes! { path,
             _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader { db_pool: self.db_pool.clone() })) as _,
+            _ = r"^auth$" => Box::new(JwtCookieHandler::new(AuthLoader {
+                db_pool: self.db_pool.clone(),
+                mailer: self.mailer.clone(),
+                sender: self.sender.clone(),
+                spawn: self.spawn.clone(),
+            })) as _,
             m = r"^(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
@@ -100,7 +123,7 @@ impl Site {
     }
 }
 
-impl Lookup for Site {
+impl<S: Spawn + Clone + Send + Sync + 'static> Lookup for Site<S> {
     fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryHandler>> {
         self.lookup(&path).boxed()
     }

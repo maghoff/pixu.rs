@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>pixu.rs</title>
+</head>
+<body>
+    {{#claims}}
+    <p>Login: {{.sub}}</p>
+    {{/claims}}
+    {{^claims}}
+    <p>Ikke innlogget.</p>
+    {{/claims}}
+</body>
+</html>
