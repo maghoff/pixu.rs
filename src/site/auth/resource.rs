@@ -78,6 +78,7 @@ fn maybe_send_email(
     claims: String,
     mailer: Arc<Mutex<SmtpTransport>>,
     sender: Mailbox,
+    redirect: &str,
 ) {
     if !is_registered_user(&email) {
         return;
@@ -85,8 +86,7 @@ fn maybe_send_email(
 
     let base_url = "http://localhost/"; // FIXME
 
-    let redir = "1"; // FIXME
-    let verification_link = format!("{}/auth?validation={}&redir={}", base_url, claims, redir);
+    let verification_link = format!("{}/auth?validation={}&redir={}", base_url, claims, redirect);
 
     let email = EmailBuilder::new()
         .to(email)
@@ -106,6 +106,7 @@ impl<S: Spawn + Send + 'static> Auth<S> {
         mailer: Arc<Mutex<SmtpTransport>>,
         sender: Mailbox,
         mut spawn: S,
+        redirect: String,
     ) -> String {
         let email = email.to_string();
 
@@ -125,7 +126,8 @@ impl<S: Spawn + Send + 'static> Auth<S> {
 
         spawn
             .spawn(async {
-                maybe_send_email(email, claims, mailer, sender);
+                let redirect = redirect;
+                maybe_send_email(email, claims, mailer, sender, &redirect);
             })
             .unwrap();
 
@@ -193,7 +195,8 @@ impl<S: Spawn + Send + 'static> Auth<S> {
         let args: PostArgs = serde_urlencoded::from_bytes(&body)
             .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
 
-        let cookie = Self::issue(&args.email, self.mailer, self.sender, self.spawn).await;
+        let email = args.email;
+        let cookie = Self::issue(&email, self.mailer, self.sender, self.spawn, args.redirect).await;
         let cookie = Cookie::build("let-me-in", cookie).http_only(true).finish();
 
         Ok(Response {
@@ -201,7 +204,7 @@ impl<S: Spawn + Send + 'static> Auth<S> {
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
-                    Box::new(Post { email: &args.email }.to_string()) as RepresentationBox
+                    Box::new(Post { email: &email }.to_string()) as RepresentationBox
                 }) as _,
             )],
             cookies: vec![cookie],
