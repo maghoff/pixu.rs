@@ -108,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .compat(),
     );
 
-    futures::executor::block_on(runtime.shutdown_on_idle().compat()).expect("Cannot fail");
+    futures::executor::block_on(runtime.shutdown_on_idle().compat()).unwrap();
 
     Ok(())
 }
