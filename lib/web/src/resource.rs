@@ -1,9 +1,9 @@
 use core::future::Future;
 use std::pin::Pin;
 
+use cookie::Cookie;
 use futures::future::FutureExt;
 use hyper::http;
-use cookie::Cookie;
 
 use super::etag::ETag;
 use super::media_type::MediaType;

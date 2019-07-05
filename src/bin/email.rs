@@ -1,8 +1,8 @@
 use structopt::StructOpt;
 
-use lettre::{SmtpClient, Transport, ClientSecurity};
 use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::smtp::ConnectionReuseParameters;
+use lettre::{ClientSecurity, SmtpClient, Transport};
 
 use lettre_email::EmailBuilder;
 

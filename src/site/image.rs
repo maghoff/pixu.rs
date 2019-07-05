@@ -5,7 +5,7 @@ use futures::future::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{FutureBox, MediaType, RepresentationBox, Response, Resource};
+use web::{FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
@@ -20,9 +20,7 @@ impl Image {
         Image { db_pool, id }
     }
 
-    async fn try_get(
-        self: Box<Self>,
-    ) -> Result<Response, HandlingError> {
+    async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
             .get()

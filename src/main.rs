@@ -15,13 +15,13 @@ mod site;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use futures::compat::{Executor01CompatExt, Future01CompatExt};
 use futures::prelude::*;
-use futures::compat::{Future01CompatExt, Executor01CompatExt};
-use structopt::StructOpt;
 use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::smtp::ConnectionReuseParameters;
 use lettre::{ClientSecurity, SmtpClient};
 use lettre_email::Mailbox;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "pixu.rs")]
@@ -81,7 +81,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
     use std::sync::Arc;
-    let site = Arc::new(site::Site::new(db_pool, mailer, sender, runtime.executor().compat()));
+    let site = Arc::new(site::Site::new(
+        db_pool,
+        mailer,
+        sender,
+        runtime.executor().compat(),
+    ));
 
     let service_fn = move || {
         let site = Arc::clone(&site);
@@ -103,8 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .compat(),
     );
 
-    futures::executor::block_on(runtime.shutdown_on_idle().compat())
-        .expect("Cannot fail");
+    futures::executor::block_on(runtime.shutdown_on_idle().compat()).expect("Cannot fail");
 
     Ok(())
 }
