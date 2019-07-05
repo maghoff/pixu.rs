@@ -73,20 +73,27 @@ fn is_registered_user(_email: &str) -> bool {
     true
 }
 
-fn maybe_send_email(
+#[derive(Serialize)]
+struct ValidationArgs<'a> {
+    claims: &'a str,
+    redirect: &'a str,
+}
+
+async fn maybe_send_email<'a>(
     email: String,
-    claims: String,
+    claims: &'a str,
     mailer: Arc<Mutex<SmtpTransport>>,
     sender: Mailbox,
-    redirect: &str,
+    redirect: &'a str,
 ) {
     if !is_registered_user(&email) {
         return;
     }
 
-    let base_url = "http://localhost/"; // FIXME
+    let base_url = "http://localhost:1212/"; // FIXME
 
-    let verification_link = format!("{}/auth?validation={}&redir={}", base_url, claims, redirect);
+    let args = serde_urlencoded::to_string(ValidationArgs { claims, redirect }).unwrap();
+    let verification_link = format!("{}auth?{}", base_url, args);
 
     let email = EmailBuilder::new()
         .to(email)
@@ -126,8 +133,9 @@ impl<S: Spawn + Send + 'static> Auth<S> {
 
         spawn
             .spawn(async {
+                let claims = claims;
                 let redirect = redirect;
-                maybe_send_email(email, claims, mailer, sender, &redirect);
+                maybe_send_email(email, &claims, mailer, sender, &redirect).await;
             })
             .unwrap();
 
@@ -203,9 +211,8 @@ impl<S: Spawn + Send + 'static> Auth<S> {
             status: http::StatusCode::OK,
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || {
-                    Box::new(Post { email: &email }.to_string()) as RepresentationBox
-                }) as _,
+                Box::new(move || Box::new(Post { email: &email }.to_string()) as RepresentationBox)
+                    as _,
             )],
             cookies: vec![cookie],
         })
