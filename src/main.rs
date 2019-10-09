@@ -1,4 +1,4 @@
-#![feature(async_await, unsized_locals)]
+#![feature(unsized_locals)]
 
 #[macro_use]
 extern crate bart_derive;
