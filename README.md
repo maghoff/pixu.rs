@@ -8,7 +8,9 @@ Developed with nightly:
 
 Run
 ===
-    cargo run --bin pixurs -- test.db
+    cargo run --bin pixurs -- config.toml test.db
+
+Create `config.toml` based on `config.toml-template`.
 
 Database migrations
 ===================
