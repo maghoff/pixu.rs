@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Magnus Hovland Hoff <maghoff@gmail.com>"]
 description = "Photo sharing web application."
 edition = "2018"
+default-run = "pixurs"
 
 [dependencies]
 structopt = "0.2.16"
