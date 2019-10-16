@@ -17,7 +17,7 @@ bart_derive = "0.1.4"
 chrono = "0.4.6"
 web = { path = "lib/web" }
 serde = "1.0.92"
-serde_urlencoded = "0.5.5"
+serde_urlencoded = "0.6.1"
 serde_derive = "1.0.92"
 image = "0.21.2"
 rayon = "1.2.0"
