@@ -90,7 +90,7 @@ async fn maybe_send_email<'a>(
         return;
     }
 
-    let base_url = "http://localhost:1212/"; // FIXME
+    let base_url = "http://127.0.0.1:1212/"; // FIXME
 
     let args = serde_urlencoded::to_string(ValidationArgs { claims, redirect }).unwrap();
     let verification_link = format!("{}auth?{}", base_url, args);
@@ -225,6 +225,10 @@ impl<S: Spawn + Send + 'static> Auth<S> {
     }
 
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
+        // TODO Accept ValiationArgs as query args
+        //  -> If present, perform validation
+        //  -> Is there a valid "else" case?
+
         Ok(Response::new(
             http::StatusCode::OK,
             vec![(
