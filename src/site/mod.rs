@@ -78,6 +78,78 @@ macro_rules! regex_routes {
     };
 }
 
+#[derive(serde_derive::Deserialize)]
+struct ConcreteArgs {
+    a: String,
+}
+
+pub trait QueryArgsConsumer {
+    type Args;
+
+    fn args(
+        self,
+        args: Option<Self::Args>,
+    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error>;
+}
+
+struct QueryArgsParser<Consumer>
+where
+    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+{
+    consumer: Consumer,
+}
+
+impl<Consumer> QueryArgsParser<Consumer>
+where
+    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+{
+    fn new(consumer: Consumer) -> QueryArgsParser<Consumer> {
+        QueryArgsParser { consumer }
+    }
+}
+
+impl<Consumer> QueryHandler for QueryArgsParser<Consumer>
+where
+    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+{
+    fn query(
+        self: Box<Self>,
+        query: Option<&str>,
+    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
+        let args = query
+            .map(|x| serde_urlencoded::from_str::<ConcreteArgs>(x))
+            .transpose()
+            .unwrap_or(None);
+
+        self.consumer.args(args)
+    }
+}
+
+struct QueryResource { }
+
+impl QueryArgsConsumer for QueryResource {
+    type Args = ConcreteArgs;
+
+    fn args(
+        self,
+        args: Option<Self::Args>,
+    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
+        #[derive(BartDisplay)]
+        #[template_string = "Srsly! {{#args}}{{.a}}{{/args}}\n"]
+        struct Page {
+            args: Option<ConcreteArgs>,
+        }
+
+        Ok(Box::new((
+            http::StatusCode::OK,
+            vec![(
+                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                Box::new(move || Box::new(Page { args }.to_string()) as RepresentationBox) as web::RendererBox,
+            )],
+        )) as _)
+    }
+}
+
 impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     pub fn new(
         db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -104,6 +176,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 sender: self.sender.clone(),
                 spawn: self.spawn.clone(),
             })) as _,
+            _ = r"^query$" => Box::new(QueryArgsParser::new(QueryResource {})) as _,
             m = r"^(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
