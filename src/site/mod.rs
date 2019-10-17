@@ -78,6 +78,8 @@ macro_rules! regex_routes {
     };
 }
 
+use serde::de::DeserializeOwned;
+
 #[derive(serde_derive::Deserialize)]
 struct ConcreteArgs {
     a: String,
@@ -92,32 +94,35 @@ pub trait QueryArgsConsumer {
     ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error>;
 }
 
-struct QueryArgsParser<Consumer>
+struct QueryArgsParser<Consumer, Args>
 where
-    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+    Consumer: QueryArgsConsumer<Args=Args> + Send,
+    Args: DeserializeOwned,
 {
     consumer: Consumer,
 }
 
-impl<Consumer> QueryArgsParser<Consumer>
+impl<Consumer, Args> QueryArgsParser<Consumer, Args>
 where
-    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+    Consumer: QueryArgsConsumer<Args=Args> + Send,
+    Args: DeserializeOwned,
 {
-    fn new(consumer: Consumer) -> QueryArgsParser<Consumer> {
+    fn new(consumer: Consumer) -> QueryArgsParser<Consumer, Args> {
         QueryArgsParser { consumer }
     }
 }
 
-impl<Consumer> QueryHandler for QueryArgsParser<Consumer>
+impl<Consumer, Args> QueryHandler for QueryArgsParser<Consumer, Args>
 where
-    Consumer: QueryArgsConsumer<Args=ConcreteArgs> + Send,
+    Consumer: QueryArgsConsumer<Args=Args> + Send,
+    Args: DeserializeOwned,
 {
     fn query(
         self: Box<Self>,
         query: Option<&str>,
     ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
         let args = query
-            .map(|x| serde_urlencoded::from_str::<ConcreteArgs>(x))
+            .map(|x| serde_urlencoded::from_str(x))
             .transpose()
             .unwrap_or(None);
 
