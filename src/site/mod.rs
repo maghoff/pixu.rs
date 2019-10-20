@@ -3,6 +3,7 @@ mod handling_error;
 mod image;
 mod index;
 mod pixu;
+mod query_args;
 mod thumbnail;
 
 use diesel;
@@ -19,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
 use self::image::Image;
-use auth::{AuthLoader, JwtCookieHandler};
+use auth::{InitiateAuth, JwtCookieHandler, VerifyAuthArgsConsumer};
 use index::IndexLoader;
 use pixu::Pixu;
 use thumbnail::Thumbnail;
@@ -78,83 +79,6 @@ macro_rules! regex_routes {
     };
 }
 
-use serde::de::DeserializeOwned;
-
-#[derive(serde_derive::Deserialize)]
-struct ConcreteArgs {
-    a: String,
-}
-
-pub trait QueryArgsConsumer {
-    type Args;
-
-    fn args(
-        self,
-        args: Option<Self::Args>,
-    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error>;
-}
-
-struct QueryArgsParser<Consumer, Args>
-where
-    Consumer: QueryArgsConsumer<Args=Args> + Send,
-    Args: DeserializeOwned,
-{
-    consumer: Consumer,
-}
-
-impl<Consumer, Args> QueryArgsParser<Consumer, Args>
-where
-    Consumer: QueryArgsConsumer<Args=Args> + Send,
-    Args: DeserializeOwned,
-{
-    fn new(consumer: Consumer) -> QueryArgsParser<Consumer, Args> {
-        QueryArgsParser { consumer }
-    }
-}
-
-impl<Consumer, Args> QueryHandler for QueryArgsParser<Consumer, Args>
-where
-    Consumer: QueryArgsConsumer<Args=Args> + Send,
-    Args: DeserializeOwned,
-{
-    fn query(
-        self: Box<Self>,
-        query: Option<&str>,
-    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
-        let args = query
-            .map(|x| serde_urlencoded::from_str(x))
-            .transpose()
-            .unwrap_or(None);
-
-        self.consumer.args(args)
-    }
-}
-
-struct QueryResource { }
-
-impl QueryArgsConsumer for QueryResource {
-    type Args = ConcreteArgs;
-
-    fn args(
-        self,
-        args: Option<Self::Args>,
-    ) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
-        #[derive(BartDisplay)]
-        #[template_string = "Srsly! {{#args}}{{.a}}{{/args}}\n"]
-        struct Page {
-            args: Option<ConcreteArgs>,
-        }
-
-        Ok(Box::new((
-            http::StatusCode::OK,
-            vec![(
-                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new(Page { args }.to_string()) as RepresentationBox) as web::RendererBox,
-            )],
-        )) as _)
-    }
-}
-
 impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     pub fn new(
         db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -175,13 +99,13 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
 
         regex_routes! { path,
             _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader { db_pool: self.db_pool.clone() })) as _,
-            _ = r"^auth$" => Box::new(JwtCookieHandler::new(AuthLoader {
+            _ = r"^initiate_auth$" => Box::new(InitiateAuth {
                 db_pool: self.db_pool.clone(),
                 mailer: self.mailer.clone(),
                 sender: self.sender.clone(),
                 spawn: self.spawn.clone(),
-            })) as _,
-            _ = r"^query$" => Box::new(QueryArgsParser::new(QueryResource {})) as _,
+            }) as _,
+            _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer)) as _,
             m = r"^(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();

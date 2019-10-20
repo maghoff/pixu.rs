@@ -12,10 +12,9 @@ use r2d2_diesel::ConnectionManager;
 use serde_derive::{Deserialize, Serialize};
 use serde_urlencoded;
 use std::sync::{Arc, Mutex};
-use web::{Cookie, Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::super::handling_error::HandlingError;
-use super::{Claims, ClaimsConsumer};
 
 const KEY: &[u8] = b"secret";
 
@@ -41,18 +40,26 @@ struct ValidationClaims {
     jti: u32,
 }
 
-pub struct Auth<S: Spawn + Send + 'static> {
-    db_pool: Pool<ConnectionManager<SqliteConnection>>,
-    mailer: Arc<Mutex<SmtpTransport>>,
-    sender: Mailbox,
-    spawn: S,
-    claims: Option<Claims>,
+pub struct InitiateAuth<S: Spawn + Send + 'static> {
+    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    pub mailer: Arc<Mutex<SmtpTransport>>,
+    pub sender: Mailbox,
+    pub spawn: S,
+}
+
+pub struct VerifyAuth {
+    claims: String,
+    head_sign: String,
+    redirect: String,
 }
 
 #[derive(BartDisplay)]
 #[template = "templates/auth-step0.html"]
 struct Get<'a> {
-    claims: &'a Option<Claims>,
+    claims: &'a str,
+    head_sign: &'a str,
+    redirect: &'a str,
+    x: String,
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -79,6 +86,12 @@ struct ValidationArgs<'a> {
     redirect: &'a str,
 }
 
+#[derive(Deserialize)]
+pub struct ValidationArgsOwned {
+    claims: String,
+    redirect: String,
+}
+
 async fn maybe_send_email<'a>(
     email: String,
     claims: &'a str,
@@ -93,7 +106,7 @@ async fn maybe_send_email<'a>(
     let base_url = "http://127.0.0.1:1212/"; // FIXME
 
     let args = serde_urlencoded::to_string(ValidationArgs { claims, redirect }).unwrap();
-    let verification_link = format!("{}auth?{}", base_url, args);
+    let verification_link = format!("{}verify_auth?{}", base_url, args);
 
     let email = EmailBuilder::new()
         .to(email)
@@ -107,7 +120,36 @@ async fn maybe_send_email<'a>(
     mailer.send(email.into()).unwrap();
 }
 
-impl<S: Spawn + Send + 'static> Auth<S> {
+fn verify_core(
+    head_sign: &str,
+    claims: &str,
+) -> Result<ValidationClaims, Box<dyn std::error::Error>> {
+    use jsonwebtoken::{Algorithm, Validation};
+    const KEY: &[u8] = b"secret";
+
+    let mut head_sign = head_sign.splitn(2, '.');
+    let head = head_sign.next().unwrap();
+    let sign = head_sign.next().ok_or("Missing . in head_sign")?;
+
+    let token = format!("{}.{}.{}", head, claims, sign);
+
+    let token = jsonwebtoken::decode::<ValidationClaims>(
+        &token,
+        KEY,
+        &Validation {
+            algorithms: vec![Algorithm::HS256],
+            ..Default::default()
+        },
+    )?;
+
+    if token.claims.phase == AuthPhase::Validation {
+        Ok(token.claims)
+    } else {
+        Err("Wrong AuthPhase".into())
+    }
+}
+
+impl<S: Spawn + Send + 'static> InitiateAuth<S> {
     async fn issue(
         email: impl ToString,
         mailer: Arc<Mutex<SmtpTransport>>,
@@ -223,11 +265,30 @@ impl<S: Spawn + Send + 'static> Auth<S> {
             .await
             .unwrap_or_else(|e| e.render())
     }
+}
 
+impl<S: Spawn + Send + 'static> Resource for InitiateAuth<S> {
+    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
+        unimplemented!()
+    }
+
+    fn post<'a>(
+        self: Box<Self>,
+        content_type: String,
+        body: hyper::Body,
+    ) -> FutureBox<'a, Response> {
+        self.post_core(content_type, body).boxed()
+    }
+}
+
+impl VerifyAuth {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
-        // TODO Accept ValiationArgs as query args
-        //  -> If present, perform validation
-        //  -> Is there a valid "else" case?
+        let claims = verify_core(&self.head_sign, &self.claims);
+        let x = format!("{:?}", claims);
+
+        // TODO: Depending on `claims`,
+        //  - respond with error message, or
+        //  - issue login cookie and respond with redirect
 
         Ok(Response::new(
             http::StatusCode::OK,
@@ -237,6 +298,9 @@ impl<S: Spawn + Send + 'static> Auth<S> {
                     Box::new(
                         Get {
                             claims: &self.claims,
+                            head_sign: &self.head_sign,
+                            redirect: &self.redirect,
+                            x,
                         }
                         .to_string(),
                     ) as RepresentationBox
@@ -250,43 +314,54 @@ impl<S: Spawn + Send + 'static> Auth<S> {
     }
 }
 
-impl<S: Spawn + Send + 'static> Resource for Auth<S> {
+impl Resource for VerifyAuth {
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         self.get_core().boxed()
     }
+}
 
-    fn post<'a>(
+struct VerifyAuthCookieHandler {
+    claims: String,
+    redirect: String,
+}
+
+impl VerifyAuthCookieHandler {
+    async fn async_cookies<'a>(
         self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        self.post_core(content_type, body).boxed()
+        values: &'a [Option<&'a str>],
+    ) -> Result<Box<dyn web::Resource + Send + 'static>, web::Error> {
+        let cookie = values[0].ok_or(web::Error::BadRequest)?.to_string();
+
+        Ok(Box::new(VerifyAuth {
+            claims: self.claims,
+            redirect: self.redirect,
+            head_sign: cookie,
+        }) as _)
     }
 }
 
-pub struct AuthLoader<S: Spawn + Send + 'static> {
-    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
-    pub mailer: Arc<Mutex<SmtpTransport>>,
-    pub sender: Mailbox,
-    pub spawn: S,
+impl CookieHandler for VerifyAuthCookieHandler {
+    fn read_cookies(&self) -> &[&str] {
+        &["let-me-in"]
+    }
+
+    fn cookies<'a>(
+        self: Box<Self>,
+        values: &'a [Option<&'a str>],
+    ) -> FutureBox<'a, Result<Box<dyn web::Resource + Send + 'static>, web::Error>> {
+        self.async_cookies(values).boxed() as _
+    }
 }
 
-impl<S: Spawn + Send + 'static> ClaimsConsumer for AuthLoader<S> {
-    type Claims = Claims;
+pub struct VerifyAuthArgsConsumer;
 
-    fn claims<'a>(
-        self,
-        claims: Option<Self::Claims>,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        async {
-            Ok(Box::new(Auth {
-                claims,
-                db_pool: self.db_pool,
-                mailer: self.mailer,
-                sender: self.sender,
-                spawn: self.spawn,
-            }) as Box<dyn Resource + Send + 'static>)
-        }
-            .boxed() as _
+impl crate::site::query_args::QueryArgsConsumer for VerifyAuthArgsConsumer {
+    type Args = ValidationArgsOwned;
+
+    fn args(self, args: Self::Args) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
+        Ok(Box::new(VerifyAuthCookieHandler {
+            claims: args.claims,
+            redirect: args.redirect,
+        }))
     }
 }

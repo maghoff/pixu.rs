@@ -4,11 +4,9 @@
     <title>pixu.rs</title>
 </head>
 <body>
-    {{#claims}}
-    <p>Login: {{.sub}}</p>
-    {{/claims}}
-    {{^claims}}
-    <p>Ikke innlogget.</p>
-    {{/claims}}
+    <p>Claims: {{claims}}</p>
+    <p>Head+signature: {{head_sign}}</p>
+    <p>Redirect: {{redirect}}</p>
+    <p>Validation: {{x}}</p>
 </body>
 </html>

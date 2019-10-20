@@ -6,7 +6,7 @@ mod resource;
 
 pub use claims_consumer::ClaimsConsumer;
 pub use jwt_cookie_handler::JwtCookieHandler;
-pub use resource::AuthLoader;
+pub use resource::{InitiateAuth, VerifyAuthArgsConsumer};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {

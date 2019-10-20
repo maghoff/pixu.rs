@@ -11,7 +11,7 @@
     {{/claims}}
     {{^claims}}
     <p>Du er ikke logget inn.</p>
-    <form action="auth" method="POST">
+    <form action="initiate_auth" method="POST">
         <input type="hidden" name="redirect" value="{{self_url}}">
         <label for="email">Epostaddresse: </label><input id="email" type="email" name="email" required>
         <button type="submit">Logg inn</button>
