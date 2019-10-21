@@ -1,11 +1,12 @@
 use futures::FutureExt;
 use hyper::http;
-use jsonwebtoken::{Algorithm, Validation};
+use jsonwebtoken::{encode, Algorithm, Header, Validation};
 use serde_derive::Deserialize;
-use web::{CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
-use super::super::handling_error::HandlingError;
 use super::{AuthPhase, ValidationClaims, KEY};
+use crate::site::handling_error::HandlingError;
+use crate::site::query_args::QueryArgsConsumer;
 
 pub struct VerifyAuth {
     claims: String,
@@ -28,7 +29,7 @@ pub struct ValidationArgsOwned {
     redirect: String,
 }
 
-fn verify_core(
+fn verify_login(
     head_sign: &str,
     claims: &str,
 ) -> Result<ValidationClaims, Box<dyn std::error::Error>> {
@@ -56,16 +57,22 @@ fn verify_core(
 
 impl VerifyAuth {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
-        let claims = verify_core(&self.head_sign, &self.claims);
+        let claims = verify_login(&self.head_sign, &self.claims)
+            .map_err(|_| HandlingError::BadRequest("Unable to verify login"))?;
         let x = format!("{:?}", claims);
 
-        // TODO: Depending on `claims`,
-        //  - respond with error message, or
-        //  - issue login cookie and respond with redirect
+        #[derive(serde_derive::Serialize)]
+        struct Claims<'a> {
+            sub: &'a str,
+        }
+        let claims = Claims { sub: &claims.sub };
 
-        Ok(Response::new(
-            http::StatusCode::OK,
-            vec![(
+        let token = encode(&Header::default(), &claims, KEY).unwrap();
+        let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
+
+        Ok(Response {
+            status: http::StatusCode::OK,
+            representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
                     Box::new(
@@ -79,7 +86,8 @@ impl VerifyAuth {
                     ) as RepresentationBox
                 }) as _,
             )],
-        ))
+            cookies: vec![cookie],
+        })
     }
 
     async fn get_core(self: Box<Self>) -> Response {
@@ -128,7 +136,7 @@ impl CookieHandler for VerifyAuthCookieHandler {
 
 pub struct VerifyAuthArgsConsumer;
 
-impl crate::site::query_args::QueryArgsConsumer for VerifyAuthArgsConsumer {
+impl QueryArgsConsumer for VerifyAuthArgsConsumer {
     type Args = ValidationArgsOwned;
 
     fn args(self, args: Self::Args) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
