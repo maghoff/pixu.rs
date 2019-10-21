@@ -4,7 +4,7 @@ use diesel::sqlite::SqliteConnection;
 use futures::task::{Spawn, SpawnExt};
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
 use hyper::http;
-use jsonwebtoken::{encode, Header};
+use jsonwebtoken::Header;
 use lettre::{SmtpTransport, Transport};
 use lettre_email::{EmailBuilder, Mailbox};
 use r2d2::Pool;
@@ -109,47 +109,6 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
             .unwrap();
 
         format!("{}.{}", head, sign)
-    }
-
-    async fn _old_try_post(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> Result<Response, HandlingError> {
-        let content_type = content_type;
-        if content_type != "application/x-www-form-urlencoded" {
-            return Err(HandlingError::BadRequest(
-                "Unacceptable Content-Type, must be application/x-www-form-urlencoded",
-            ));
-        }
-
-        let body = body
-            .compat()
-            .try_concat()
-            .await
-            .map_err(|_| HandlingError::InternalServerError)?;
-        let args: PostArgs = serde_urlencoded::from_bytes(&body)
-            .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
-
-        #[derive(serde_derive::Serialize)]
-        struct Claims<'a> {
-            sub: &'a str,
-        }
-        let claims = Claims { sub: &args.email };
-
-        let token = encode(&Header::default(), &claims, KEY).unwrap();
-        let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
-
-        Ok(Response {
-            status: http::StatusCode::OK,
-            representations: vec![(
-                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || {
-                    Box::new(Post { email: &args.email }.to_string()) as RepresentationBox
-                }) as _,
-            )],
-            cookies: vec![cookie],
-        })
     }
 
     async fn try_post(

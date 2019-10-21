@@ -1,12 +1,11 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
+use futures::FutureExt;
 use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use serde_urlencoded;
-use web::{Cookie, Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -24,74 +23,7 @@ struct Get<'a> {
     authorized_pixurs: &'a [i32],
 }
 
-#[derive(serde_derive::Deserialize)]
-struct PostArgs {
-    username: String,
-}
-
-#[derive(BartDisplay)]
-#[template = "templates/index-post.html"]
-struct Post<'a> {
-    username: &'a str,
-}
-
 impl Index {
-    async fn try_post(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> Result<Response, HandlingError> {
-        let content_type = content_type;
-        if content_type != "application/x-www-form-urlencoded" {
-            return Err(HandlingError::BadRequest(
-                "Unacceptable Content-Type, must be application/x-www-form-urlencoded",
-            ));
-        }
-
-        let body = body
-            .compat()
-            .try_concat()
-            .await
-            .map_err(|_| HandlingError::InternalServerError)?;
-        let args: PostArgs = serde_urlencoded::from_bytes(&body)
-            .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
-
-        use jsonwebtoken::{encode, Header};
-
-        #[derive(serde_derive::Serialize)]
-        struct Claims<'a> {
-            sub: &'a str,
-        }
-        let claims = Claims {
-            sub: &args.username,
-        };
-
-        let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
-        let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
-
-        Ok(Response {
-            status: http::StatusCode::OK,
-            representations: vec![(
-                MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || {
-                    Box::new(
-                        Post {
-                            username: &args.username,
-                        }
-                        .to_string(),
-                    ) as RepresentationBox
-                }) as _,
-            )],
-            cookies: vec![cookie],
-        })
-    }
-
-    async fn post_core(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
-        self.try_post(content_type, body)
-            .await
-            .unwrap_or_else(|e| e.render())
-    }
-
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
@@ -137,14 +69,6 @@ impl Resource for Index {
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         self.get_core().boxed()
     }
-
-    fn post<'a>(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        self.post_core(content_type, body).boxed()
-    }
 }
 
 pub struct IndexLoader {
@@ -164,6 +88,6 @@ impl auth::ClaimsConsumer for IndexLoader {
                 db_pool: self.db_pool,
             }) as Box<dyn Resource + Send + 'static>)
         }
-            .boxed() as _
+        .boxed() as _
     }
 }
