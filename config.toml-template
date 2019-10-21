@@ -1,3 +1,10 @@
+# Externally visible URL for the service, used for generating ingoing links.
+# Include a trailing slash.
+url =
+
+# Secret key for signing JWT cookies.
+secret_key =
+
 [email]
 
 # SMTP server:

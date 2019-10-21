@@ -3,11 +3,12 @@ use jsonwebtoken::{encode, Algorithm, Header, Validation};
 use serde_derive::Deserialize;
 use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
-use super::{AuthPhase, ValidationClaims, KEY};
+use super::{AuthPhase, ValidationClaims};
 use crate::site::handling_error::HandlingError;
 use crate::site::query_args::QueryArgsConsumer;
 
 pub struct VerifyAuth {
+    key: Vec<u8>,
     claims: String,
     head_sign: String,
     redirect: String,
@@ -24,6 +25,7 @@ pub struct ValidationArgsOwned {
 }
 
 fn verify_login(
+    key: &[u8],
     head_sign: &str,
     claims: &str,
 ) -> Result<ValidationClaims, Box<dyn std::error::Error>> {
@@ -35,7 +37,7 @@ fn verify_login(
 
     let token = jsonwebtoken::decode::<ValidationClaims>(
         &token,
-        KEY,
+        key,
         &Validation {
             algorithms: vec![Algorithm::HS256],
             ..Default::default()
@@ -51,7 +53,7 @@ fn verify_login(
 
 impl VerifyAuth {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
-        let claims = verify_login(&self.head_sign, &self.claims)
+        let claims = verify_login(&self.key, &self.head_sign, &self.claims)
             .map_err(|_| HandlingError::BadRequest("Unable to verify login"))?;
 
         #[derive(serde_derive::Serialize)]
@@ -60,7 +62,7 @@ impl VerifyAuth {
         }
         let claims = Claims { sub: &claims.sub };
 
-        let token = encode(&Header::default(), &claims, KEY).unwrap();
+        let token = encode(&Header::default(), &claims, &self.key).unwrap();
         let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
 
         Ok(Response {
@@ -85,6 +87,7 @@ impl Resource for VerifyAuth {
 }
 
 struct VerifyAuthCookieHandler {
+    key: Vec<u8>,
     claims: String,
     redirect: String,
 }
@@ -97,6 +100,7 @@ impl VerifyAuthCookieHandler {
         let cookie = values[0].ok_or(web::Error::BadRequest)?.to_string();
 
         Ok(Box::new(VerifyAuth {
+            key: self.key,
             claims: self.claims,
             redirect: self.redirect,
             head_sign: cookie,
@@ -117,13 +121,16 @@ impl CookieHandler for VerifyAuthCookieHandler {
     }
 }
 
-pub struct VerifyAuthArgsConsumer;
+pub struct VerifyAuthArgsConsumer {
+    pub key: Vec<u8>,
+}
 
 impl QueryArgsConsumer for VerifyAuthArgsConsumer {
     type Args = ValidationArgsOwned;
 
     fn args(self, args: Self::Args) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
         Ok(Box::new(VerifyAuthCookieHandler {
+            key: self.key,
             claims: args.claims,
             redirect: args.redirect,
         }))

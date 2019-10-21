@@ -48,6 +48,8 @@ struct EmailConfig {
 
 #[derive(Debug, serde_derive::Deserialize)]
 struct Config {
+    url: String,
+    secret: String,
     email: EmailConfig,
 }
 
@@ -76,8 +78,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
+    let key = base64::decode(&config.secret)?;
+
     use std::sync::Arc;
     let site = Arc::new(site::Site::new(
+        key,
+        config.url,
         db_pool,
         mailer,
         sender,

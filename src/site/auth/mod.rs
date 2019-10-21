@@ -11,9 +11,6 @@ pub use initiate_auth::InitiateAuth;
 pub use jwt_cookie_handler::JwtCookieHandler;
 pub use verify_auth::VerifyAuthArgsConsumer;
 
-// TODO Oi! Global state!
-const KEY: &[u8] = b"secret";
-
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 struct NumberDate(i64);
 
@@ -85,6 +82,8 @@ mod test {
 
     #[test]
     fn when_successful_then_status_ok() {
+        const KEY: &[u8] = b"secret";
+
         block_on(async {
             use jsonwebtoken::Header;
 
@@ -99,7 +98,7 @@ mod test {
             let token = &[Some(token.as_str())];
 
             let c = AuthorizationHandler::new(qr().await);
-            let a = Box::new(JwtCookieHandler::new(c));
+            let a = Box::new(JwtCookieHandler::new(KEY.into(), c));
             let resource = a.cookies(token).await.unwrap();
             let Response { status, .. } = resource.get().await;
             assert_eq!(status, web::Status::Ok);

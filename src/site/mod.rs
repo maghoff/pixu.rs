@@ -42,6 +42,8 @@ fn not_found() -> impl QueryHandler {
 }
 
 pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
+    key: Vec<u8>,
+    base_url: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     mailer: Arc<Mutex<SmtpTransport>>,
     sender: Mailbox,
@@ -80,12 +82,16 @@ macro_rules! regex_routes {
 
 impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     pub fn new(
+        key: Vec<u8>,
+        base_url: String,
         db_pool: Pool<ConnectionManager<SqliteConnection>>,
         mailer: SmtpTransport,
         sender: Mailbox,
         spawn: S,
     ) -> Site<S> {
         Site {
+            key,
+            base_url,
             db_pool,
             mailer: Arc::new(Mutex::new(mailer)),
             sender,
@@ -97,19 +103,23 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            _ = r"^$" => Box::new(JwtCookieHandler::new(IndexLoader { db_pool: self.db_pool.clone() })) as _,
+            _ = r"^$" => Box::new(JwtCookieHandler::new(self.key.clone(), IndexLoader { db_pool: self.db_pool.clone() })) as _,
             _ = r"^initiate_auth$" => Box::new(InitiateAuth {
+                key: self.key.clone(),
+                base_url: self.base_url.clone(),
                 db_pool: self.db_pool.clone(),
                 mailer: self.mailer.clone(),
                 sender: self.sender.clone(),
                 spawn: self.spawn.clone(),
             }) as _,
-            _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer)) as _,
+            _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
+                key: self.key.clone(),
+            })) as _,
             m = r"^(\d+)$" => {
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
                 let inner = Pixu::new(db, id);
-                Box::new(JwtCookieHandler::new(inner)) as _
+                Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
             },
             m = r"^thumb/(\d+)$" => {
                 let id = m[1].parse().unwrap();

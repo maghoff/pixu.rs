@@ -10,6 +10,7 @@ where
     Consumer: ClaimsConsumer<Claims = Claims>,
     Claims: DeserializeOwned,
 {
+    key: Vec<u8>,
     consumer: Consumer,
 }
 
@@ -18,8 +19,8 @@ where
     Consumer: ClaimsConsumer<Claims = Claims> + Send,
     Claims: DeserializeOwned,
 {
-    pub fn new(consumer: Consumer) -> Self {
-        JwtCookieHandler { consumer }
+    pub fn new(key: Vec<u8>, consumer: Consumer) -> Self {
+        JwtCookieHandler { key, consumer }
     }
 
     async fn cookies_async<'a>(
@@ -31,7 +32,7 @@ where
 
             jsonwebtoken::decode::<Claims>(
                 jwt,
-                "secret".as_ref(),
+                &self.key,
                 &Validation {
                     algorithms: vec![Algorithm::HS256],
                     validate_exp: false,

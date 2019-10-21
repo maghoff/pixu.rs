@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use web::{Cookie, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::super::handling_error::HandlingError;
-use super::{AuthPhase, ValidationClaims, KEY};
+use super::{AuthPhase, ValidationClaims};
 
 #[derive(Serialize)]
 struct ValidationArgs<'a> {
@@ -35,6 +35,8 @@ struct Post<'a> {
 }
 
 pub struct InitiateAuth<S: Spawn + Send + 'static> {
+    pub key: Vec<u8>,
+    pub base_url: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
     pub mailer: Arc<Mutex<SmtpTransport>>,
     pub sender: Mailbox,
@@ -48,6 +50,7 @@ fn is_registered_user(_email: &str) -> bool {
 }
 
 async fn maybe_send_email<'a>(
+    base_url: &'a str,
     email: String,
     claims: &'a str,
     mailer: Arc<Mutex<SmtpTransport>>,
@@ -57,8 +60,6 @@ async fn maybe_send_email<'a>(
     if !is_registered_user(&email) {
         return;
     }
-
-    let base_url = "http://127.0.0.1:1212/"; // FIXME
 
     let args = serde_urlencoded::to_string(ValidationArgs { claims, redirect }).unwrap();
     let verification_link = format!("{}verify_auth?{}", base_url, args);
@@ -77,6 +78,8 @@ async fn maybe_send_email<'a>(
 
 impl<S: Spawn + Send + 'static> InitiateAuth<S> {
     async fn issue(
+        key: &[u8],
+        base_url: String,
         email: impl ToString,
         mailer: Arc<Mutex<SmtpTransport>>,
         sender: Mailbox,
@@ -91,7 +94,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
             exp: (Utc::now() + Duration::hours(2)).into(),
             jti: rand::random(),
         };
-        let token = jsonwebtoken::encode(&Header::default(), &claims, KEY).unwrap();
+        let token = jsonwebtoken::encode(&Header::default(), &claims, key).unwrap();
 
         let mut parts = token.split('.');
 
@@ -101,9 +104,10 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
 
         spawn
             .spawn(async {
+                let base_url = base_url;
                 let claims = claims;
                 let redirect = redirect;
-                maybe_send_email(email, &claims, mailer, sender, &redirect).await;
+                maybe_send_email(&base_url, email, &claims, mailer, sender, &redirect).await;
             })
             .unwrap();
 
@@ -131,7 +135,16 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
             .map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
 
         let email = args.email;
-        let cookie = Self::issue(&email, self.mailer, self.sender, self.spawn, args.redirect).await;
+        let cookie = Self::issue(
+            &self.key,
+            self.base_url,
+            &email,
+            self.mailer,
+            self.sender,
+            self.spawn,
+            args.redirect,
+        )
+        .await;
         let cookie = Cookie::build("let-me-in", cookie).http_only(true).finish();
 
         Ok(Response {
