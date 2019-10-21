@@ -70,6 +70,8 @@ impl VerifyAuth {
         let token = encode(&Header::default(), &claims, KEY).unwrap();
         let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
 
+        // TODO Respond with redirect
+
         Ok(Response {
             status: http::StatusCode::OK,
             representations: vec![(
