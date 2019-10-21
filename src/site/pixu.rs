@@ -2,7 +2,6 @@ use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::future::FutureExt;
-use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use web::{Error, FutureBox, MediaType, RendererBox, RepresentationBox, Resource, Response};
@@ -65,7 +64,7 @@ impl Pixu {
             .map_err(|_| HandlingError::InternalServerError)?;
 
         Ok(Response::new(
-            http::StatusCode::OK,
+            web::Status::Ok,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
@@ -110,7 +109,7 @@ impl Pixu {
             Ok(Box::new(self) as Box<dyn Resource + Send + 'static>)
         } else {
             Ok(Box::new((
-                http::StatusCode::UNAUTHORIZED,
+                web::Status::Unauthorized,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                     Box::new(move || {

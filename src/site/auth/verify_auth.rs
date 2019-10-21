@@ -1,5 +1,4 @@
 use futures::FutureExt;
-use hyper::http;
 use jsonwebtoken::{encode, Algorithm, Header, Validation};
 use serde_derive::Deserialize;
 use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
@@ -16,12 +15,7 @@ pub struct VerifyAuth {
 
 #[derive(BartDisplay)]
 #[template = "templates/auth-step0.html"]
-struct Get<'a> {
-    claims: &'a str,
-    head_sign: &'a str,
-    redirect: &'a str,
-    x: String,
-}
+struct Get;
 
 #[derive(Deserialize)]
 pub struct ValidationArgsOwned {
@@ -59,7 +53,6 @@ impl VerifyAuth {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let claims = verify_login(&self.head_sign, &self.claims)
             .map_err(|_| HandlingError::BadRequest("Unable to verify login"))?;
-        let x = format!("{:?}", claims);
 
         #[derive(serde_derive::Serialize)]
         struct Claims<'a> {
@@ -70,23 +63,11 @@ impl VerifyAuth {
         let token = encode(&Header::default(), &claims, KEY).unwrap();
         let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
 
-        // TODO Respond with redirect
-
         Ok(Response {
-            status: http::StatusCode::OK,
+            status: web::Status::SeeOther(self.redirect),
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || {
-                    Box::new(
-                        Get {
-                            claims: &self.claims,
-                            head_sign: &self.head_sign,
-                            redirect: &self.redirect,
-                            x,
-                        }
-                        .to_string(),
-                    ) as RepresentationBox
-                }) as _,
+                Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
             )],
             cookies: vec![cookie],
         })

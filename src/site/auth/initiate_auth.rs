@@ -3,7 +3,6 @@ use diesel;
 use diesel::sqlite::SqliteConnection;
 use futures::task::{Spawn, SpawnExt};
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
-use hyper::http;
 use jsonwebtoken::Header;
 use lettre::{SmtpTransport, Transport};
 use lettre_email::{EmailBuilder, Mailbox};
@@ -136,7 +135,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
         let cookie = Cookie::build("let-me-in", cookie).http_only(true).finish();
 
         Ok(Response {
-            status: http::StatusCode::OK,
+            status: web::Status::Ok,
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || Box::new(Post { email: &email }.to_string()) as RepresentationBox)

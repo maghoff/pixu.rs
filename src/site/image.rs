@@ -2,7 +2,6 @@ use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::future::FutureExt;
-use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use web::{FutureBox, MediaType, RepresentationBox, Resource, Response};
@@ -41,7 +40,7 @@ impl Image {
             .map_err(|_| HandlingError::InternalServerError)?;
 
         Ok(Response::new(
-            http::StatusCode::OK,
+            web::Status::Ok,
             vec![(
                 MediaType::parse(&pix.media_type),
                 Box::new(move || Box::new(pix.data) as RepresentationBox) as _,

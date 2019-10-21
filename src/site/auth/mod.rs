@@ -102,7 +102,7 @@ mod test {
             let a = Box::new(JwtCookieHandler::new(c));
             let resource = a.cookies(token).await.unwrap();
             let Response { status, .. } = resource.get().await;
-            assert_eq!(status, 200);
+            assert_eq!(status, web::Status::Ok);
         });
     }
 }

@@ -47,7 +47,7 @@ async fn resolve_resource<'a>(
 
 fn method_not_allowed() -> resource::Response {
     resource::Response::new(
-        http::StatusCode::METHOD_NOT_ALLOWED,
+        Status::MethodNotAllowed,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
@@ -57,7 +57,7 @@ fn method_not_allowed() -> resource::Response {
 
 fn bad_request() -> impl Resource {
     (
-        http::StatusCode::BAD_REQUEST,
+        Status::BadRequest,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || Box::new("Bad Request\n") as RepresentationBox) as _,
@@ -65,9 +65,9 @@ fn bad_request() -> impl Resource {
     )
 }
 
-fn internal_server_error() -> impl Resource {
+fn _internal_server_error() -> impl Resource {
     (
-        http::StatusCode::INTERNAL_SERVER_ERROR,
+        Status::InternalServerError,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || Box::new("Internal Server Error\n") as RepresentationBox) as _,
@@ -103,7 +103,7 @@ async fn try_handle_request<'a>(
 ) -> Result<
     (
         Option<ETag>,
-        http::StatusCode,
+        Status,
         RepresentationsVec,
         Vec<Cookie<'static>>,
     ),
@@ -208,12 +208,48 @@ use hyper::http::StatusCode;
 
 async fn build_response(
     etag: Option<ETag>,
-    status: StatusCode,
+    status: Status,
     mut representations: RepresentationsVec,
     cookies: Vec<Cookie<'static>>,
 ) -> hyper::Response<Body> {
     let mut response = hyper::Response::builder();
-    response.status(status);
+
+    match status {
+        // 2__
+        Status::Ok => {
+            response.status(StatusCode::OK);
+        }
+
+        // 3__
+        Status::SeeOther(location) => {
+            response.status(StatusCode::SEE_OTHER);
+            response.header("location", location);
+        }
+
+        // 4__
+        Status::BadRequest => {
+            response.status(StatusCode::BAD_REQUEST);
+        }
+
+        Status::Unauthorized => {
+            response.status(StatusCode::UNAUTHORIZED);
+            // TODO: Set `WWW-Authenticate` header
+        }
+
+        Status::MethodNotAllowed => {
+            response.status(StatusCode::METHOD_NOT_ALLOWED);
+            // TODO: Set `Allow` header
+        }
+
+        Status::NotFound => {
+            response.status(StatusCode::NOT_FOUND);
+        }
+
+        // 5__
+        Status::InternalServerError => {
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
 
     if representations.len() > 1 {
         response.header("vary", "accept");

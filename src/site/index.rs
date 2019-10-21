@@ -2,7 +2,6 @@ use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::FutureExt;
-use hyper::http;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
@@ -44,7 +43,7 @@ impl Index {
             .unwrap_or_else(|| vec![]);
 
         Ok(Response::new(
-            http::StatusCode::OK,
+            web::Status::Ok,
             vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {

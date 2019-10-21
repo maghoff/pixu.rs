@@ -3,7 +3,6 @@ use std::pin::Pin;
 
 use cookie::Cookie;
 use futures::future::FutureExt;
-use hyper::http;
 
 use super::etag::ETag;
 use super::media_type::MediaType;
@@ -14,14 +13,32 @@ pub type RendererBox = Box<dyn FnOnce() -> RepresentationBox + Send + 'static>;
 pub type RepresentationsVec = Vec<(MediaType, RendererBox)>;
 pub type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a>>;
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum Status {
+    // 2__
+    Ok,
+
+    // 3__
+    SeeOther(String),
+
+    // 4__
+    BadRequest,
+    Unauthorized, // TODO: `WWW-Authenticate` header
+    NotFound,
+    MethodNotAllowed, // TODO: `Allow` header
+
+    // 5__
+    InternalServerError,
+}
+
 pub struct Response {
-    pub status: http::StatusCode,
+    pub status: Status,
     pub representations: RepresentationsVec,
     pub cookies: Vec<Cookie<'static>>,
 }
 
 impl Response {
-    pub fn new(status: http::StatusCode, representations: RepresentationsVec) -> Response {
+    pub fn new(status: Status, representations: RepresentationsVec) -> Response {
         Response {
             status,
             representations,
@@ -32,7 +49,7 @@ impl Response {
 
 fn method_not_allowed() -> Response {
     Response::new(
-        http::StatusCode::METHOD_NOT_ALLOWED,
+        Status::MethodNotAllowed,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
@@ -56,7 +73,7 @@ pub trait Resource: Send {
     }
 }
 
-impl Resource for (http::StatusCode, RepresentationsVec) {
+impl Resource for (Status, RepresentationsVec) {
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
         async { Response::new(self.0, self.1) }.boxed()
     }
@@ -64,7 +81,7 @@ impl Resource for (http::StatusCode, RepresentationsVec) {
 
 impl Resource for RepresentationsVec {
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        async { Response::new(http::StatusCode::OK, *self) }.boxed()
+        async { Response::new(Status::Ok, *self) }.boxed()
     }
 }
 

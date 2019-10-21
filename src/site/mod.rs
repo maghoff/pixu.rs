@@ -10,7 +10,6 @@ use diesel;
 use diesel::sqlite::SqliteConnection;
 use futures::task::Spawn;
 use futures::FutureExt;
-use hyper::http;
 use lettre::SmtpTransport;
 use lettre_email::Mailbox;
 use r2d2::Pool;
@@ -34,7 +33,7 @@ fn not_found() -> impl QueryHandler {
     struct NotFound;
 
     (
-        http::StatusCode::NOT_FOUND,
+        web::Status::NotFound,
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
             Box::new(move || Box::new(NotFound.to_string()) as RepresentationBox) as _,
