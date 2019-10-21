@@ -3,9 +3,6 @@
 # SMTP server:
 host =
 
-# Defaults to 25
-port =
-
 # SMTP server login:
 user =
 password =

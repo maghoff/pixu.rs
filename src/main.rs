@@ -19,7 +19,7 @@ use futures::compat::{Executor01CompatExt, Future01CompatExt};
 use futures::prelude::*;
 use lettre::smtp::authentication::{Credentials, Mechanism};
 use lettre::smtp::ConnectionReuseParameters;
-use lettre::{ClientSecurity, SmtpClient};
+use lettre::SmtpClient;
 use lettre_email::Mailbox;
 use structopt::StructOpt;
 
@@ -38,7 +38,6 @@ struct Options {
 #[derive(Debug, serde_derive::Deserialize)]
 struct EmailConfig {
     host: String,
-    port: u16,
 
     user: String,
     password: String,
@@ -68,15 +67,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bind_host = "127.0.0.1".parse().expect("Acceptable IP address");
     let bind_port = 1212;
 
-    let mailer = SmtpClient::new(
-        (config.email.host.as_str(), config.email.port),
-        ClientSecurity::None,
-    )?
-    .credentials(Credentials::new(config.email.user, config.email.password))
-    .smtp_utf8(true)
-    .authentication_mechanism(Mechanism::Plain)
-    .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
-    .transport();
+    let mailer = SmtpClient::new_simple(&config.email.host)?
+        .credentials(Credentials::new(config.email.user, config.email.password))
+        .smtp_utf8(true)
+        .authentication_mechanism(Mechanism::Plain)
+        .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
+        .transport();
 
     let sender: Mailbox = (config.email.sender_email, config.email.sender_name).into();
 
