@@ -93,7 +93,7 @@ mod test {
                 &Claims {
                     sub: "let-me-in".to_owned(),
                 },
-                "secret".as_ref(),
+                KEY,
             )
             .unwrap();
             let token = &[Some(token.as_str())];

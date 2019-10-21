@@ -137,7 +137,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
         }
         let claims = Claims { sub: &args.email };
 
-        let token = encode(&Header::default(), &claims, "secret".as_ref()).unwrap();
+        let token = encode(&Header::default(), &claims, KEY).unwrap();
         let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
 
         Ok(Response {
