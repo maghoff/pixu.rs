@@ -2,7 +2,8 @@
 # Include a trailing slash.
 url =
 
-# Secret key for signing JWT cookies.
+# Secret key for signing JWT cookies encoded in base64.
+# Generate with Python: os.urandom(32).encode('base64')
 secret_key =
 
 [email]
