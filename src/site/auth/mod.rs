@@ -1,12 +1,40 @@
+use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
 
 mod claims_consumer;
+mod initiate_auth;
 mod jwt_cookie_handler;
-mod resource;
+mod verify_auth;
 
 pub use claims_consumer::ClaimsConsumer;
+pub use initiate_auth::InitiateAuth;
 pub use jwt_cookie_handler::JwtCookieHandler;
-pub use resource::{InitiateAuth, VerifyAuthArgsConsumer};
+pub use verify_auth::VerifyAuthArgsConsumer;
+
+// TODO Oi! Global state!
+const KEY: &[u8] = b"secret";
+
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+struct NumberDate(i64);
+
+impl From<DateTime<Utc>> for NumberDate {
+    fn from(datetime: DateTime<Utc>) -> Self {
+        NumberDate(datetime.timestamp())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+enum AuthPhase {
+    Validation,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ValidationClaims {
+    phase: AuthPhase,
+    sub: String,
+    exp: NumberDate,
+    jti: u32,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
