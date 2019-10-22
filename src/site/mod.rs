@@ -116,12 +116,16 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 key: self.key.clone(),
             })) as _,
             m = r"^(\d+)$" => {
+                // TODO: Represent ID with 5 digits of base64, sufficient for 30 bits
+
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
                 let inner = Pixu::new(db, id);
                 Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
             },
             m = r"^thumb/(\d+)$" => {
+                // TODO: Authorization. Refactor auth to reusable component.
+
                 let id = m[1].parse().unwrap();
                 Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
             },
