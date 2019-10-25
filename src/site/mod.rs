@@ -1,5 +1,6 @@
 mod auth;
 mod handling_error;
+mod id30;
 mod image;
 mod index;
 mod pixu;
