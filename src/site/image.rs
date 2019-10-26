@@ -7,15 +7,16 @@ use r2d2_diesel::ConnectionManager;
 use web::{FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::handling_error::HandlingError;
+use super::id30::Id30;
 use crate::db::schema::*;
 
 pub struct Image {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
-    id: i32,
+    id: Id30,
 }
 
 impl Image {
-    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: i32) -> Image {
+    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: Id30) -> Image {
         Image { db_pool, id }
     }
 

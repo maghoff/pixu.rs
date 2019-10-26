@@ -116,21 +116,19 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
                 key: self.key.clone(),
             })) as _,
-            m = r"^(\d+)$" => {
-                // TODO: Represent ID with 5 digits of base64, sufficient for 30 bits
-
+            m = r"^([a-zA-Z0-9]{6})$" => {
                 let id = m[1].parse().unwrap();
                 let db = self.db_pool.clone();
                 let inner = Pixu::new(db, id);
                 Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
             },
-            m = r"^thumb/(\d+)$" => {
+            m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 // TODO: Authorization. Refactor auth to reusable component.
 
                 let id = m[1].parse().unwrap();
                 Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
             },
-            m = r"^img/(\d+)$" => {
+            m = r"^img/([a-zA-Z0-9]{6})$" => {
                 let id = m[1].parse().unwrap();
                 Box::new(Image::new(self.db_pool.clone(), id)) as _
             },

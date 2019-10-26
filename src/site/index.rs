@@ -8,6 +8,7 @@ use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
+use super::id30::Id30;
 use crate::db::schema::*;
 
 pub struct Index {
@@ -19,7 +20,7 @@ pub struct Index {
 #[template = "templates/index.html"]
 struct Get<'a> {
     claims: &'a Option<auth::Claims>,
-    authorized_pixurs: &'a [i32],
+    authorized_pixurs: &'a [Id30],
 }
 
 impl Index {
@@ -36,7 +37,7 @@ impl Index {
                 pixur_authorizations::table
                     .filter(pixur_authorizations::sub.eq(&claims.sub))
                     .select(pixur_authorizations::pixur_id)
-                    .load::<i32>(&*db_connection)
+                    .load::<Id30>(&*db_connection)
             })
             .transpose()
             .map_err(|_| HandlingError::InternalServerError)?

@@ -8,11 +8,12 @@ use web::{Error, FutureBox, MediaType, RendererBox, RepresentationBox, Resource,
 
 use super::auth;
 use super::handling_error::HandlingError;
+use super::id30::Id30;
 use crate::db::schema::*;
 
 pub struct Pixu {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
-    id: i32,
+    id: Id30,
 }
 
 #[derive(BartDisplay)]
@@ -31,7 +32,7 @@ struct NotAuthorized<'a> {
 }
 
 impl Pixu {
-    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: i32) -> Pixu {
+    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: Id30) -> Pixu {
         Pixu { db_pool, id }
     }
 
@@ -44,9 +45,9 @@ impl Pixu {
         #[derive(Queryable)]
         struct Pixurs {
             #[allow(unused)]
-            id: i32,
+            id: Id30,
             average_color: i32,
-            thumbs_id: i32,
+            thumbs_id: Id30,
         }
 
         // TODO Schedule IO operations on some kind of background thread
@@ -56,7 +57,7 @@ impl Pixu {
             .first(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let large_id: i32 = images_meta::table
+        let large_id: Id30 = images_meta::table
             .filter(images_meta::pixurs_id.eq(self.id))
             .order(images_meta::width.desc())
             .select(images_meta::id)
