@@ -19,6 +19,7 @@ pub enum Status {
     Ok,
 
     // 3__
+    MovedPermanently(String),
     SeeOther(String),
 
     // 4__

@@ -221,6 +221,11 @@ async fn build_response(
         }
 
         // 3__
+        Status::MovedPermanently(location) => {
+            response.status(StatusCode::MOVED_PERMANENTLY);
+            response.header("location", location);
+        }
+
         Status::SeeOther(location) => {
             response.status(StatusCode::SEE_OTHER);
             response.header("location", location);

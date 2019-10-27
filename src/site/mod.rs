@@ -42,6 +42,32 @@ fn not_found() -> impl QueryHandler {
     )
 }
 
+fn moved_permanently(redirect: impl Into<String>) -> impl QueryHandler {
+    // TODO: This one seems to only reply to GET, but should give the same
+    // response to the other verbs
+
+    let redirect = redirect.into();
+
+    #[derive(BartDisplay)]
+    #[template_string = "Moved permanently to {{redirect}}\n"]
+    struct MovedPermanently<'a> {
+        redirect: &'a str,
+    };
+
+    let body = MovedPermanently {
+        redirect: &redirect,
+    }
+    .to_string();
+
+    (
+        web::Status::MovedPermanently(redirect),
+        vec![(
+            MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+            Box::new(move || Box::new(body) as RepresentationBox) as _,
+        )],
+    )
+}
+
 pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
     key: Vec<u8>,
     base_url: String,
@@ -81,6 +107,24 @@ macro_rules! regex_routes {
     };
 }
 
+use id30::Id30;
+fn canonicalize_id30(
+    given: &str,
+    then: impl Fn(Id30) -> Box<dyn QueryHandler + 'static>,
+) -> Box<dyn QueryHandler + 'static> {
+    match given.parse::<Id30>() {
+        Ok(id) => {
+            let canon = id.to_string();
+            if given == canon {
+                then(id)
+            } else {
+                Box::new(moved_permanently(canon)) as _
+            }
+        }
+        Err(_) => Box::new(not_found()) as _,
+    }
+}
+
 impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     pub fn new(
         key: Vec<u8>,
@@ -117,20 +161,23 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 key: self.key.clone(),
             })) as _,
             m = r"^([a-zA-Z0-9]{6})$" => {
-                let id = m[1].parse().unwrap();
-                let db = self.db_pool.clone();
-                let inner = Pixu::new(db, id);
-                Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
+                canonicalize_id30(&m[1], |id| {
+                    let db = self.db_pool.clone();
+                    let inner = Pixu::new(db, id);
+                    Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
+                })
             },
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 // TODO: Authorization. Refactor auth to reusable component.
 
-                let id = m[1].parse().unwrap();
-                Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
+                canonicalize_id30(&m[1], |id| {
+                    Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
+                })
             },
             m = r"^img/([a-zA-Z0-9]{6})$" => {
-                let id = m[1].parse().unwrap();
-                Box::new(Image::new(self.db_pool.clone(), id)) as _
+                canonicalize_id30(&m[1], |id| {
+                    Box::new(Image::new(self.db_pool.clone(), id)) as _
+                })
             },
             ! => Box::new(not_found()) as _
         }
