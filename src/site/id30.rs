@@ -4,6 +4,7 @@ use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Integer;
 use diesel::sqlite::Sqlite;
+use rand::Rng;
 use std::fmt;
 use std::io::Write;
 use std::str::FromStr;
@@ -12,6 +13,12 @@ use std::str::FromStr;
 #[derive(PartialEq, Eq, Clone, Copy, Debug, AsExpression, FromSqlRow)]
 #[sql_type = "Integer"]
 pub struct Id30(u32);
+
+impl Id30 {
+    pub fn new_random(rng: &mut (impl Rng + ?Sized)) -> Id30 {
+        Id30::from(rng.gen_range(0, 0xC000_0000))
+    }
+}
 
 impl From<u32> for Id30 {
     fn from(num: u32) -> Self {

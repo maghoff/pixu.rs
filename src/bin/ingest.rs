@@ -18,6 +18,10 @@ use structopt::StructOpt;
 mod db;
 use db::schema::*;
 
+#[path = "../site/id30.rs"]
+mod id30;
+use id30::Id30;
+
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
 
 include!(concat!(env!("OUT_DIR"), "/srgb.rs"));
@@ -119,7 +123,7 @@ fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
 fn ingest(
     file: impl AsRef<Path>,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<Id30, Box<dyn std::error::Error>> {
     let sw = Stopwatch::start_new();
     let img = image::open(file.as_ref())?.to_rgb();
     eprintln!(
@@ -212,38 +216,43 @@ fn ingest(
     let large_jpeg = large_jpeg?;
     let (small_jpeg, col) = r2?;
 
-    use diesel::expression::sql_literal::sql;
-
     let db_connection = db_pool.get()?;
     db_connection.transaction(|| {
+        use rand::{rngs::SmallRng, SeedableRng};
+
+        let mut rng = SmallRng::from_entropy();
+
         #[derive(Insertable)]
         #[table_name = "thumbs"]
         struct Thumb<'a> {
+            id: Id30,
             media_type: &'a str,
             data: &'a [u8],
         }
 
+        let thumbs_id = Id30::new_random(&mut rng);
+
         diesel::insert_into(thumbs::table)
             .values(&Thumb {
+                id: thumbs_id,
                 media_type: "image/jpeg",
                 data: &small_jpeg,
             })
             .execute(&*db_connection)?;
 
-        let thumbs_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
-            .load::<i32>(&*db_connection)?
-            .pop()
-            .expect("Statement must evaluate to an integer");
-
         #[derive(Insertable)]
         #[table_name = "pixurs"]
         struct Pixur {
+            id: Id30,
             average_color: i32,
-            thumbs_id: i32,
+            thumbs_id: Id30,
         }
+
+        let pixurs_id = Id30::new_random(&mut rng);
 
         diesel::insert_into(pixurs::table)
             .values(&Pixur {
+                id: pixurs_id,
                 average_color: ((col.channels()[0] as i32) << 16)
                     + ((col.channels()[1] as i32) << 8)
                     + ((col.channels()[2] as i32) << 0),
@@ -251,37 +260,31 @@ fn ingest(
             })
             .execute(&*db_connection)?;
 
-        let pixurs_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
-            .load::<i32>(&*db_connection)?
-            .pop()
-            .expect("Statement must evaluate to an integer");
-
         #[derive(Insertable)]
         #[table_name = "images"]
         struct Image<'a> {
+            id: Id30,
             media_type: &'a str,
             data: &'a [u8],
         }
 
+        let images_id = Id30::new_random(&mut rng);
+
         diesel::insert_into(images::table)
             .values(&Image {
+                id: images_id,
                 media_type: "image/jpeg",
                 data: &large_jpeg,
             })
             .execute(&*db_connection)?;
 
-        let images_id = sql::<(diesel::sql_types::Integer)>("SELECT LAST_INSERT_ROWID()")
-            .load::<i32>(&*db_connection)?
-            .pop()
-            .expect("Statement must evaluate to an integer");
-
         #[derive(Insertable)]
         #[table_name = "images_meta"]
         struct ImageMeta {
-            id: i32,
+            id: Id30,
             width: i32,
             height: i32,
-            pixurs_id: i32,
+            pixurs_id: Id30,
         }
 
         diesel::insert_into(images_meta::table)
