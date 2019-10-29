@@ -20,7 +20,7 @@ pub struct Index {
 #[template = "templates/index.html"]
 struct Get<'a> {
     claims: &'a Option<auth::Claims>,
-    authorized_pixurs: &'a [Id30],
+    authorized_pixurs: &'a [(Id30, Id30)],
 }
 
 impl Index {
@@ -35,9 +35,10 @@ impl Index {
             .as_ref()
             .map(|claims| {
                 pixur_authorizations::table
+                    .inner_join(pixurs::table)
                     .filter(pixur_authorizations::sub.eq(&claims.sub))
-                    .select(pixur_authorizations::pixur_id)
-                    .load::<Id30>(&*db_connection)
+                    .select((pixur_authorizations::pixur_id, pixurs::thumbs_id))
+                    .load::<(Id30, Id30)>(&*db_connection)
             })
             .transpose()
             .map_err(|_| HandlingError::InternalServerError)?
