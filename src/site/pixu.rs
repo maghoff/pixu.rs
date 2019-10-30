@@ -4,7 +4,7 @@ use diesel::sqlite::SqliteConnection;
 use futures::future::FutureExt;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RendererBox, RepresentationBox, Resource, Response};
+use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -32,10 +32,6 @@ struct NotAuthorized<'a> {
 }
 
 impl Pixu {
-    pub fn new(db_pool: Pool<ConnectionManager<SqliteConnection>>, id: Id30) -> Pixu {
-        Pixu { db_pool, id }
-    }
-
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
@@ -85,47 +81,6 @@ impl Pixu {
     async fn get_core(self: Box<Self>) -> Response {
         self.try_get().await.unwrap_or_else(|e| e.render())
     }
-
-    async fn claims_core<'a>(
-        self,
-        claims: Option<auth::Claims>,
-    ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
-        let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
-
-        let authorized: bool = claims
-            .as_ref()
-            .map(|claims| -> Result<_, Error> {
-                Ok(pixur_authorizations::table
-                    .filter(pixur_authorizations::pixur_id.eq(self.id))
-                    .filter(pixur_authorizations::sub.eq(&claims.sub))
-                    .count()
-                    .first::<i64>(&*db_connection)
-                    .map_err(|_| Error::InternalServerError)?
-                    != 0)
-            })
-            .transpose()?
-            .unwrap_or(false);
-
-        if authorized {
-            Ok(Box::new(self) as Box<dyn Resource + Send + 'static>)
-        } else {
-            Ok(Box::new((
-                web::Status::Unauthorized,
-                vec![(
-                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(
-                            NotAuthorized {
-                                claims: claims,
-                                self_url: &self.id.to_string(),
-                            }
-                            .to_string(),
-                        ) as RepresentationBox
-                    }) as RendererBox,
-                )],
-            )) as _)
-        }
-    }
 }
 
 impl Resource for Pixu {
@@ -134,13 +89,46 @@ impl Resource for Pixu {
     }
 }
 
-impl auth::ClaimsConsumer for Pixu {
-    type Claims = auth::Claims;
+pub struct AuthorizationConsumer {
+    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
+}
 
-    fn claims<'a>(
-        self,
-        claims: Option<Self::Claims>,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        self.claims_core(claims).boxed()
+impl auth::authorizer::Consumer for AuthorizationConsumer {
+    type Authorization = Id30;
+
+    fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, Error> {
+        Ok(Box::new(Pixu {
+            db_pool: self.db_pool,
+            id,
+        }) as _)
+    }
+}
+
+pub struct AuthorizationProvider {
+    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    pub id: Id30,
+}
+
+impl auth::authorizer::Provider for AuthorizationProvider {
+    type Authorization = Id30;
+
+    fn get_authorization(&self, sub: &str) -> Result<Option<Self::Authorization>, Error> {
+        use diesel::dsl::*;
+
+        let db_connection = self.db_pool.get().map_err(|_| Error::InternalServerError)?;
+
+        let authorized: bool = select(exists(
+            pixur_authorizations::table
+                .filter(pixur_authorizations::pixur_id.eq(self.id))
+                .filter(pixur_authorizations::sub.eq(sub)),
+        ))
+        .first::<bool>(&*db_connection)
+        .expect("Query must return 1 result");
+
+        if authorized {
+            Ok(Some(self.id))
+        } else {
+            Ok(None)
+        }
     }
 }

@@ -22,7 +22,6 @@ use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 use self::image::Image;
 use auth::{InitiateAuth, JwtCookieHandler, VerifyAuthArgsConsumer};
 use index::IndexLoader;
-use pixu::Pixu;
 use thumbnail::Thumbnail;
 
 fn not_found() -> impl QueryHandler {
@@ -162,9 +161,14 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             })) as _,
             m = r"^([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
-                    let db = self.db_pool.clone();
-                    let inner = Pixu::new(db, id);
-                    Box::new(JwtCookieHandler::new(self.key.clone(), inner)) as _
+                    let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = pixu::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let authorizer = auth::authorizer::Authorizer::new(
+                        m[1].to_string(),
+                        provider,
+                        consumer,
+                    );
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
             },
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {

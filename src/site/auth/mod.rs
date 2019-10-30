@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
 
+pub mod authorizer;
 mod claims_consumer;
 mod initiate_auth;
 mod jwt_cookie_handler;
@@ -11,6 +12,7 @@ pub use initiate_auth::InitiateAuth;
 pub use jwt_cookie_handler::JwtCookieHandler;
 pub use verify_auth::VerifyAuthArgsConsumer;
 
+// NumberDate is the name of the type for datetimes in JWT
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 struct NumberDate(i64);
 
@@ -20,9 +22,12 @@ impl From<DateTime<Utc>> for NumberDate {
     }
 }
 
+// TODO: Refactor to having ValidationClaims and Claims be a tagged enum?
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-enum AuthPhase {
+pub enum AuthPhase {
     Validation,
+    LoggedIn,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,6 +40,7 @@ struct ValidationClaims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
+    pub phase: AuthPhase,
     pub sub: String,
 }
 
@@ -90,6 +96,7 @@ mod test {
             let token = jsonwebtoken::encode(
                 &Header::default(),
                 &Claims {
+                    phase: AuthPhase::LoggedIn,
                     sub: "let-me-in".to_owned(),
                 },
                 KEY,

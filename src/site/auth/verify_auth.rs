@@ -3,7 +3,7 @@ use jsonwebtoken::{encode, Algorithm, Header, Validation};
 use serde_derive::Deserialize;
 use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
 
-use super::{AuthPhase, ValidationClaims};
+use super::{AuthPhase, Claims, ValidationClaims};
 use crate::site::handling_error::HandlingError;
 use crate::site::query_args::QueryArgsConsumer;
 
@@ -56,11 +56,10 @@ impl VerifyAuth {
         let claims = verify_login(&self.key, &self.head_sign, &self.claims)
             .map_err(|_| HandlingError::BadRequest("Unable to verify login"))?;
 
-        #[derive(serde_derive::Serialize)]
-        struct Claims<'a> {
-            sub: &'a str,
-        }
-        let claims = Claims { sub: &claims.sub };
+        let claims = Claims {
+            phase: AuthPhase::LoggedIn,
+            sub: claims.sub,
+        };
 
         let token = encode(&Header::default(), &claims, &self.key).unwrap();
         let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
