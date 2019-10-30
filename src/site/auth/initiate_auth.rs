@@ -56,17 +56,10 @@ fn is_registered_user_core(
         .map_err(|e| format!("Unable to get db connection: {}", e))?;
 
     let exists = select(exists(pixur_authorizations.filter(sub.eq(email))))
-        .load::<bool>(&*db_connection)
+        .first::<bool>(&*db_connection)
         .map_err(|e| format!("Unable to get db result: {}", e))?;
 
-    if exists.len() != 1 {
-        return Err(format!(
-            "Unexpectedly received {} results in EXISTS query",
-            exists.len()
-        ));
-    }
-
-    Ok(exists[0])
+    Ok(exists)
 }
 
 fn is_registered_user(db_pool: Pool<ConnectionManager<SqliteConnection>>, email: &str) -> bool {
