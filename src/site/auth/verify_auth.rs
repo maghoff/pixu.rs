@@ -15,7 +15,7 @@ pub struct VerifyAuth {
 }
 
 #[derive(BartDisplay)]
-#[template = "templates/auth-step0.html"]
+#[template = "templates/verify-auth.html"]
 struct Get;
 
 #[derive(Deserialize)]

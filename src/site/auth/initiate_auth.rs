@@ -29,7 +29,7 @@ struct PostArgs {
 }
 
 #[derive(BartDisplay)]
-#[template = "templates/auth-step1.html"]
+#[template = "templates/initiate-auth.html"]
 struct Post<'a> {
     email: &'a str,
 }
