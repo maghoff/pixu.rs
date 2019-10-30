@@ -43,13 +43,47 @@ pub struct InitiateAuth<S: Spawn + Send + 'static> {
     pub spawn: S,
 }
 
-fn is_registered_user(_email: &str) -> bool {
-    // TODO implement stub
+fn is_registered_user_core(
+    db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    email: &str,
+) -> Result<bool, String> {
+    use crate::db::schema::pixur_authorizations::dsl::*;
+    use diesel::dsl::*;
+    use diesel::prelude::*;
 
-    true
+    let db_connection = db_pool
+        .get()
+        .map_err(|e| format!("Unable to get db connection: {}", e))?;
+
+    let exists = select(exists(pixur_authorizations.filter(sub.eq(email))))
+        .load::<bool>(&*db_connection)
+        .map_err(|e| format!("Unable to get db result: {}", e))?;
+
+    if exists.len() != 1 {
+        return Err(format!(
+            "Unexpectedly received {} results in EXISTS query",
+            exists.len()
+        ));
+    }
+
+    Ok(exists[0])
+}
+
+fn is_registered_user(db_pool: Pool<ConnectionManager<SqliteConnection>>, email: &str) -> bool {
+    match is_registered_user_core(db_pool, email) {
+        Ok(x) => {
+            eprintln!("is_registered_user({:?}): {}", email, x);
+            x
+        }
+        Err(e) => {
+            eprintln!("is_registered_user({:?}): {}", email, e);
+            false
+        }
+    }
 }
 
 async fn maybe_send_email<'a>(
+    db_pool: Pool<ConnectionManager<SqliteConnection>>,
     base_url: &'a str,
     email: String,
     claims: &'a str,
@@ -57,7 +91,10 @@ async fn maybe_send_email<'a>(
     sender: Mailbox,
     redirect: &'a str,
 ) {
-    if !is_registered_user(&email) {
+    // Giving an unknown user a valid login cookie is not a problem, since
+    // authorization is done per resource after login. However, there is
+    // no advantage to logging in unknown users, so let's not.
+    if !is_registered_user(db_pool, &email) {
         return;
     }
 
@@ -78,6 +115,7 @@ async fn maybe_send_email<'a>(
 
 impl<S: Spawn + Send + 'static> InitiateAuth<S> {
     async fn issue(
+        db_pool: Pool<ConnectionManager<SqliteConnection>>,
         key: &[u8],
         base_url: String,
         email: impl ToString,
@@ -107,7 +145,10 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
                 let base_url = base_url;
                 let claims = claims;
                 let redirect = redirect;
-                maybe_send_email(&base_url, email, &claims, mailer, sender, &redirect).await;
+                maybe_send_email(
+                    db_pool, &base_url, email, &claims, mailer, sender, &redirect,
+                )
+                .await;
             })
             .unwrap();
 
@@ -136,6 +177,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
 
         let email = args.email;
         let cookie = Self::issue(
+            self.db_pool,
             &self.key,
             self.base_url,
             &email,
