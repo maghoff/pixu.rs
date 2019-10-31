@@ -24,13 +24,6 @@ struct Get<'a> {
     large_url: &'a str,
 }
 
-#[derive(BartDisplay)]
-#[template = "templates/not-authorized.html"]
-struct NotAuthorized<'a> {
-    claims: Option<auth::Claims>,
-    self_url: &'a str,
-}
-
 impl Pixu {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
