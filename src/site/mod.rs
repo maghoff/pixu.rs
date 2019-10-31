@@ -19,10 +19,8 @@ use regex::{Regex, RegexSet};
 use std::sync::{Arc, Mutex};
 use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 
-use self::image::Image;
 use auth::{InitiateAuth, JwtCookieHandler, VerifyAuthArgsConsumer};
 use index::IndexLoader;
-use thumbnail::Thumbnail;
 
 fn not_found() -> impl QueryHandler {
     // TODO: This one seems to only reply to GET, but should give the same
@@ -172,15 +170,27 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 })
             },
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {
-                // TODO: Authorization. Refactor auth to reusable component.
-
                 canonicalize_id30(&m[1], |id| {
-                    Box::new(Thumbnail::new(self.db_pool.clone(), id)) as _
+                    let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = thumbnail::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let authorizer = auth::authorizer::Authorizer::new(
+                        m[1].to_string(),
+                        provider,
+                        consumer,
+                    );
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
             },
             m = r"^img/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
-                    Box::new(Image::new(self.db_pool.clone(), id)) as _
+                    let provider = image::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = image::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let authorizer = auth::authorizer::Authorizer::new(
+                        m[1].to_string(),
+                        provider,
+                        consumer,
+                    );
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
             },
             ! => Box::new(not_found()) as _

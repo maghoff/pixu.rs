@@ -71,6 +71,7 @@ where
         } else {
             let self_url = self.self_url;
 
+            // TODO Base URL for this template
             Ok(Box::new((
                 web::Status::Unauthorized,
                 vec![(
