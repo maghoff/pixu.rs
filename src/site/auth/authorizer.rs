@@ -2,6 +2,12 @@ use futures::future::FutureExt;
 use web::{Error, FutureBox, Resource};
 
 #[derive(BartDisplay)]
+#[template = "templates/layout.html"]
+struct Layout<D: std::fmt::Display> {
+    body: D,
+}
+
+#[derive(BartDisplay)]
 #[template = "templates/not-authorized.html"]
 struct NotAuthorized<'a> {
     claims: Option<super::Claims>,
@@ -78,9 +84,11 @@ where
                     web::MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                     Box::new(move || {
                         Box::new(
-                            NotAuthorized {
-                                claims: claims,
-                                self_url: &self_url,
+                            Layout {
+                                body: NotAuthorized {
+                                    claims: claims,
+                                    self_url: &self_url,
+                                },
                             }
                             .to_string(),
                         ) as web::RepresentationBox
