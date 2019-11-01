@@ -186,8 +186,14 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
             status: web::Status::Ok,
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new(Post { email: &email }.to_string()) as RepresentationBox)
-                    as _,
+                Box::new(move || {
+                    Box::new(
+                        crate::site::Layout {
+                            body: &Post { email: &email },
+                        }
+                        .to_string(),
+                    ) as RepresentationBox
+                }) as _,
             )],
             cookies: vec![cookie],
         })

@@ -68,7 +68,9 @@ impl VerifyAuth {
             status: web::Status::SeeOther(self.redirect),
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new(Get.to_string()) as RepresentationBox) as _,
+                Box::new(move || {
+                    Box::new(crate::site::Layout { body: &Get }.to_string()) as RepresentationBox
+                }) as _,
             )],
             cookies: vec![cookie],
         })

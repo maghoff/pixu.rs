@@ -61,3 +61,81 @@ h1 {
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
 }
+
+.thumbnails {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.thumbnails--item {
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+}
+
+.thumbnails--thumbnail {
+    width: 80px;
+}
+
+/*
+.photo {
+    height: 97vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.photo--img-container {
+    margin-left: auto;
+    margin-right: auto;
+
+    width: 100%;
+    height: 100%;
+    max-width: 100vh;
+
+    position: relative;
+}
+
+.photo--img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+
+    background-position: 50% 50%;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+*/
+.photo {
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.photo--img-container {
+    margin-left: auto;
+    margin-right: auto;
+
+    width: 100%;
+    height: 100%;
+
+    position: relative;
+}
+
+.photo--img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+
+    background-position: 50% 50%;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.photo--thumbnail {
+    filter: blur(1vmax);
+}

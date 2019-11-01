@@ -22,6 +22,14 @@ use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
 use auth::{InitiateAuth, JwtCookieHandler, VerifyAuthArgsConsumer};
 use index::IndexLoader;
 
+#[derive(BartDisplay)]
+#[template = "templates/layout.html"]
+struct Layout<'a> {
+    // BartDisplay is unable to parse `dyn`
+    #[allow(bare_trait_objects)]
+    body: &'a std::fmt::Display,
+}
+
 fn not_found() -> impl QueryHandler {
     // TODO: This one seems to only reply to GET, but should give the same
     // response to the other verbs

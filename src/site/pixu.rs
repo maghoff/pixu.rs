@@ -59,10 +59,12 @@ impl Pixu {
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
                     Box::new(
-                        Get {
-                            average_color: &format!("#{:06x}", pix.average_color),
-                            thumb_url: &format!("thumb/{}", pix.thumbs_id),
-                            large_url: &format!("img/{}", large_id),
+                        super::Layout {
+                            body: &Get {
+                                average_color: &format!("#{:06x}", pix.average_color),
+                                thumb_url: &format!("thumb/{}", pix.thumbs_id),
+                                large_url: &format!("img/{}", large_id),
+                            },
                         }
                         .to_string(),
                     ) as RepresentationBox

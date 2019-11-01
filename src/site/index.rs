@@ -50,9 +50,11 @@ impl Index {
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
                     Box::new(
-                        Get {
-                            claims: &self.claims,
-                            authorized_pixurs: &authorized_pixurs,
+                        super::Layout {
+                            body: &Get {
+                                claims: &self.claims,
+                                authorized_pixurs: &authorized_pixurs,
+                            },
                         }
                         .to_string(),
                     ) as RepresentationBox

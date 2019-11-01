@@ -1,36 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>pixu.rs</title>
-</head>
-<style>
-img {
-    width: 80px;
-}
-ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-li {
-    margin: 0;
-    padding: 0;
-    display: inline-block;
-}
-</style>
-<body>
-    {{#claims}}
-    <p>Login: {{.sub}}</p>
-    {{/claims}}
-    {{^claims}}
-    <p>Ikke innlogget.</p>
-    {{/claims}}
+<article>
+{{#claims}}
+<h1>Hei {{.sub}} 👋</h1>
+{{/claims}}
+{{^claims}}
+<h1>Ikke innlogget</h1>
+{{/claims}}
 
-    <p>Tilgjengelige pixer:</p>
-    <ul>
-    {{#authorized_pixurs}}
-        <li><a href="{{.0}}"><img src="thumb/{{.1}}" alt="Pixur {{.0}}"></a></li>
-    {{/authorized_pixurs}}
-    </ul>
-</body>
-</html>
+<p>Her er bildene vi har delt med deg</p>
+<ul class="thumbnails">
+{{#authorized_pixurs}}
+    <li class="thumbnails--item"><a class="thumbnails--link" href="{{.0}}"><img class="thumbnails--thumbnail" src="thumb/{{.1}}" alt="Pixur {{.0}}"></a></li>
+{{/authorized_pixurs}}
+</ul>
+</article>
