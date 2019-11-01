@@ -1,59 +1,3 @@
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-}
-
-article {
-    box-sizing: border-box;
-    margin: 0 auto;
-    padding: 8px;
-    width: 100%;
-    max-width: 600px;
-}
-
-h1 {
-    font-weight: normal;
-}
-
-input, button {
-    display: inline-block;
-
-    font-family: inherit;
-    font-size: inherit;
-
-    line-height: 2.5em;
-    margin: 0;
-    padding: 0;
-    border: 1px solid #ccc;
-    border-radius: 0;
-}
-
-input {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-right: none;
-
-    padding-left: 8px;
-
-    width: calc(100% - 130px - 16px);
-    max-width: 250px;
-}
-
-button {
-    border-left: none;
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-    border-color: #1a73e8;
-
-    background: #1a73e8;
-    color: white;
-
-    text-align: center;
-    width: 130px;
-}
-</style>
-
 <article>
 {{#claims}}
 <h1>Hei {{.sub}} 👋</h1>
@@ -65,9 +9,9 @@ button {
     <input type="hidden" name="redirect" value="{{self_url}}">
     <p>Før du får slippe til må vi bare se at vi vet hvem du er. Det gjør
         vi ved at du sender inn eposadressen din her:</p>
-    <input id="email" type="email" name="email" placeholder="epostadresse" required><button type="submit">Send inn 📨</button>
-    <p>Deretter får du en epost som åpner opp for deg 😄</p>
-    <p>Ta kontakt med Magnus hvis det er noe som ikke fungerer som det skal.</p>
+    <input class="input-row input-row--input input-row__leftmost" id="email" type="email" name="email" placeholder="epostadresse" required><button class="input-row input-row--default-button input-row__rightmost" type="submit">Send inn 📨</button>
+    <p>Deretter får du en epost som åpner opp for deg 😊</p>
+    <p>Snakk med Magnus hvis det er noe som ikke fungerer som det skal.</p>
 </form>
 {{/claims}}
 </article>

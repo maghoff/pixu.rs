@@ -65,6 +65,16 @@ fn moved_permanently(redirect: impl Into<String>) -> impl QueryHandler {
     )
 }
 
+fn static_asset(media_type: MediaType, body: String) -> impl QueryHandler {
+    (
+        web::Status::Ok,
+        vec![(
+            media_type,
+            Box::new(move || Box::new(body) as RepresentationBox) as _,
+        )],
+    )
+}
+
 pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
     key: Vec<u8>,
     base_url: String,
@@ -145,7 +155,16 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
-            _ = r"^$" => Box::new(JwtCookieHandler::new(self.key.clone(), IndexLoader { db_pool: self.db_pool.clone() })) as _,
+            _ = r"^$" => Box::new(
+                JwtCookieHandler::new(
+                    self.key.clone(),
+                    IndexLoader { db_pool: self.db_pool.clone() }
+                )
+            ) as _,
+            _ = r"^style\.css$" => Box::new(static_asset(
+                MediaType::new("text", "css", vec!["charset=utf-8".to_string()]),
+                include_str!("style.css").to_string(),
+            )) as _,
             _ = r"^initiate_auth$" => Box::new(InitiateAuth {
                 key: self.key.clone(),
                 base_url: self.base_url.clone(),
