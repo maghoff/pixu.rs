@@ -94,11 +94,25 @@ async fn maybe_send_email<'a>(
     let args = serde_urlencoded::to_string(ValidationArgs { claims, redirect }).unwrap();
     let verification_link = format!("{}verify_auth?{}", base_url, args);
 
+    #[derive(BartDisplay)]
+    #[template = "templates/auth-email.html"]
+    struct HtmlMail<'a> {
+        title: &'a str,
+        url: &'a str,
+    }
+
     let email = EmailBuilder::new()
         .to(email)
         .from(sender)
-        .subject("Innlogging")
-        .text(format!("Følg denne linken: {}", verification_link))
+        .subject("Velkommen til magnusogdisa.no 📸")
+        .alternative(
+            HtmlMail {
+                title: "Velkommen til magnusogdisa.no 📸",
+                url: &verification_link,
+            }
+            .to_string(),
+            format!("Velkommen 😊\n\nFor å komme til på magnusogdisa.no trenger du bare å følge denne linken:\n\n{}", verification_link),
+        )
         .build()
         .unwrap();
 
