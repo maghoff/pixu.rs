@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate bart_derive;
+
 use structopt::StructOpt;
 
 use lettre::smtp::authentication::{Credentials, Mechanism};
@@ -51,11 +54,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connection_reuse(ConnectionReuseParameters::ReuseUnlimited)
         .transport();
 
+    #[derive(BartDisplay)]
+    #[template = "templates/auth-email.html"]
+    struct HtmlMail<'a> {
+        title: &'a str,
+        url: &'a str,
+    }
+
+    let url = "https://magnusogdisa.no/foto/";
+
     let email = EmailBuilder::new()
         .to((args.recipient_email, args.recipient_name))
         .from((args.sender_email, args.sender_name))
-        .subject("Hi, Hello world")
-        .text("Hello world.")
+        .subject("Velkommen til magnusogdisa.no 📸")
+        .alternative(
+            HtmlMail {
+                title: "Velkommen til magnusogdisa.no 📸",
+                url: &url,
+            }
+            .to_string(),
+            format!("Velkommen 😊\n\nFor å komme til på magnusogdisa.no trenger du bare å følge denne linken:\n\n{}", url),
+        )
         .build()?;
 
     mailer.send(email.into())?;
