@@ -38,6 +38,12 @@ table! {
     }
 }
 
+table! {
+    uploaders (sub) {
+        sub -> Text,
+    }
+}
+
 joinable!(images_meta -> images (id));
 joinable!(images_meta -> pixurs (pixurs_id));
 joinable!(pixur_authorizations -> pixurs (pixur_id));
@@ -49,4 +55,5 @@ allow_tables_to_appear_in_same_query!(
     pixur_authorizations,
     pixurs,
     thumbs,
+    uploaders,
 );
