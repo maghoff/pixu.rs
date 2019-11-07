@@ -3,6 +3,7 @@ mod handling_error;
 mod id30;
 mod image;
 mod index;
+mod ingest;
 mod pixu;
 mod query_args;
 mod thumbnail;
@@ -163,6 +164,21 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         regex_routes! { path,
+            m = r"^([a-zA-Z0-9]{6})$" => {
+                // Keep this route on top so it matches first, to notice
+                // if introducing other routes that would conflict
+
+                canonicalize_id30(&m[1], |id| {
+                    let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = pixu::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let authorizer = auth::authorizer::Authorizer::new(
+                        path.to_string(),
+                        provider,
+                        consumer,
+                    );
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                })
+            },
             _ = r"^$" => Box::new(
                 JwtCookieHandler::new(
                     self.key.clone(),
@@ -184,36 +200,34 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
                 key: self.key.clone(),
             })) as _,
-            m = r"^([a-zA-Z0-9]{6})$" => {
+            m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
-                    let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = pixu::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = thumbnail::AuthorizationConsumer { db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
-                        m[1].to_string(),
+                        path.to_string(),
                         provider,
                         consumer,
                     );
                     Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
             },
-            m = r"^thumb/([a-zA-Z0-9]{6})$" => {
-                canonicalize_id30(&m[1], |id| {
-                    let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = thumbnail::AuthorizationConsumer { db_pool: self.db_pool.clone() };
-                    let authorizer = auth::authorizer::Authorizer::new(
-                        m[1].to_string(),
-                        provider,
-                        consumer,
-                    );
-                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
-                })
+            _ = r"^img/$" => {
+                let provider = ingest::AuthorizationProvider { db_pool: self.db_pool.clone() };
+                let consumer = ingest::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                let authorizer = auth::authorizer::Authorizer::new(
+                    path.to_string(),
+                    provider,
+                    consumer,
+                );
+                Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
             },
             m = r"^img/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
                     let provider = image::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
                     let consumer = image::AuthorizationConsumer { db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
-                        m[1].to_string(),
+                        path.to_string(),
                         provider,
                         consumer,
                     );

@@ -20,15 +20,31 @@ pub struct Index {
 #[template = "templates/index.html"]
 struct Get<'a> {
     claims: &'a Option<auth::Claims>,
+    is_uploader: bool,
     authorized_pixurs: &'a [(Id30, Id30)],
 }
 
 impl Index {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
+        use diesel::dsl::*;
+
         let db_connection = self
             .db_pool
             .get()
             .map_err(|_| HandlingError::InternalServerError)?;
+
+        let is_uploader = self
+            .claims
+            .as_ref()
+            .map(|claims| {
+                select(exists(
+                    uploaders::table.filter(uploaders::sub.eq(&claims.sub)),
+                ))
+                .first::<bool>(&*db_connection)
+            })
+            .transpose()
+            .map_err(|_| HandlingError::InternalServerError)?
+            .unwrap_or(false);
 
         let authorized_pixurs = self
             .claims
@@ -53,6 +69,7 @@ impl Index {
                         super::Layout {
                             body: &Get {
                                 claims: &self.claims,
+                                is_uploader,
                                 authorized_pixurs: &authorized_pixurs,
                             },
                         }

@@ -6,6 +6,14 @@
 <h1>Ikke innlogget</h1>
 {{/claims}}
 
+{{#is_uploader?}}
+<form action="img/" method=post enctype="multipart/form-data">
+<label for="image">Last opp et bilde: </label><input id="image" name="image" required type="file" accept="image/jpeg">
+<button class="input-row input-row--default-button input-row__leftmost input-row__rightmost" type="submit">Last opp</button>
+</form>
+{{/is_uploader}}
+
+{{#authorized_pixurs?}}
 <p>Her er bildene vi har delt med deg</p>
 <ul class="thumbnails">
 {{#authorized_pixurs}}
@@ -13,3 +21,4 @@
 {{/authorized_pixurs}}
 </ul>
 </article>
+{{/authorized_pixurs}}
