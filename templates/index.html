@@ -7,10 +7,138 @@
 {{/claims}}
 
 {{#is_uploader?}}
-<form action="img/" method=post enctype="multipart/form-data">
-<label for="image">Last opp et bilde: </label><input id="image" name="image" required type="file" accept="image/jpeg">
-<button class="input-row input-row--default-button input-row__leftmost input-row__rightmost" type="submit">Last opp</button>
+<style>
+.uploader-form--button {
+    display: inline-block;
+
+    font-family: inherit;
+    font-size: inherit;
+
+    line-height: 2.5em;
+    margin: 5px;
+    padding: 0 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: none;
+}
+
+.uploader-form--button__default {
+    background: #1a73e8;
+    border-color: #1a73e8;
+    color: white;
+}
+
+.uploader-form--file-input {
+    opacity: 0;
+    display: inline-block;
+    width: 0;
+    overflow: hidden;
+}
+
+.uploader-form--phase-2 {
+    display: none;
+}
+
+.uploader-form--preview {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 6px;
+}
+
+.uploader-form--controls {
+    text-align: center;
+}
+
+.uploader-form--link {
+    /* Reset button styling: */
+    font-family: inherit;
+    font-size: inherit;
+    border: none;
+    background: none;
+    margin: 0;
+    padding: 0;
+    display: inline;
+
+    /* Style like link: */
+    text-decoration: underline;
+    color: #1a73e8;
+    cursor: pointer;
+}
+</style>
+
+<form>
+<input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
+<div class="uploader-form--phase-1">
+<label class="uploader-form--link" for="image">Last opp et bilde</label>
+</div>
+<div class="uploader-form--phase-2">
+<img class="uploader-form--preview" src="" alt="preview">
+<div class="uploader-form--controls">
+    <p>Vil du laste opp dette bildet?</p>
+    <p>
+        <label class="uploader-form--button uploader-form--button__negative" for="image">❌ Nei, et annet</label>
+        <button class="uploader-form--button uploader-form--button__default" type="submit">✔ Ja, dette</button>
+    </p>
+    <p>
+        <button class="uploader-form--link" type="reset">Nei, glem hele opplastingen</button>
+    </p>
+</div>
+</div>
 </form>
+
+<script>
+// The uploader will work with JS only. Too much mucking about to parse
+// multipart messages.
+
+var form = document.querySelector('form');
+var fileInput = document.querySelector('input[type="file"]');
+var preview = document.querySelector('img');
+
+var phase = 1;
+
+// fetch('img/', {
+//     method: 'POST',
+//     body: input.files[0]
+// });
+
+function state(s) {
+    var targetPhase = 1;
+    if (s.file) {
+        targetPhase = 2;
+    }
+
+    if (phase != targetPhase) {
+        phase = targetPhase;
+
+        document.querySelector('.uploader-form--phase-1').style.display = (phase == 1 ? 'block' : 'none');
+        document.querySelector('.uploader-form--phase-2').style.display = (phase == 2 ? 'block' : 'none');
+    }
+
+    if (s.file) {
+        preview.src = window.URL.createObjectURL(s.file);
+    }
+}
+
+fileInput.addEventListener('change', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    state({
+        file: fileInput.files[0],
+    });
+});
+
+form.addEventListener('reset', function (ev) {
+    state({});
+});
+
+state({
+    file: fileInput.files[0]
+});
+
+</script>
 {{/is_uploader}}
 
 {{#authorized_pixurs?}}
