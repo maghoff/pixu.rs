@@ -21,9 +21,9 @@ impl Ingest {
         body: hyper::Body,
     ) -> Result<Response, HandlingError> {
         // TODO Real parsing of media type syntax
-        if !content_type.starts_with("multipart/form-data") {
+        if !content_type.starts_with("image/jpeg") {
             return Err(HandlingError::BadRequest(
-                "Unacceptable Content-Type, must be multipart/form-data",
+                "Unacceptable Content-Type, must be image/jpeg",
             ));
         }
 
@@ -33,14 +33,12 @@ impl Ingest {
             .await
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        // TODO Parse multipart/form-data
-
         // TODO implement. So far just a simple echo server
 
         Ok(Response {
             status: web::Status::Ok,
             representations: vec![(
-                web::MediaType::new("multipart", "form-data", vec![]),
+                web::MediaType::new("image", "jpeg", vec![]),
                 Box::new(move || Box::new(body) as web::RepresentationBox) as _,
             )],
             cookies: vec![],
