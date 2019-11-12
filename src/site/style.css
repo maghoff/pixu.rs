@@ -79,6 +79,8 @@ h1 {
 
 .thumbnails--thumbnail {
     width: 80px;
+    vertical-align: middle;
+    border-radius: 6px;
 }
 
 /* Uploading */
