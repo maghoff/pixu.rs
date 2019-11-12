@@ -55,8 +55,8 @@ function setState(newState) {
             (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
     }
 
-    if (newState.file) {
-        preview.src = window.URL.createObjectURL(newState.file);
+    if (newState.file != state.file) {
+        preview.src = newState.file ? window.URL.createObjectURL(newState.file) : "";
     }
 
     state = newState;
@@ -69,17 +69,10 @@ function updateState(delta) {
 
 var actions = {
     selectFile: function (file) {
-        if (file) {
-            updateState({
-                phase: PHASE_PREVIEW,
-                file,
-            });
-        } else {
-            updateState({
-                phase: PHASE_INITIAL,
-                file: null,
-            });
-        }
+        updateState({
+            phase: file ? PHASE_PREVIEW : PHASE_INITIAL,
+            file: file || null,
+        });
     }
 };
 
