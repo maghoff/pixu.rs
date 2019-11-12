@@ -9,11 +9,11 @@
 {{#is_uploader?}}
 <form id="uploader-form">
 <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
+<img class="uploader-form--preview" src="" alt="preview">
 <div class="uploader-form--phase-1">
 <label class="uploader-form--link" for="image">Last opp et bilde</label>
 </div>
 <div class="uploader-form--phase-2">
-<img class="uploader-form--preview" src="" alt="preview">
 <div class="uploader-form--controls">
     <p>Vil du laste opp dette bildet?</p>
     <p>
@@ -37,22 +37,34 @@ var preview = form.querySelector('.uploader-form--preview');
 
 var PHASE_INITIAL = 0;
 var PHASE_PREVIEW = 1;
+var PHASE_DETAILS = 2;
+
+var UPLOAD_PHASE_INACTIVE = 0;
+var UPLOAD_PHASE_IN_PROGRESS = 1;
+var UPLOAD_PHASE_FINISHED = 2;
+
+var UPLOAD_STATE_FAILURE = true;
+var UPLOAD_STATE_SUCCESS = true;
 
 var state = {
     phase: PHASE_INITIAL,
+    uploadPhase: UPLOAD_PHASE_INACTIVE,
 };
 
-// fetch('img/', {
-//     method: 'POST',
-//     body: input.files[0]
-// });
-
 function setState(newState) {
+    console.log(newState);
+
     if (newState.phase != state.phase) {
         document.querySelector('.uploader-form--phase-1').style.display =
             (newState.phase == PHASE_INITIAL ? 'block' : 'none');
         document.querySelector('.uploader-form--phase-2').style.display =
             (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
+
+        var oldShowPreview = state.phase >= PHASE_PREVIEW;
+        var newShowPreview = newState.phase >= PHASE_PREVIEW;
+        if (newShowPreview != oldShowPreview) {
+            preview.style.display = newShowPreview ? "block" : "none";
+        }
     }
 
     if (newState.file != state.file) {
@@ -73,7 +85,30 @@ var actions = {
             phase: file ? PHASE_PREVIEW : PHASE_INITIAL,
             file: file || null,
         });
-    }
+    },
+    upload: function (file) {
+        fetch('img/', {
+            method: 'POST',
+            body: file,
+        })
+        .then(function (res) {
+            updateState({
+                uploadPhase: UPLOAD_PHASE_FINISHED,
+                uploadResult: UPLOAD_STATE_SUCCESS,
+            });
+        })
+        .catch(function (err) {
+            updateState({
+                uploadPhase: UPLOAD_PHASE_FINISHED,
+                uploadResult: UPLOAD_STATE_FAILURE,
+            });
+        });
+
+        updateState({
+            phase: PHASE_DETAILS,
+            uploadPhase: UPLOAD_PHASE_IN_PROGRESS,
+        });
+    },
 };
 
 fileInput.addEventListener('change', function (ev) {
@@ -84,6 +119,12 @@ fileInput.addEventListener('change', function (ev) {
 
 form.addEventListener('reset', function (ev) {
     actions.selectFile(null);
+});
+
+form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    actions.upload(state.file);
 });
 
 actions.selectFile(fileInput.files[0]);
