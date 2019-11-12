@@ -7,68 +7,6 @@
 {{/claims}}
 
 {{#is_uploader?}}
-<style>
-.uploader-form--button {
-    display: inline-block;
-
-    font-family: inherit;
-    font-size: inherit;
-
-    line-height: 2.5em;
-    margin: 5px;
-    padding: 0 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background: none;
-}
-
-.uploader-form--button__default {
-    background: #1a73e8;
-    border-color: #1a73e8;
-    color: white;
-}
-
-.uploader-form--file-input {
-    opacity: 0;
-    display: inline-block;
-    width: 0;
-    overflow: hidden;
-}
-
-.uploader-form--phase-2 {
-    display: none;
-}
-
-.uploader-form--preview {
-    display: block;
-    width: 100%;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    border-radius: 6px;
-}
-
-.uploader-form--controls {
-    text-align: center;
-}
-
-.uploader-form--link {
-    /* Reset button styling: */
-    font-family: inherit;
-    font-size: inherit;
-    border: none;
-    background: none;
-    margin: 0;
-    padding: 0;
-    display: inline;
-
-    /* Style like link: */
-    text-decoration: underline;
-    color: #1a73e8;
-    cursor: pointer;
-}
-</style>
-
 <form>
 <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
 <div class="uploader-form--phase-1">
