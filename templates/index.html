@@ -7,7 +7,7 @@
 {{/claims}}
 
 {{#is_uploader?}}
-<form>
+<form id="uploader-form">
 <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
 <div class="uploader-form--phase-1">
 <label class="uploader-form--link" for="image">Last opp et bilde</label>
@@ -31,50 +31,69 @@
 // The uploader will work with JS only. Too much mucking about to parse
 // multipart messages.
 
-var form = document.querySelector('form');
-var fileInput = document.querySelector('input[type="file"]');
-var preview = document.querySelector('img');
+var form = document.getElementById('uploader-form');
+var fileInput = form.querySelector('input[type="file"]');
+var preview = form.querySelector('.uploader-form--preview');
 
-var phase = 1;
+var PHASE_INITIAL = 0;
+var PHASE_PREVIEW = 1;
+
+var state = {
+    phase: PHASE_INITIAL,
+};
 
 // fetch('img/', {
 //     method: 'POST',
 //     body: input.files[0]
 // });
 
-function state(s) {
-    var targetPhase = 1;
-    if (s.file) {
-        targetPhase = 2;
+function setState(newState) {
+    if (newState.phase != state.phase) {
+        document.querySelector('.uploader-form--phase-1').style.display =
+            (newState.phase == PHASE_INITIAL ? 'block' : 'none');
+        document.querySelector('.uploader-form--phase-2').style.display =
+            (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
     }
 
-    if (phase != targetPhase) {
-        phase = targetPhase;
-
-        document.querySelector('.uploader-form--phase-1').style.display = (phase == 1 ? 'block' : 'none');
-        document.querySelector('.uploader-form--phase-2').style.display = (phase == 2 ? 'block' : 'none');
+    if (newState.file) {
+        preview.src = window.URL.createObjectURL(newState.file);
     }
 
-    if (s.file) {
-        preview.src = window.URL.createObjectURL(s.file);
-    }
+    state = newState;
 }
+
+function updateState(delta) {
+    var newState = { ...state, ...delta };
+    setState(newState);
+}
+
+var actions = {
+    selectFile: function (file) {
+        if (file) {
+            updateState({
+                phase: PHASE_PREVIEW,
+                file,
+            });
+        } else {
+            updateState({
+                phase: PHASE_INITIAL,
+                file: null,
+            });
+        }
+    }
+};
 
 fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    state({
-        file: fileInput.files[0],
-    });
+    actions.selectFile(fileInput.files[0]);
 });
 
 form.addEventListener('reset', function (ev) {
-    state({});
+    actions.selectFile(null);
 });
 
-state({
-    file: fileInput.files[0]
-});
+actions.selectFile(fileInput.files[0]);
 
 </script>
 {{/is_uploader}}
