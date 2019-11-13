@@ -10,10 +10,10 @@
 <form id="uploader-form">
 <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
 <img class="uploader-form--preview" src="" alt="preview">
-<div class="uploader-form--phase-1">
+<div class="uploader-form--phase-initial">
 <label class="uploader-form--link" for="image">Last opp et bilde</label>
 </div>
-<div class="uploader-form--phase-2">
+<div class="uploader-form--phase-preview">
 <div class="uploader-form--controls">
     <p>Vil du laste opp dette bildet?</p>
     <p>
@@ -24,6 +24,11 @@
         <button class="uploader-form--link" type="reset">Nei, glem hele opplastingen</button>
     </p>
 </div>
+</div>
+<div class="uploader-form--upload-error">
+    <p>💁 Noe gikk galt med opplastingen. <span class="uploader-form--error-message"></span></p>
+    <p><button class="uploader-form--button uploader-form--button__default" type="submit">Prøv igjen</button></p>
+    <p><button class="uploader-form--link" type="reset">Nei, glem hele opplastingen</button></p>
 </div>
 </form>
 
@@ -43,21 +48,25 @@ var UPLOAD_PHASE_INACTIVE = 0;
 var UPLOAD_PHASE_IN_PROGRESS = 1;
 var UPLOAD_PHASE_FINISHED = 2;
 
-var UPLOAD_STATE_FAILURE = true;
+var UPLOAD_STATE_FAILURE = false;
 var UPLOAD_STATE_SUCCESS = true;
 
-var state = {
+var UPLOAD_ERROR_TRY_AGAIN = "Prøv igjen 🤷";
+var UPLOAD_ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
+
+var initialState = {
     phase: PHASE_INITIAL,
     uploadPhase: UPLOAD_PHASE_INACTIVE,
 };
+var state = initialState;
 
 function setState(newState) {
     console.log(newState);
 
     if (newState.phase != state.phase) {
-        document.querySelector('.uploader-form--phase-1').style.display =
+        document.querySelector('.uploader-form--phase-initial').style.display =
             (newState.phase == PHASE_INITIAL ? 'block' : 'none');
-        document.querySelector('.uploader-form--phase-2').style.display =
+        document.querySelector('.uploader-form--phase-preview').style.display =
             (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
 
         var oldShowPreview = state.phase >= PHASE_PREVIEW;
@@ -69,6 +78,16 @@ function setState(newState) {
 
     if (newState.file != state.file) {
         preview.src = newState.file ? window.URL.createObjectURL(newState.file) : "";
+    }
+
+    if (newState.uploadError != state.uploadError) {
+        if (newState.uploadError) {
+            document.querySelector('.uploader-form--error-message').textContent =
+                newState.uploadError.hint;
+        }
+
+        document.querySelector('.uploader-form--upload-error').style.display =
+            newState.uploadError ? 'block' : 'none';
     }
 
     state = newState;
@@ -86,29 +105,67 @@ var actions = {
             file: file || null,
         });
     },
+    reset: function () {
+        setState(initialState);
+    },
     upload: function (file) {
         fetch('img/', {
             method: 'POST',
             body: file,
+            credentials: 'same-origin',
+            redirect: 'follow',
+        })
+        .catch(function (err) {
+            // Low level error situation, such as network error
+            throw {
+                err: err,
+                hint: UPLOAD_ERROR_CHECK_CONNECTIVITY,
+            };
         })
         .then(function (res) {
-            updateState({
-                uploadPhase: UPLOAD_PHASE_FINISHED,
-                uploadResult: UPLOAD_STATE_SUCCESS,
-            });
+            try {
+                if (!res.ok) {
+                    throw "Unexpected status code: " + res.status + " " + res.statusText;
+                }
+
+                var location = res.headers.get('location');
+                if (!location) {
+                    throw "Missing Location header in server response";
+                }
+
+                actions.uploadFinished(location);
+            }
+            catch (err) {
+                // Unexpected error
+                throw {
+                    err: err,
+                    hint: UPLOAD_ERROR_TRY_AGAIN,
+                };
+            }
         })
         .catch(function (err) {
             updateState({
                 uploadPhase: UPLOAD_PHASE_FINISHED,
                 uploadResult: UPLOAD_STATE_FAILURE,
+                uploadError: err,
             });
         });
 
         updateState({
             phase: PHASE_DETAILS,
             uploadPhase: UPLOAD_PHASE_IN_PROGRESS,
+            uploadResult: null,
+            uploadLocation: null,
+            uploadError: null,
         });
     },
+    uploadFinished: function (location) {
+        updateState({
+            uploadPhase: UPLOAD_PHASE_FINISHED,
+            uploadResult: UPLOAD_STATE_SUCCESS,
+            uploadLocation: location,
+        });
+    }
 };
 
 fileInput.addEventListener('change', function (ev) {
@@ -118,7 +175,7 @@ fileInput.addEventListener('change', function (ev) {
 });
 
 form.addEventListener('reset', function (ev) {
-    actions.selectFile(null);
+    actions.reset();
 });
 
 form.addEventListener('submit', function (ev) {

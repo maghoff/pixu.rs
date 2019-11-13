@@ -112,12 +112,12 @@ h1 {
     overflow: hidden;
 }
 
-.uploader-form--phase-2 {
+.uploader-form--phase-preview {
     display: none;
 }
 
 .uploader-form--preview {
-    display: none; /* Must be updated by script */
+    display: none;
 
     width: 100%;
     max-width: 400px;
@@ -144,6 +144,12 @@ h1 {
     text-decoration: underline;
     color: #1a73e8;
     cursor: pointer;
+}
+
+.uploader-form--upload-error {
+    display: none;
+
+    text-align: center;
 }
 
 /* Photos */
