@@ -1,9 +1,9 @@
 // The uploader will work with JS only. Too much mucking about to parse
 // multipart messages.
 
+var preview = document.querySelector('.uploader-form--preview');
 var form = document.getElementById('uploader-form');
 var fileInput = form.querySelector('input[type="file"]');
-var preview = form.querySelector('.uploader-form--preview');
 
 var PHASE_INITIAL = 0;
 var PHASE_PREVIEW = 1;
@@ -33,6 +33,8 @@ function setState(newState) {
             (newState.phase == PHASE_INITIAL ? 'block' : 'none');
         document.querySelector('.uploader-form--phase-preview').style.display =
             (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
+        document.querySelector('.uploader-form--phase-details').style.display =
+            (newState.phase == PHASE_DETAILS ? 'block' : 'none');
 
         var oldShowPreview = state.phase >= PHASE_PREVIEW;
         var newShowPreview = newState.phase >= PHASE_PREVIEW;
@@ -53,6 +55,15 @@ function setState(newState) {
 
         document.querySelector('.uploader-form--upload-error').style.display =
             newState.uploadError ? 'block' : 'none';
+    }
+
+    if (newState.uploadResult !== state.uploadResult) {
+        document.querySelector('.uploader-form--status').textContent =
+            newState.uploadResult == UPLOAD_STATE_SUCCESS ?
+                "Er alt klart da?" : "Nå trenger vi bare å vente på bildeopplastingen…";
+
+        document.querySelector('.uploader-form--details button[type="submit"]').disabled =
+            newState.uploadResult != UPLOAD_STATE_SUCCESS;
     }
 
     state = newState;

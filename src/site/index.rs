@@ -16,11 +16,15 @@ pub struct Index {
     claims: Option<auth::Claims>,
 }
 
+struct UploaderExtra {
+    recipients: Vec<String>,
+}
+
 #[derive(BartDisplay)]
 #[template = "templates/index.html"]
 struct Get<'a> {
     claims: &'a Option<auth::Claims>,
-    is_uploader: bool,
+    is_uploader: Option<UploaderExtra>,
     authorized_pixurs: &'a [(Id30, Id30)],
 }
 
@@ -45,6 +49,20 @@ impl Index {
             .transpose()
             .map_err(|_| HandlingError::InternalServerError)?
             .unwrap_or(false);
+
+        let is_uploader = match is_uploader {
+            false => None,
+            true => {
+                let recipients = pixur_authorizations::table
+                    .select(pixur_authorizations::sub)
+                    .order(pixur_authorizations::sub.asc())
+                    .distinct()
+                    .load::<String>(&*db_connection)
+                    .map_err(|_| HandlingError::InternalServerError)?;
+
+                Some(UploaderExtra { recipients })
+            }
+        };
 
         let authorized_pixurs = self
             .claims

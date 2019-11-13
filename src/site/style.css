@@ -99,6 +99,10 @@ h1 {
     background: none;
 }
 
+.uploader-form--button:disabled {
+    opacity: 0.5;
+}
+
 .uploader-form--button__default {
     background: #1a73e8;
     border-color: #1a73e8;
@@ -114,6 +118,19 @@ h1 {
 
 .uploader-form--phase-preview {
     display: none;
+}
+
+.uploader-form--phase-details {
+    display: none;
+}
+
+.uploader-form--recipients {
+    width: 100%;
+    display: block;
+
+    border: none;
+    font-family: inherit;
+    font-size: inherit;
 }
 
 .uploader-form--preview {
