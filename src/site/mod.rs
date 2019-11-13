@@ -189,6 +189,10 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 MediaType::new("text", "css", vec!["charset=utf-8".to_string()]),
                 include_str!("style.css").to_string(),
             )) as _,
+            _ = r"^ingest\.js$" => Box::new(static_asset(
+                MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
+                include_str!("ingest.js").to_string(),
+            )) as _,
             _ = r"^initiate_auth$" => Box::new(InitiateAuth {
                 key: self.key.clone(),
                 base_url: self.base_url.clone(),
