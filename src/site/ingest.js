@@ -2,8 +2,9 @@
 // multipart messages.
 
 var preview = document.querySelector('.uploader-form--preview');
-var form = document.getElementById('uploader-form');
-var fileInput = form.querySelector('input[type="file"]');
+var uploaderForm = document.getElementById('uploader-form');
+var fileInput = uploaderForm.querySelector('input[type="file"]');
+var detailsForm = document.getElementById('uploader-form--details');
 
 var PHASE_INITIAL = 0;
 var PHASE_PREVIEW = 1;
@@ -16,12 +17,18 @@ var UPLOAD_PHASE_FINISHED = 2;
 var UPLOAD_STATE_FAILURE = false;
 var UPLOAD_STATE_SUCCESS = true;
 
-var UPLOAD_ERROR_TRY_AGAIN = "Prøv igjen 🤷";
-var UPLOAD_ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
+var ERROR_TRY_AGAIN = "Prøv igjen 🤷";
+var ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
+
+var SAVE_DETAILS_INITIAL = 0;
+var SAVE_DETAILS_IN_PROGRESS = 1;
+var SAVE_DETAILS_SUCCEEDED = 2;
+var SAVE_DETAILS_FAILED = 3;
 
 var initialState = {
     phase: PHASE_INITIAL,
     uploadPhase: UPLOAD_PHASE_INACTIVE,
+    saveDetailsState: SAVE_DETAILS_INITIAL,
 };
 var state = initialState;
 
@@ -58,12 +65,30 @@ function setState(newState) {
     }
 
     if (newState.uploadResult !== state.uploadResult) {
-        document.querySelector('.uploader-form--status').textContent =
-            newState.uploadResult == UPLOAD_STATE_SUCCESS ?
-                "Er alt klart da?" : "Nå trenger vi bare å vente på bildeopplastingen…";
+        document.querySelector('.uploader-form--details-submission').style.display =
+            newState.uploadResult == UPLOAD_STATE_SUCCESS ? "block" : "none";
+    }
 
+    if (newState.saveDetailsState != state.saveDetailsState) {
         document.querySelector('.uploader-form--details button[type="submit"]').disabled =
-            newState.uploadResult != UPLOAD_STATE_SUCCESS;
+            newState.saveDetailsState == SAVE_DETAILS_IN_PROGRESS ? "disabled" : "";
+
+        document.querySelector('.uploader-form--details button[type="submit"]').style.display =
+            newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED ? "none" : "block";
+
+        if (newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED) {
+            document.querySelector('.uploader-form--status').innerHTML =
+                'Bildet er nå delt <a href="' + newState.uploadLocation + '">her</a> 🙌';
+        } else {
+            var msg;
+            switch (newState.saveDetailsState) {
+                case SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
+                case SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
+                case SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + newState.saveDetailsError.hint; break;
+            }
+
+            document.querySelector('.uploader-form--status').textContent = msg;
+        }
     }
 
     state = newState;
@@ -72,6 +97,19 @@ function setState(newState) {
 function updateState(delta) {
     var newState = { ...state, ...delta };
     setState(newState);
+}
+
+function gatherDetails() {
+    var details = {
+        recipients: []
+    };
+
+    var s = document.querySelector(".uploader-form--recipients").selectedOptions;
+    for (var i = 0; i < s.length; ++i) {
+        details.recipients.push(s[i].value);
+    }
+
+    return details;
 }
 
 var actions = {
@@ -95,7 +133,7 @@ var actions = {
                 // Low level error situation, such as network error
                 throw {
                     err: err,
-                    hint: UPLOAD_ERROR_CHECK_CONNECTIVITY,
+                    hint: ERROR_CHECK_CONNECTIVITY,
                 };
             })
             .then(function (res) {
@@ -115,7 +153,7 @@ var actions = {
                     // Unexpected error
                     throw {
                         err: err,
-                        hint: UPLOAD_ERROR_TRY_AGAIN,
+                        hint: ERROR_TRY_AGAIN,
                     };
                 }
             })
@@ -141,7 +179,51 @@ var actions = {
             uploadResult: UPLOAD_STATE_SUCCESS,
             uploadLocation: location,
         });
-    }
+    },
+    submitDetails: function () {
+        let details = gatherDetails();
+
+        fetch(state.uploadLocation, {
+            method: 'POST',
+            json: details,
+            credentials: 'same-origin',
+            redirect: 'follow',
+        })
+            .catch(function (err) {
+                // Low level error situation, such as network error
+                throw {
+                    err: err,
+                    hint: ERROR_CHECK_CONNECTIVITY,
+                };
+            })
+            .then(function (res) {
+                try {
+                    if (!res.ok) {
+                        throw "Unexpected status code: " + res.status + " " + res.statusText;
+                    }
+                    updateState({
+                        saveDetailsState: SAVE_DETAILS_SUCCEEDED,
+                    });
+                }
+                catch (err) {
+                    // Unexpected error
+                    throw {
+                        err: err,
+                        hint: ERROR_TRY_AGAIN,
+                    };
+                }
+            })
+            .catch(function (err) {
+                updateState({
+                    saveDetailsState: SAVE_DETAILS_FAILED,
+                    saveDetailsError: err,
+                });
+            });
+
+        updateState({
+            saveDetailsState: SAVE_DETAILS_IN_PROGRESS,
+        });
+    },
 };
 
 fileInput.addEventListener('change', function (ev) {
@@ -150,14 +232,22 @@ fileInput.addEventListener('change', function (ev) {
     actions.selectFile(fileInput.files[0]);
 });
 
-form.addEventListener('reset', function (ev) {
+uploaderForm.addEventListener('reset', function (ev) {
     actions.reset();
 });
 
-form.addEventListener('submit', function (ev) {
+uploaderForm.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.upload(state.file);
+});
+
+// TODO: Hook up to "+ Legg til en annen" button
+
+detailsForm.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    actions.submitDetails();
 });
 
 actions.selectFile(fileInput.files[0]);
