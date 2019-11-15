@@ -242,7 +242,19 @@ uploaderForm.addEventListener('submit', function (ev) {
     actions.upload(state.file);
 });
 
-// TODO: Hook up to "+ Legg til en annen" button
+document.getElementById("uploader-form--add-recipient").addEventListener('click', function (ev) {
+    var email = prompt("Epostadresse");
+    if (email) {
+        var opt = document.createElement("option");
+        opt.setAttribute("value", email);
+        opt.textContent = email;
+        opt.setAttribute("selected", "selected");
+
+        var sel = document.querySelector(".uploader-form--recipients");
+        sel.appendChild(opt);
+        sel.size = sel.options.length;
+    }
+});
 
 detailsForm.addEventListener('submit', function (ev) {
     ev.preventDefault();
