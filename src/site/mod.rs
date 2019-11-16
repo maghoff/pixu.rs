@@ -4,6 +4,7 @@ mod image;
 mod index;
 mod ingest;
 mod pixu;
+mod pixu_meta;
 mod query_args;
 mod thumbnail;
 
@@ -177,6 +178,24 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     );
                     Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
+            },
+            m = r"^([a-zA-Z0-9]{6})/meta$" => {
+                // Don't canonicalize URL, or else the trailing /meta would disappear
+                // Besides: Users won't type in this URL
+
+                match m[1].parse() {
+                    Ok(id) => {
+                        let provider = pixu_meta::AuthorizationProvider { db_pool: self.db_pool.clone() };
+                        let consumer = pixu_meta::AuthorizationConsumer { db_pool: self.db_pool.clone(), id };
+                        let authorizer = auth::authorizer::Authorizer::new(
+                            path.to_string(),
+                            provider,
+                            consumer,
+                        );
+                        Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                    },
+                    Err(_) => Box::new(not_found()) as _,
+                }
             },
             _ = r"^$" => Box::new(
                 JwtCookieHandler::new(

@@ -183,9 +183,12 @@ var actions = {
     submitDetails: function () {
         let details = gatherDetails();
 
-        fetch(state.uploadLocation, {
+        fetch(state.uploadLocation + "/meta", {
             method: 'POST',
-            json: details,
+            body: JSON.stringify(details),
+            headers: {
+                'Content-Type': 'application/json'
+            },
             credentials: 'same-origin',
             redirect: 'follow',
         })
