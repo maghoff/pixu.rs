@@ -8,8 +8,8 @@ use web::{FutureBox, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
-use super::id30::Id30;
 use crate::db::schema::*;
+use crate::id30::Id30;
 
 pub struct Image {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,

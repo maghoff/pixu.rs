@@ -18,7 +18,7 @@ use structopt::StructOpt;
 mod db;
 use db::schema::*;
 
-#[path = "../site/id30.rs"]
+#[path = "../id30.rs"]
 mod id30;
 use id30::Id30;
 

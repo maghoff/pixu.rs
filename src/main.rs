@@ -10,6 +10,7 @@ extern crate diesel;
 extern crate lazy_static;
 
 mod db;
+mod id30;
 mod site;
 
 use std::net::SocketAddr;

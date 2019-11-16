@@ -1,6 +1,5 @@
 mod auth;
 mod handling_error;
-mod id30;
 mod image;
 mod index;
 mod ingest;
@@ -123,7 +122,7 @@ macro_rules! regex_routes {
     };
 }
 
-use id30::Id30;
+use super::id30::Id30;
 fn canonicalize_id30(
     given: &str,
     then: impl Fn(Id30) -> Box<dyn QueryHandler + 'static>,
