@@ -16,7 +16,7 @@ pub struct Id30(u32);
 
 impl Id30 {
     pub fn new_random(rng: &mut (impl Rng + ?Sized)) -> Id30 {
-        Id30::from(rng.gen_range(0, 0xC000_0000))
+        Id30::from(rng.gen_range(0, 0x4000_0000))
     }
 }
 
