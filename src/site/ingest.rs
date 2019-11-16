@@ -9,6 +9,7 @@ use web::{FutureBox, Resource, Response};
 use super::auth;
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
+use crate::image;
 
 pub struct Ingest {
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -33,10 +34,11 @@ impl Ingest {
             .await
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        // TODO implement. So far just a simple echo server
+        let id = image::ingest_jpeg(&body, self.db_pool)
+            .map_err(|_| HandlingError::InternalServerError)?;
 
         Ok(Response {
-            status: web::Status::Ok,
+            status: web::Status::Created(id.to_string()), // TODO Use base_url
             representations: vec![(
                 web::MediaType::new("image", "jpeg", vec![]),
                 Box::new(move || Box::new(body) as web::RepresentationBox) as _,

@@ -1,10 +1,3 @@
-#[macro_use]
-extern crate diesel_migrations;
-#[macro_use]
-extern crate diesel;
-
-use std::path::{Path, PathBuf};
-
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use image::{ImageBuffer, Pixel, Rgb, RgbImage};
@@ -12,15 +5,9 @@ use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use rayon::prelude::*;
 use stopwatch::Stopwatch;
-use structopt::StructOpt;
 
-#[path = "../db/mod.rs"]
-mod db;
-use db::schema::*;
-
-#[path = "../id30.rs"]
-mod id30;
-use id30::Id30;
+use crate::db::schema::*;
+use crate::id30::Id30;
 
 type RgbImageF32 = ImageBuffer<Rgb<f32>, Vec<f32>>;
 
@@ -120,12 +107,12 @@ fn encode_jpeg(img: RgbImage, quality: u8) -> std::io::Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn ingest(
-    file: impl AsRef<Path>,
+pub fn ingest_jpeg(
+    jpeg: &[u8],
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
 ) -> Result<Id30, Box<dyn std::error::Error>> {
     let sw = Stopwatch::start_new();
-    let img = image::open(file.as_ref())?.to_rgb();
+    let img = image::load_from_memory_with_format(jpeg, image::ImageFormat::JPEG)?.to_rgb();
     eprintln!(
         "ORG: Decoded original jpeg {}x{} in {}ms",
         img.width(),
@@ -298,38 +285,4 @@ fn ingest(
 
         Ok(pixurs_id)
     })
-}
-
-#[derive(StructOpt)]
-struct Params {
-    /// SQLite database file
-    #[structopt(long = "db", name = "DB")]
-    db: String,
-
-    files: Vec<PathBuf>,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Params::from_args();
-    let db_pool = db::create_pool(args.db)?;
-
-    let mut ok = true;
-
-    for file in args.files {
-        let sw = Stopwatch::start_new();
-        match ingest(&file, db_pool.clone()) {
-            Ok(id) => eprintln!(
-                "Ingested {} in {}ms as ID {}",
-                file.display(),
-                sw.elapsed_ms(),
-                id
-            ),
-            Err(err) => {
-                ok = false;
-                eprintln!("Error ingesting {}: {}", file.display(), err);
-            }
-        }
-    }
-
-    std::process::exit(if ok { 0 } else { 1 });
 }

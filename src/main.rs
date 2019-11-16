@@ -11,6 +11,7 @@ extern crate lazy_static;
 
 mod db;
 mod id30;
+mod image;
 mod site;
 
 use std::net::SocketAddr;
