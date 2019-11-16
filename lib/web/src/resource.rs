@@ -17,6 +17,7 @@ pub type FutureBox<'a, Output> = Pin<Box<dyn Future<Output = Output> + Send + 'a
 pub enum Status {
     // 2__
     Ok,
+    Created(String),
 
     // 3__
     MovedPermanently(String),

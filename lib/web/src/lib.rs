@@ -219,6 +219,10 @@ async fn build_response(
         Status::Ok => {
             response.status(StatusCode::OK);
         }
+        Status::Created(location) => {
+            response.status(StatusCode::CREATED);
+            response.header("location", location);
+        }
 
         // 3__
         Status::MovedPermanently(location) => {
