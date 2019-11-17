@@ -200,7 +200,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             _ = r"^$" => Box::new(
                 JwtCookieHandler::new(
                     self.key.clone(),
-                    IndexLoader { db_pool: self.db_pool.clone() }
+                    IndexLoader { self_url: self.base_url.clone(), db_pool: self.db_pool.clone() }
                 )
             ) as _,
             _ = r"^style\.css$" => Box::new(static_asset(

@@ -13,6 +13,7 @@ use crate::id30::Id30;
 
 pub struct Index {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    self_url: String,
     claims: Option<auth::Claims>,
 }
 
@@ -23,6 +24,7 @@ struct UploaderExtra {
 #[derive(BartDisplay)]
 #[template = "templates/index.html"]
 struct Get<'a> {
+    self_url: &'a str,
     claims: &'a Option<auth::Claims>,
     is_uploader: Option<UploaderExtra>,
     authorized_pixurs: &'a [(Id30, Id30)],
@@ -86,6 +88,7 @@ impl Index {
                     Box::new(
                         super::Layout {
                             body: &Get {
+                                self_url: &self.self_url,
                                 claims: &self.claims,
                                 is_uploader,
                                 authorized_pixurs: &authorized_pixurs,
@@ -110,6 +113,7 @@ impl Resource for Index {
 }
 
 pub struct IndexLoader {
+    pub self_url: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -123,6 +127,7 @@ impl auth::ClaimsConsumer for IndexLoader {
         async {
             Ok(Box::new(Index {
                 claims,
+                self_url: self.self_url,
                 db_pool: self.db_pool,
             }) as Box<dyn Resource + Send + 'static>)
         }
