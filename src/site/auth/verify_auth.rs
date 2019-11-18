@@ -62,7 +62,10 @@ impl VerifyAuth {
         };
 
         let token = encode(&Header::default(), &claims, &self.key).unwrap();
-        let cookie = Cookie::build("let-me-in", token).http_only(true).finish();
+        let cookie = Cookie::build("let-me-in", token)
+            .http_only(true)
+            .max_age(chrono::Duration::days(60))
+            .finish();
 
         Ok(Response {
             status: web::Status::SeeOther(self.redirect),
