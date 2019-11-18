@@ -59,7 +59,6 @@ impl VerifyAuth {
         let claims = Claims {
             phase: AuthPhase::LoggedIn,
             sub: claims.sub,
-            exp: (chrono::Utc::now() + chrono::Duration::days(60)).into(),
         };
 
         let token = encode(&Header::default(), &claims, &self.key).unwrap();

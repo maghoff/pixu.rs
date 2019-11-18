@@ -14,7 +14,7 @@ pub use verify_auth::VerifyAuthArgsConsumer;
 
 // NumberDate is the name of the type for datetimes in JWT
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
-pub struct NumberDate(i64);
+struct NumberDate(i64);
 
 impl From<DateTime<Utc>> for NumberDate {
     fn from(datetime: DateTime<Utc>) -> Self {
@@ -42,7 +42,6 @@ struct ValidationClaims {
 pub struct Claims {
     pub phase: AuthPhase,
     pub sub: String,
-    pub exp: NumberDate,
 }
 
 #[cfg(test)]
@@ -99,7 +98,6 @@ mod test {
                 &Claims {
                     phase: AuthPhase::LoggedIn,
                     sub: "let-me-in".to_owned(),
-                    exp: (chrono::Utc::now() + chrono::Duration::days(60)).into(),
                 },
                 KEY,
             )
