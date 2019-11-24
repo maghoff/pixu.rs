@@ -102,7 +102,7 @@ function updateState(delta) {
 function gatherDetails() {
     var details = {
         recipients: [],
-        send_email: document.getElementById("send_email").checked,
+        // send_email: document.getElementById("send_email").checked,
     };
 
     var s = document.querySelector(".uploader-form--recipients").selectedOptions;
