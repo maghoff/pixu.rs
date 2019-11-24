@@ -19,5 +19,12 @@ module.exports = {
                 }
             }
         ]
+    },
+    devServer: {
+        index: '',
+        proxy: {
+            context: () => true,
+            target: 'http://127.0.0.1:1212'
+        }
     }
 };
