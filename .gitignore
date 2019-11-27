@@ -1,5 +1,6 @@
 /target
 **/*.rs.bk
 config.toml
+config-dev-server.toml
 node_modules
 dist

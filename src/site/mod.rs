@@ -207,10 +207,18 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 MediaType::new("text", "css", vec!["charset=utf-8".to_string()]),
                 include_str!("style.css").to_string(),
             )) as _,
-            _ = r"^ingest\.js$" => Box::new(static_asset(
-                MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
-                include_str!("../../dist/ingest.js").to_string(),
-            )) as _,
+            _ = r"^ingest\.js$" => {
+                #[cfg(not(feature = "dev-server"))]
+                {
+                    Box::new(static_asset(
+                        MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
+                        include_str!("../../dist/ingest.js").to_string(),
+                    )) as _
+                }
+
+                #[cfg(feature = "dev-server")]
+                panic!("index.js must be served by the dev server");
+            },
             _ = r"^initiate_auth$" => Box::new(InitiateAuth {
                 key: self.key.clone(),
                 base_url: self.base_url.clone(),

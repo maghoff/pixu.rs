@@ -6,6 +6,9 @@ description = "Photo sharing web application."
 edition = "2018"
 default-run = "pixurs"
 
+[features]
+dev-server = []
+
 [dependencies]
 structopt = "0.2.16"
 r2d2 = "0.8.5"
