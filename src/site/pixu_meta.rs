@@ -76,7 +76,7 @@ impl PixuMeta {
         let db_connection = self
             .db_pool
             .get()
-            .map_err(|_| HandlingError::BadRequest("Invalid data"))?;
+            .map_err(|_| HandlingError::InternalServerError)?;
 
         #[derive(Insertable)]
         #[table_name = "pixur_authorizations"]
@@ -97,7 +97,7 @@ impl PixuMeta {
         diesel::insert_into(pixur_authorizations::table)
             .values(&recipients)
             .execute(&*db_connection)
-            .map_err(|_| HandlingError::BadRequest("Invalid data"))?;
+            .map_err(|_| HandlingError::InternalServerError)?;
 
         Ok(Response {
             status: web::Status::Ok,
