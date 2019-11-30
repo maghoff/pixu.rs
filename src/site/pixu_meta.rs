@@ -16,9 +16,21 @@ pub struct PixuMeta {
     id: Id30,
 }
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
-struct Metadata {
+#[derive(serde_derive::Serialize)]
+struct MetadataGet {
     recipients: Vec<String>,
+}
+
+#[derive(serde_derive::Deserialize)]
+struct MetadataPost<'a> {
+    #[serde(borrow)]
+    recipients: std::collections::BTreeSet<&'a str>,
+}
+
+#[derive(serde_derive::Deserialize)]
+struct UpdateRequest<'a> {
+    #[serde(borrow)]
+    metadata: MetadataPost<'a>,
 }
 
 impl PixuMeta {
@@ -34,7 +46,7 @@ impl PixuMeta {
             .load(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let metadata = Metadata { recipients };
+        let metadata = MetadataGet { recipients };
 
         let json =
             serde_json::to_string(&metadata).map_err(|_| HandlingError::InternalServerError)?;
@@ -70,7 +82,7 @@ impl PixuMeta {
             .await
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let metadata: Metadata =
+        let update_request: UpdateRequest =
             serde_json::from_slice(&body).map_err(|_| HandlingError::BadRequest("Invalid data"))?; // TODO Use given error.to_string()
 
         let db_connection = self
@@ -78,35 +90,58 @@ impl PixuMeta {
             .get()
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        #[derive(Insertable)]
-        #[table_name = "pixur_authorizations"]
-        struct Authorization {
-            pixur_id: Id30,
-            sub: String,
-        }
+        db_connection
+            .transaction(|| {
+                #[derive(Insertable)]
+                #[table_name = "pixur_authorizations"]
+                struct Authorization<'a> {
+                    pixur_id: Id30,
+                    sub: &'a str,
+                }
 
-        let recipients = metadata
-            .recipients
-            .into_iter()
-            .map(|sub| Authorization {
-                pixur_id: self.id,
-                sub,
+                let old_recipients: Vec<String> = pixur_authorizations::table
+                    .filter(pixur_authorizations::pixur_id.eq(self.id))
+                    .select(pixur_authorizations::sub)
+                    .load(&*db_connection)?;
+
+                let old_recipients: std::collections::BTreeSet<_> =
+                    old_recipients.iter().map(|x| x.as_str()).collect();
+
+                let new_recipients = update_request.metadata.recipients;
+
+                let to_add = new_recipients
+                    .difference(&old_recipients)
+                    .map(|&sub| Authorization {
+                        pixur_id: self.id,
+                        sub: sub,
+                    })
+                    .collect::<Vec<_>>();
+
+                diesel::insert_into(pixur_authorizations::table)
+                    .values(&to_add)
+                    .execute(&*db_connection)?;
+
+                // TODO (Optionally) send email to recipients in `to_add`
+
+                let to_remove = old_recipients.difference(&new_recipients);
+
+                diesel::delete(
+                    pixur_authorizations::table
+                        .filter(pixur_authorizations::pixur_id.eq(self.id))
+                        .filter(pixur_authorizations::sub.eq_any(to_remove)),
+                )
+                .execute(&*db_connection)?;
+
+                Ok(Response {
+                    status: web::Status::Ok,
+                    representations: vec![(
+                        MediaType::new("text", "plain", vec!["charset=utf-8".to_string()]),
+                        Box::new(move || Box::new("OK") as RepresentationBox) as _,
+                    )],
+                    cookies: vec![],
+                })
             })
-            .collect::<Vec<_>>();
-
-        diesel::insert_into(pixur_authorizations::table)
-            .values(&recipients)
-            .execute(&*db_connection)
-            .map_err(|_| HandlingError::InternalServerError)?;
-
-        Ok(Response {
-            status: web::Status::Ok,
-            representations: vec![(
-                MediaType::new("text", "plain", vec!["charset=utf-8".to_string()]),
-                Box::new(move || Box::new("OK") as RepresentationBox) as _,
-            )],
-            cookies: vec![],
-        })
+            .map_err(|_: diesel::result::Error| HandlingError::InternalServerError)
     }
 
     async fn async_post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
