@@ -186,7 +186,13 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 match m[1].parse() {
                     Ok(id) => {
                         let provider = pixu_meta::AuthorizationProvider { db_pool: self.db_pool.clone() };
-                        let consumer = pixu_meta::AuthorizationConsumer { db_pool: self.db_pool.clone(), id };
+                        let consumer = pixu_meta::AuthorizationConsumer {
+                            db_pool: self.db_pool.clone(),
+                            id,
+                            base_url: self.base_url.clone(),
+                            mailer: self.mailer.clone(),
+                            sender: self.sender.clone()
+                        };
                         let authorizer = auth::authorizer::Authorizer::new(
                             path.to_string(),
                             provider,

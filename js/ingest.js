@@ -101,13 +101,15 @@ function updateState(delta) {
 
 function gatherDetails() {
     var details = {
-        recipients: [],
-        // send_email: document.getElementById("send_email").checked,
+        metadata: {
+            recipients: [],
+        },
+        send_email: document.getElementById("send_email").checked,
     };
 
     var s = document.querySelector(".uploader-form--recipients").selectedOptions;
     for (var i = 0; i < s.length; ++i) {
-        details.recipients.push(s[i].value);
+        details.metadata.recipients.push(s[i].value);
     }
 
     return details;

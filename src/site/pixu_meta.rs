@@ -2,6 +2,8 @@ use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
+use lettre::{SmtpTransport, Transport};
+use lettre_email::{EmailBuilder, Mailbox};
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
@@ -14,6 +16,9 @@ use crate::id30::Id30;
 pub struct PixuMeta {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
+    base_url: String,
+    mailer: std::sync::Arc<std::sync::Mutex<SmtpTransport>>,
+    sender: Mailbox,
 }
 
 #[derive(serde_derive::Serialize)]
@@ -31,6 +36,8 @@ struct MetadataPost<'a> {
 struct UpdateRequest<'a> {
     #[serde(borrow)]
     metadata: MetadataPost<'a>,
+
+    send_email: bool,
 }
 
 impl PixuMeta {
@@ -62,6 +69,46 @@ impl PixuMeta {
 
     async fn async_get(self: Box<Self>) -> Response {
         self.try_get().await.unwrap_or_else(|e| e.render())
+    }
+
+    fn send_email_notification(&self, recipients: &[&str]) {
+        #[derive(BartDisplay)]
+        #[template = "templates/notification-email.html"]
+        struct HtmlMail<'a> {
+            title: &'a str,
+            message: &'a str,
+            url: &'a str,
+        }
+
+        let mut mailer = self
+            .mailer
+            .lock()
+            .expect("Don't know what to do about Poison");
+
+        let url = format!("{}{}", self.base_url, self.id);
+
+        let html_body = HtmlMail {
+            title: "Velkommen til magnusogdisa.no 📸",
+            message: "Vi har delt et bilde med deg",
+            url: &url,
+        }
+        .to_string();
+
+        let text_body = format!("Hei 😊\n\nVi har delt et bilde med deg:\n\n{}", url);
+
+        for email in recipients {
+            let email = EmailBuilder::new()
+                .to(*email)
+                .from(self.sender.clone())
+                .subject("Vi har delt et bilde med deg 📸")
+                .alternative(&html_body, &text_body)
+                .build()
+                .unwrap();
+
+            mailer.send(email.into()).unwrap();
+
+            // TODO How to handle errors here?
+        }
     }
 
     async fn try_post(
@@ -121,7 +168,9 @@ impl PixuMeta {
                     .values(&to_add)
                     .execute(&*db_connection)?;
 
-                // TODO (Optionally) send email to recipients in `to_add`
+                if update_request.send_email {
+                    self.send_email_notification(&to_add.iter().map(|x| x.sub).collect::<Vec<_>>());
+                }
 
                 let to_remove = old_recipients.difference(&new_recipients);
 
@@ -168,6 +217,9 @@ impl Resource for PixuMeta {
 pub struct AuthorizationConsumer {
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
     pub id: Id30,
+    pub base_url: String,
+    pub mailer: std::sync::Arc<std::sync::Mutex<SmtpTransport>>,
+    pub sender: Mailbox,
 }
 
 impl auth::authorizer::Consumer for AuthorizationConsumer {
@@ -177,6 +229,9 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
         Ok(Box::new(PixuMeta {
             db_pool: self.db_pool,
             id: self.id,
+            base_url: self.base_url,
+            mailer: self.mailer,
+            sender: self.sender,
         }) as _)
     }
 }
