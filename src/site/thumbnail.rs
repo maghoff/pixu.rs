@@ -12,6 +12,7 @@ use crate::db::schema::*;
 use crate::id30::Id30;
 
 pub struct Thumbnail {
+    title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
 }
@@ -47,7 +48,9 @@ impl Thumbnail {
     }
 
     async fn get_core(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        self.try_get()
+            .await
+            .unwrap_or_else(|e| e.render(&self.title))
     }
 }
 
@@ -57,6 +60,7 @@ impl Resource for Thumbnail {
     }
 }
 pub struct AuthorizationConsumer {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -65,6 +69,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
 
     fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, web::Error> {
         Ok(Box::new(Thumbnail {
+            title: self.title,
             db_pool: self.db_pool,
             id,
         }) as _)

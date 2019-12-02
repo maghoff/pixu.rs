@@ -12,6 +12,7 @@ use crate::db::schema::*;
 use crate::id30::Id30;
 
 pub struct Pixu {
+    title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
 }
@@ -60,6 +61,7 @@ impl Pixu {
                 Box::new(move || {
                     Box::new(
                         super::Layout {
+                            title: &self.title,
                             body: &Get {
                                 average_color: &format!("#{:06x}", pix.average_color),
                                 thumb_url: &format!("thumb/{}", pix.thumbs_id),
@@ -74,7 +76,9 @@ impl Pixu {
     }
 
     async fn get_core(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        self.try_get()
+            .await
+            .unwrap_or_else(|e| e.render(&self.title))
     }
 }
 
@@ -85,6 +89,7 @@ impl Resource for Pixu {
 }
 
 pub struct AuthorizationConsumer {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -93,6 +98,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
 
     fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, Error> {
         Ok(Box::new(Pixu {
+            title: self.title,
             db_pool: self.db_pool,
             id,
         }) as _)

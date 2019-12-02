@@ -8,6 +8,7 @@ use crate::site::handling_error::HandlingError;
 use crate::site::query_args::QueryArgsConsumer;
 
 pub struct VerifyAuth {
+    title: String,
     key: Vec<u8>,
     claims: String,
     head_sign: String,
@@ -72,7 +73,13 @@ impl VerifyAuth {
             representations: vec![(
                 MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
                 Box::new(move || {
-                    Box::new(crate::site::Layout { body: &Get }.to_string()) as RepresentationBox
+                    Box::new(
+                        crate::site::Layout {
+                            title: &self.title,
+                            body: &Get,
+                        }
+                        .to_string(),
+                    ) as RepresentationBox
                 }) as _,
             )],
             cookies: vec![cookie],
@@ -80,7 +87,9 @@ impl VerifyAuth {
     }
 
     async fn get_core(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        self.try_get()
+            .await
+            .unwrap_or_else(|e| e.render(&self.title))
     }
 }
 
@@ -91,6 +100,7 @@ impl Resource for VerifyAuth {
 }
 
 struct VerifyAuthCookieHandler {
+    title: String,
     key: Vec<u8>,
     claims: String,
     redirect: String,
@@ -104,6 +114,7 @@ impl VerifyAuthCookieHandler {
         let cookie = values[0].ok_or(web::Error::BadRequest)?.to_string();
 
         Ok(Box::new(VerifyAuth {
+            title: self.title,
             key: self.key,
             claims: self.claims,
             redirect: self.redirect,
@@ -126,6 +137,7 @@ impl CookieHandler for VerifyAuthCookieHandler {
 }
 
 pub struct VerifyAuthArgsConsumer {
+    pub title: String,
     pub key: Vec<u8>,
 }
 
@@ -134,6 +146,7 @@ impl QueryArgsConsumer for VerifyAuthArgsConsumer {
 
     fn args(self, args: Self::Args) -> Result<Box<dyn web::CookieHandler + Send>, web::Error> {
         Ok(Box::new(VerifyAuthCookieHandler {
+            title: self.title,
             key: self.key,
             claims: args.claims,
             redirect: args.redirect,
