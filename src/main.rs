@@ -50,6 +50,7 @@ struct EmailConfig {
 
 #[derive(Debug, serde_derive::Deserialize)]
 struct Config {
+    site_title: String,
     url: String,
     secret: String,
     email: EmailConfig,
@@ -84,6 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     use std::sync::Arc;
     let site = Arc::new(site::Site::new(
+        config.site_title,
         key,
         config.url,
         db_pool,

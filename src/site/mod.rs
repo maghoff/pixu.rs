@@ -26,6 +26,8 @@ use index::IndexLoader;
 #[derive(BartDisplay)]
 #[template = "templates/layout.html"]
 struct Layout<'a> {
+    title: &'a str,
+
     // BartDisplay is unable to parse `dyn`
     #[allow(bare_trait_objects)]
     body: &'a std::fmt::Display,
@@ -85,6 +87,7 @@ fn static_asset(media_type: MediaType, body: String) -> impl QueryHandler {
 }
 
 pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
+    title: String,
     key: Vec<u8>,
     base_url: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -143,6 +146,7 @@ fn canonicalize_id30(
 
 impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     pub fn new(
+        title: String,
         key: Vec<u8>,
         base_url: String,
         db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -151,6 +155,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         spawn: S,
     ) -> Site<S> {
         Site {
+            title,
             key,
             base_url,
             db_pool,
@@ -163,6 +168,8 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
     async fn lookup<'a>(&'a self, path: &'a str) -> Box<dyn QueryHandler + 'static> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
+        let title = self.title.clone();
+
         regex_routes! { path,
             m = r"^([a-zA-Z0-9]{6})$" => {
                 // Keep this route on top so it matches first, to notice
@@ -170,8 +177,9 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
 
                 canonicalize_id30(&m[1], |id| {
                     let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = pixu::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let consumer = pixu::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
+                        title.clone(),
                         path.to_string(),
                         provider,
                         consumer,
@@ -187,6 +195,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     Ok(id) => {
                         let provider = pixu_meta::AuthorizationProvider { db_pool: self.db_pool.clone() };
                         let consumer = pixu_meta::AuthorizationConsumer {
+                            title: title.clone(),
                             db_pool: self.db_pool.clone(),
                             id,
                             base_url: self.base_url.clone(),
@@ -194,6 +203,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                             sender: self.sender.clone()
                         };
                         let authorizer = auth::authorizer::Authorizer::new(
+                            title,
                             path.to_string(),
                             provider,
                             consumer,
@@ -206,7 +216,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             _ = r"^$" => Box::new(
                 JwtCookieHandler::new(
                     self.key.clone(),
-                    IndexLoader { self_url: self.base_url.clone(), db_pool: self.db_pool.clone() }
+                    IndexLoader { title, self_url: self.base_url.clone(), db_pool: self.db_pool.clone() }
                 )
             ) as _,
             _ = r"^style\.css$" => Box::new(static_asset(
@@ -226,6 +236,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 panic!("index.js must be served by the dev server");
             },
             _ = r"^initiate_auth$" => Box::new(InitiateAuth {
+                title,
                 key: self.key.clone(),
                 base_url: self.base_url.clone(),
                 db_pool: self.db_pool.clone(),
@@ -234,13 +245,15 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 spawn: self.spawn.clone(),
             }) as _,
             _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
+                title,
                 key: self.key.clone(),
             })) as _,
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
                     let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = thumbnail::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let consumer = thumbnail::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
+                        title.clone(),
                         path.to_string(),
                         provider,
                         consumer,
@@ -250,8 +263,9 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             },
             _ = r"^img/$" => {
                 let provider = ingest::AuthorizationProvider { db_pool: self.db_pool.clone() };
-                let consumer = ingest::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                let consumer = ingest::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                 let authorizer = auth::authorizer::Authorizer::new(
+                    title,
                     path.to_string(),
                     provider,
                     consumer,
@@ -261,8 +275,9 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             m = r"^img/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
                     let provider = image::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = image::AuthorizationConsumer { db_pool: self.db_pool.clone() };
+                    let consumer = image::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
+                        title.clone(),
                         path.to_string(),
                         provider,
                         consumer,

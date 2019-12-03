@@ -12,6 +12,7 @@ use crate::db::schema::*;
 use crate::id30::Id30;
 
 pub struct Image {
+    title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
 }
@@ -47,7 +48,9 @@ impl Image {
     }
 
     async fn get_core(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        let title = self.title.clone();
+
+        self.try_get().await.unwrap_or_else(|e| e.render(&title))
     }
 }
 
@@ -58,6 +61,7 @@ impl Resource for Image {
 }
 
 pub struct AuthorizationConsumer {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -66,6 +70,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
 
     fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, web::Error> {
         Ok(Box::new(Image {
+            title: self.title,
             db_pool: self.db_pool,
             id,
         }) as _)

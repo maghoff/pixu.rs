@@ -12,6 +12,7 @@ use crate::db::schema::*;
 use crate::id30::Id30;
 
 pub struct Index {
+    title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     self_url: String,
     claims: Option<auth::Claims>,
@@ -87,6 +88,7 @@ impl Index {
                 Box::new(move || {
                     Box::new(
                         super::Layout {
+                            title: &self.title,
                             body: &Get {
                                 self_url: &self.self_url,
                                 claims: &self.claims,
@@ -102,7 +104,9 @@ impl Index {
     }
 
     async fn get_core(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        let title = self.title.clone();
+
+        self.try_get().await.unwrap_or_else(|e| e.render(&title))
     }
 }
 
@@ -113,6 +117,7 @@ impl Resource for Index {
 }
 
 pub struct IndexLoader {
+    pub title: String,
     pub self_url: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
@@ -126,6 +131,7 @@ impl auth::ClaimsConsumer for IndexLoader {
     ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
         async {
             Ok(Box::new(Index {
+                title: self.title,
                 claims,
                 self_url: self.self_url,
                 db_pool: self.db_pool,

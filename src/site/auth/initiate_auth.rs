@@ -35,6 +35,7 @@ struct Post<'a> {
 }
 
 pub struct InitiateAuth<S: Spawn + Send + 'static> {
+    pub title: String,
     pub key: Vec<u8>,
     pub base_url: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -196,6 +197,8 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
         .await;
         let cookie = Cookie::build("let-me-in", cookie).http_only(true).finish();
 
+        let title = self.title;
+
         Ok(Response {
             status: web::Status::Ok,
             representations: vec![(
@@ -203,6 +206,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
                 Box::new(move || {
                     Box::new(
                         crate::site::Layout {
+                            title: &title,
                             body: &Post { email: &email },
                         }
                         .to_string(),
@@ -214,9 +218,11 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
     }
 
     async fn post_core(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+        let title = self.title.clone();
+
         self.try_post(content_type, body)
             .await
-            .unwrap_or_else(|e| e.render())
+            .unwrap_or_else(|e| e.render(&title))
     }
 }
 

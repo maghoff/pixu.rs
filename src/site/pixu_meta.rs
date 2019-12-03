@@ -14,6 +14,7 @@ use crate::db::schema::*;
 use crate::id30::Id30;
 
 pub struct PixuMeta {
+    title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
     base_url: String,
@@ -68,7 +69,9 @@ impl PixuMeta {
     }
 
     async fn async_get(self: Box<Self>) -> Response {
-        self.try_get().await.unwrap_or_else(|e| e.render())
+        let title = self.title.clone();
+
+        self.try_get().await.unwrap_or_else(|e| e.render(&title))
     }
 
     fn send_email_notification(&self, recipients: &[&str]) {
@@ -194,9 +197,11 @@ impl PixuMeta {
     }
 
     async fn async_post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+        let title = self.title.clone();
+
         self.try_post(content_type, body)
             .await
-            .unwrap_or_else(|e| e.render())
+            .unwrap_or_else(|e| e.render(&title))
     }
 }
 
@@ -215,6 +220,7 @@ impl Resource for PixuMeta {
 }
 
 pub struct AuthorizationConsumer {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
     pub id: Id30,
     pub base_url: String,
@@ -227,6 +233,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
 
     fn authorization<'a>(self, _: ()) -> Result<Box<dyn Resource + Send + 'static>, Error> {
         Ok(Box::new(PixuMeta {
+            title: self.title,
             db_pool: self.db_pool,
             id: self.id,
             base_url: self.base_url,

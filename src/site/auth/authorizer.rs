@@ -28,6 +28,7 @@ where
     P: Provider<Authorization = A>,
     C: Consumer<Authorization = A>,
 {
+    title: String,
     provider: P,
     consumer: C,
     self_url: String,
@@ -38,8 +39,9 @@ where
     P: Provider<Authorization = A>,
     C: Consumer<Authorization = A>,
 {
-    pub fn new(self_url: String, provider: P, consumer: C) -> Self {
+    pub fn new(title: String, self_url: String, provider: P, consumer: C) -> Self {
         Authorizer {
+            title,
             provider,
             consumer,
             self_url,
@@ -69,6 +71,7 @@ where
         if let Some(auth) = self.get_authorization(&claims)? {
             self.consumer.authorization(auth)
         } else {
+            let title = self.title;
             let self_url = self.self_url;
 
             // TODO Base URL for this template
@@ -79,6 +82,7 @@ where
                     Box::new(move || {
                         Box::new(
                             crate::site::Layout {
+                                title: &title,
                                 body: &NotAuthorized {
                                     claims: claims,
                                     self_url: &self_url,

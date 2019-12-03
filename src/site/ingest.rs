@@ -12,6 +12,7 @@ use crate::db::schema::*;
 use crate::image;
 
 pub struct Ingest {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -48,9 +49,11 @@ impl Ingest {
     }
 
     async fn async_post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+        let title = self.title.clone();
+
         self.try_post(content_type, body)
             .await
-            .unwrap_or_else(|e| e.render())
+            .unwrap_or_else(|e| e.render(&title))
     }
 }
 
@@ -69,6 +72,7 @@ impl Resource for Ingest {
 }
 
 pub struct AuthorizationConsumer {
+    pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
@@ -77,6 +81,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
 
     fn authorization<'a>(self, _: ()) -> Result<Box<dyn Resource + Send + 'static>, web::Error> {
         Ok(Box::new(Ingest {
+            title: self.title,
             db_pool: self.db_pool,
         }) as _)
     }
