@@ -85,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     use std::sync::Arc;
     let site = Arc::new(site::Site::new(
-        config.site_title,
+        config.site_title, // TODO: Leak this and pass it around as &'static str
         key,
         config.url,
         db_pool,

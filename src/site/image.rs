@@ -33,6 +33,7 @@ impl Image {
         }
 
         // TODO Schedule IO operation on some kind of background thread
+        // Maybe using spawn_blocking()?
         let pix: Image = images::table
             .filter(images::id.eq(self.id))
             .first(&*db_connection)
