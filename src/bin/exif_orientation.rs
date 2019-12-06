@@ -1,28 +1,28 @@
 use std::convert::TryInto;
 
-fn matmul(a: &[i32; 4], b: &[i32; 4]) -> [i32; 4] {
-    [
-        a[0] * b[0] + a[1] * b[2],
-        a[0] * b[1] + a[1] * b[3],
-        a[2] * b[0] + a[3] * b[2],
-        a[2] * b[1] + a[3] * b[3],
-    ]
-}
-
-fn vecmat(v: [i32; 2], mat: &[i32; 4]) -> [i32; 2] {
-    [v[0] * mat[0] + v[1] * mat[2], v[0] * mat[1] + v[1] * mat[3]]
-}
-
-fn to_index(v: [i32; 2], mat: &[i32; 4], old_dim: &[i32; 2], new_dim: &[i32; 2]) -> isize {
-    // Subtract 1 to calculate with the range of valid indices 0..=(dim-1)
-    let od = [old_dim[0] - 1, old_dim[1] - 1];
-    let nd = [new_dim[0] - 1, new_dim[1] - 1];
-
-    let v = vecmat([v[0] * 2 - od[0], v[1] * 2 - od[1]], mat);
-    ((v[0] + nd[0]) / 2 + ((v[1] + nd[1]) / 2) * new_dim[0]) as isize
-}
-
 fn transform_by_orientation(img: image::RgbImage, orientation: u32) -> image::RgbImage {
+    fn matmul(a: &[i32; 4], b: &[i32; 4]) -> [i32; 4] {
+        [
+            a[0] * b[0] + a[1] * b[2],
+            a[0] * b[1] + a[1] * b[3],
+            a[2] * b[0] + a[3] * b[2],
+            a[2] * b[1] + a[3] * b[3],
+        ]
+    }
+
+    fn vecmat(v: [i32; 2], mat: &[i32; 4]) -> [i32; 2] {
+        [v[0] * mat[0] + v[1] * mat[2], v[0] * mat[1] + v[1] * mat[3]]
+    }
+
+    fn to_index(v: [i32; 2], mat: &[i32; 4], old_dim: &[i32; 2], new_dim: &[i32; 2]) -> isize {
+        // Subtract 1 to calculate with the range of valid indices 0..=(dim-1)
+        let od = [old_dim[0] - 1, old_dim[1] - 1];
+        let nd = [new_dim[0] - 1, new_dim[1] - 1];
+
+        let v = vecmat([v[0] * 2 - od[0], v[1] * 2 - od[1]], mat);
+        ((v[0] + nd[0]) / 2 + ((v[1] + nd[1]) / 2) * new_dim[0]) as isize
+    }
+
     let mut t = [1, 0, 0, 1];
     let old_dim: [i32; 2] = [
         img.width().try_into().unwrap(),
