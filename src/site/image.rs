@@ -94,14 +94,19 @@ impl auth::authorizer::Provider for AuthorizationProvider {
             .get()
             .map_err(|_| web::Error::InternalServerError)?;
 
-        let authorized: bool = select(exists(
-            pixur_authorizations::table
-                .inner_join(pixurs::table.inner_join(images_meta::table))
-                .filter(images_meta::id.eq(self.id))
-                .filter(pixur_authorizations::sub.eq(sub)),
-        ))
-        .first::<bool>(&*db_connection)
-        .expect("Query must return 1 result");
+        let is_uploader = select(exists(uploaders::table.filter(uploaders::sub.eq(sub))))
+            .first(&*db_connection)
+            .expect("Query must return 1 result");
+
+        let authorized = is_uploader
+            || select(exists(
+                pixur_authorizations::table
+                    .inner_join(pixurs::table.inner_join(images_meta::table))
+                    .filter(images_meta::id.eq(self.id))
+                    .filter(pixur_authorizations::sub.eq(sub)),
+            ))
+            .first(&*db_connection)
+            .expect("Query must return 1 result");
 
         if authorized {
             Ok(Some(self.id))
