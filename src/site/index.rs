@@ -71,11 +71,17 @@ impl Index {
             .claims
             .as_ref()
             .map(|claims| {
-                pixur_authorizations::table
-                    .inner_join(pixurs::table)
-                    .filter(pixur_authorizations::sub.eq(&claims.sub))
-                    .select((pixur_authorizations::pixur_id, pixurs::thumbs_id))
-                    .load::<(Id30, Id30)>(&*db_connection)
+                if is_uploader.is_some() {
+                    pixurs::table
+                        .select((pixurs::id, pixurs::thumbs_id))
+                        .load::<(Id30, Id30)>(&*db_connection)
+                } else {
+                    pixur_authorizations::table
+                        .inner_join(pixurs::table)
+                        .filter(pixur_authorizations::sub.eq(&claims.sub))
+                        .select((pixur_authorizations::pixur_id, pixurs::thumbs_id))
+                        .load::<(Id30, Id30)>(&*db_connection)
+                }
             })
             .transpose()
             .map_err(|_| HandlingError::InternalServerError)?
