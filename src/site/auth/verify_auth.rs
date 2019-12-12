@@ -11,7 +11,7 @@ pub struct VerifyAuth {
     title: String,
     key: Vec<u8>,
     claims: String,
-    head_sign: String,
+    head_sign: Option<String>,
     redirect: String,
 }
 
@@ -53,9 +53,9 @@ fn verify_login(
 }
 
 impl VerifyAuth {
-    async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
-        let claims = verify_login(&self.key, &self.head_sign, &self.claims)
-            .map_err(|_| HandlingError::BadRequest("Unable to verify login"))?;
+    fn login_cookie(&self) -> Option<Cookie<'static>> {
+        let head_sign = self.head_sign.as_ref()?;
+        let claims = verify_login(&self.key, head_sign, &self.claims).ok()?;
 
         let claims = Claims {
             phase: AuthPhase::LoggedIn,
@@ -67,6 +67,16 @@ impl VerifyAuth {
             .http_only(true)
             .max_age(chrono::Duration::days(60))
             .finish();
+
+        Some(cookie)
+    }
+
+    async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
+        let mut cookies = vec![];
+
+        if let Some(cookie) = self.login_cookie() {
+            cookies.push(cookie);
+        }
 
         let title = self.title;
 
@@ -84,11 +94,11 @@ impl VerifyAuth {
                     ) as RepresentationBox
                 }) as _,
             )],
-            cookies: vec![cookie],
+            cookies,
         })
     }
 
-    async fn get_core(self: Box<Self>) -> Response {
+    async fn async_get(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
@@ -97,7 +107,7 @@ impl VerifyAuth {
 
 impl Resource for VerifyAuth {
     fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.get_core().boxed()
+        self.async_get().boxed()
     }
 }
 
@@ -113,7 +123,7 @@ impl VerifyAuthCookieHandler {
         self: Box<Self>,
         values: &'a [Option<&'a str>],
     ) -> Result<Box<dyn web::Resource + Send + 'static>, web::Error> {
-        let cookie = values[0].ok_or(web::Error::BadRequest)?.to_string();
+        let cookie = values[0].map(|x| x.to_string());
 
         Ok(Box::new(VerifyAuth {
             title: self.title,
