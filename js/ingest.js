@@ -269,4 +269,4 @@ dom.details.form.addEventListener('submit', function (ev) {
     actions.submitDetails();
 });
 
-actions.selectFile(fileInput.files[0]);
+actions.selectFile(dom.fileInput.files[0]);
