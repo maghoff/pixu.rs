@@ -3,32 +3,32 @@
 
 import dom from './dom.js';
 
-var PHASE_INITIAL = 0;
-var PHASE_PREVIEW = 1;
-var PHASE_DETAILS = 2;
+const PHASE_INITIAL = 0;
+const PHASE_PREVIEW = 1;
+const PHASE_DETAILS = 2;
 
-var UPLOAD_PHASE_INACTIVE = 0;
-var UPLOAD_PHASE_IN_PROGRESS = 1;
-var UPLOAD_PHASE_FINISHED = 2;
+const UPLOAD_PHASE_INACTIVE = 0;
+const UPLOAD_PHASE_IN_PROGRESS = 1;
+const UPLOAD_PHASE_FINISHED = 2;
 
-var UPLOAD_STATE_FAILURE = false;
-var UPLOAD_STATE_SUCCESS = true;
+const UPLOAD_STATE_FAILURE = false;
+const UPLOAD_STATE_SUCCESS = true;
 
-var ERROR_TRY_AGAIN = "Prøv igjen 🤷";
-var ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
+const ERROR_TRY_AGAIN = "Prøv igjen 🤷";
+const ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
 
-var SAVE_DETAILS_INITIAL = 0;
-var SAVE_DETAILS_IN_PROGRESS = 1;
-var SAVE_DETAILS_SUCCEEDED = 2;
-var SAVE_DETAILS_FAILED = 3;
+const SAVE_DETAILS_INITIAL = 0;
+const SAVE_DETAILS_IN_PROGRESS = 1;
+const SAVE_DETAILS_SUCCEEDED = 2;
+const SAVE_DETAILS_FAILED = 3;
 
-var initialState = {
+const initialState = {
     phase: PHASE_INITIAL,
     uploadPhase: UPLOAD_PHASE_INACTIVE,
     saveDetailsState: SAVE_DETAILS_INITIAL,
     previewUrl: "",
 };
-var state = initialState;
+let state = initialState;
 
 function setState(newState) {
     console.log(newState);
@@ -38,8 +38,8 @@ function setState(newState) {
         dom.phase.preview.style.display = (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
         dom.phase.details.style.display = (newState.phase == PHASE_DETAILS ? 'block' : 'none');
 
-        var oldShowPreview = state.phase >= PHASE_PREVIEW;
-        var newShowPreview = newState.phase >= PHASE_PREVIEW;
+        const oldShowPreview = state.phase >= PHASE_PREVIEW;
+        const newShowPreview = newState.phase >= PHASE_PREVIEW;
         if (newShowPreview != oldShowPreview) {
             dom.preview.style.display = newShowPreview ? "block" : "none";
         }
@@ -74,7 +74,7 @@ function setState(newState) {
             dom.details.status.innerHTML =
                 'Bildet er nå delt <a href="' + newState.uploadLocation + '">her</a> 🙌';
         } else {
-            var msg;
+            let msg;
             switch (newState.saveDetailsState) {
                 case SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
                 case SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
@@ -89,27 +89,27 @@ function setState(newState) {
 }
 
 function updateState(delta) {
-    var newState = { ...state, ...delta };
+    const newState = { ...state, ...delta };
     setState(newState);
 }
 
 function gatherDetails() {
-    var details = {
+    const details = {
         metadata: {
             recipients: [],
         },
         send_email: document.getElementById("send_email").checked,
     };
 
-    var s = document.querySelector(".uploader-form--recipients").selectedOptions;
-    for (var i = 0; i < s.length; ++i) {
+    const s = document.querySelector(".uploader-form--recipients").selectedOptions;
+    for (let i = 0; i < s.length; ++i) {
         details.metadata.recipients.push(s[i].value);
     }
 
     return details;
 }
 
-var actions = {
+const actions = {
     selectFile: function (file) {
         updateState({
             phase: file ? PHASE_PREVIEW : PHASE_INITIAL,
@@ -140,7 +140,7 @@ var actions = {
                         throw "Unexpected status code: " + res.status + " " + res.statusText;
                     }
 
-                    var location = res.headers.get('location');
+                    const location = res.headers.get('location');
                     if (!location) {
                         throw "Missing Location header in server response";
                     }
@@ -244,14 +244,14 @@ dom.uploaderForm.addEventListener('submit', function (ev) {
 });
 
 document.getElementById("uploader-form--add-recipient").addEventListener('click', function (ev) {
-    var email = prompt("Epostadresse");
+    const email = prompt("Epostadresse");
     if (email) {
-        var opt = document.createElement("option");
+        const opt = document.createElement("option");
         opt.setAttribute("value", email);
         opt.textContent = email;
         opt.setAttribute("selected", "selected");
 
-        var sel = document.querySelector(".uploader-form--recipients");
+        const sel = document.querySelector(".uploader-form--recipients");
         sel.appendChild(opt);
         sel.size = sel.options.length;
     }
