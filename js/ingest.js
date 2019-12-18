@@ -63,9 +63,15 @@ function setState(newState) {
     }
 
     if (newState.saveDetailsState != state.saveDetailsState) {
-        let formEnabled = newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
+        let formEnabled = state.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
+        let newFormEnabled = newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
 
-        dom.details.submit.disabled = formEnabled ? "" : "disabled";
+        if (newFormEnabled != formEnabled) {
+            const disabledString = newFormEnabled ? "" : "disabled";
+            for (let element of dom.details.form.elements) {
+                element.disabled = disabledString;
+            }
+        }
 
         dom.details.submit.style.display =
             newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED ? "none" : "block";
@@ -257,7 +263,7 @@ document.getElementById("uploader-form--add-recipient").addEventListener('click'
     }
 });
 
-document.getElementById('uploader-form--details').addEventListener('submit', function (ev) {
+dom.details.form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.submitDetails();

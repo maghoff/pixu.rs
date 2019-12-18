@@ -12,6 +12,7 @@ const dom = {
         uploadError: document.querySelector('.uploader-form--upload-error'),
     },
     details: {
+        form: document.querySelector('.uploader-form--details'),
         detailsSubmission: document.querySelector('.uploader-form--details-submission'),
         submit: document.querySelector('.uploader-form--details button[type="submit"]'),
         status: document.querySelector('.uploader-form--status'),
