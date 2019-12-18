@@ -78,7 +78,7 @@ function setState(newState) {
 
         if (newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED) {
             dom.details.status.innerHTML =
-                'Bildet er nå delt <a href="' + newState.uploadLocation + '">her</a> 🙌';
+                'Bildet er nå delt <a target=_blank href="' + newState.uploadLocation + '">her</a> 🙌';
         } else {
             let msg;
             switch (newState.saveDetailsState) {
