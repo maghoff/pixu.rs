@@ -26,6 +26,7 @@ var initialState = {
     phase: PHASE_INITIAL,
     uploadPhase: UPLOAD_PHASE_INACTIVE,
     saveDetailsState: SAVE_DETAILS_INITIAL,
+    previewUrl: "",
 };
 var state = initialState;
 
@@ -44,8 +45,8 @@ function setState(newState) {
         }
     }
 
-    if (newState.file != state.file) {
-        dom.preview.src = newState.file ? window.URL.createObjectURL(newState.file) : "";
+    if (newState.previewUrl != state.previewUrl) {
+        dom.preview.src = newState.previewUrl;
     }
 
     if (newState.uploadError != state.uploadError) {
@@ -113,6 +114,7 @@ var actions = {
         updateState({
             phase: file ? PHASE_PREVIEW : PHASE_INITIAL,
             file: file || null,
+            previewUrl: file ? window.URL.createObjectURL(file) : "",
         });
     },
     reset: function () {
