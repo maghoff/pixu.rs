@@ -1,10 +1,7 @@
 // The uploader will work with JS only. Too much mucking about to parse
 // multipart messages.
 
-var preview = document.querySelector('.uploader-form--preview');
-var uploaderForm = document.getElementById('uploader-form');
-var fileInput = uploaderForm.querySelector('input[type="file"]');
-var detailsForm = document.getElementById('uploader-form--details');
+import dom from './dom.js';
 
 var PHASE_INITIAL = 0;
 var PHASE_PREVIEW = 1;
@@ -36,48 +33,44 @@ function setState(newState) {
     console.log(newState);
 
     if (newState.phase != state.phase) {
-        document.querySelector('.uploader-form--phase-initial').style.display =
-            (newState.phase == PHASE_INITIAL ? 'block' : 'none');
-        document.querySelector('.uploader-form--phase-preview').style.display =
-            (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
-        document.querySelector('.uploader-form--phase-details').style.display =
-            (newState.phase == PHASE_DETAILS ? 'block' : 'none');
+        dom.phase.initial.style.display = (newState.phase == PHASE_INITIAL ? 'block' : 'none');
+        dom.phase.preview.style.display = (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
+        dom.phase.details.style.display = (newState.phase == PHASE_DETAILS ? 'block' : 'none');
 
         var oldShowPreview = state.phase >= PHASE_PREVIEW;
         var newShowPreview = newState.phase >= PHASE_PREVIEW;
         if (newShowPreview != oldShowPreview) {
-            preview.style.display = newShowPreview ? "block" : "none";
+            dom.preview.style.display = newShowPreview ? "block" : "none";
         }
     }
 
     if (newState.file != state.file) {
-        preview.src = newState.file ? window.URL.createObjectURL(newState.file) : "";
+        dom.preview.src = newState.file ? window.URL.createObjectURL(newState.file) : "";
     }
 
     if (newState.uploadError != state.uploadError) {
         if (newState.uploadError) {
-            document.querySelector('.uploader-form--error-message').textContent =
-                newState.uploadError.hint;
+            dom.uploader.errorMessage.textContent = newState.uploadError.hint;
         }
 
-        document.querySelector('.uploader-form--upload-error').style.display =
-            newState.uploadError ? 'block' : 'none';
+        dom.uploader.uploadError.style.display = newState.uploadError ? 'block' : 'none';
     }
 
     if (newState.uploadResult !== state.uploadResult) {
-        document.querySelector('.uploader-form--details-submission').style.display =
+        dom.details.detailsSubmission.style.display =
             newState.uploadResult == UPLOAD_STATE_SUCCESS ? "block" : "none";
     }
 
     if (newState.saveDetailsState != state.saveDetailsState) {
-        document.querySelector('.uploader-form--details button[type="submit"]').disabled =
-            newState.saveDetailsState == SAVE_DETAILS_IN_PROGRESS ? "disabled" : "";
+        let formEnabled = newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
 
-        document.querySelector('.uploader-form--details button[type="submit"]').style.display =
+        dom.details.submit.disabled = formEnabled ? "" : "disabled";
+
+        dom.details.submit.style.display =
             newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED ? "none" : "block";
 
         if (newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED) {
-            document.querySelector('.uploader-form--status').innerHTML =
+            dom.details.status.innerHTML =
                 'Bildet er nå delt <a href="' + newState.uploadLocation + '">her</a> 🙌';
         } else {
             var msg;
@@ -87,7 +80,7 @@ function setState(newState) {
                 case SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + newState.saveDetailsError.hint; break;
             }
 
-            document.querySelector('.uploader-form--status').textContent = msg;
+            dom.details.status.textContent = msg;
         }
     }
 
@@ -232,17 +225,17 @@ var actions = {
     },
 };
 
-fileInput.addEventListener('change', function (ev) {
+dom.fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    actions.selectFile(fileInput.files[0]);
+    actions.selectFile(dom.fileInput.files[0]);
 });
 
-uploaderForm.addEventListener('reset', function (ev) {
+dom.uploaderForm.addEventListener('reset', function (ev) {
     actions.reset();
 });
 
-uploaderForm.addEventListener('submit', function (ev) {
+dom.uploaderForm.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.upload(state.file);
@@ -262,7 +255,7 @@ document.getElementById("uploader-form--add-recipient").addEventListener('click'
     }
 });
 
-detailsForm.addEventListener('submit', function (ev) {
+document.getElementById('uploader-form--details').addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.submitDetails();
