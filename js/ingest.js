@@ -1,6 +1,3 @@
-// The uploader will work with JS only. Too much mucking about to parse
-// multipart messages.
-
 import dom from './dom.js';
 
 const PHASE_INITIAL = 0;
@@ -17,6 +14,10 @@ const UPLOAD_STATE_SUCCESS = true;
 const ERROR_TRY_AGAIN = "Prøv igjen 🤷";
 const ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
 
+const LOAD_DETAILS_READY = 0;
+const LOAD_DETAILS_PENDING = 1;
+const LOAD_DETAILS_FAILED = 2;
+
 const SAVE_DETAILS_INITIAL = 0;
 const SAVE_DETAILS_IN_PROGRESS = 1;
 const SAVE_DETAILS_SUCCEEDED = 2;
@@ -25,6 +26,7 @@ const SAVE_DETAILS_FAILED = 3;
 const initialState = {
     phase: PHASE_INITIAL,
     uploadPhase: UPLOAD_PHASE_INACTIVE,
+    loadDetailsState: LOAD_DETAILS_READY,
     saveDetailsState: SAVE_DETAILS_INITIAL,
     previewUrl: "",
 };
@@ -62,23 +64,27 @@ function setState(newState) {
             newState.uploadResult == UPLOAD_STATE_SUCCESS ? "block" : "none";
     }
 
-    if (newState.saveDetailsState != state.saveDetailsState) {
-        let formEnabled = state.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
-        let newFormEnabled = newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS;
+    let formEnabled =
+        (state.saveDetailsState != SAVE_DETAILS_IN_PROGRESS) &&
+        (state.loadDetailsState == LOAD_DETAILS_READY);
+    let newFormEnabled =
+        (newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS) &&
+        (newState.loadDetailsState == LOAD_DETAILS_READY);
 
-        if (newFormEnabled != formEnabled) {
-            const disabledString = newFormEnabled ? "" : "disabled";
-            for (let element of dom.details.form.elements) {
-                element.disabled = disabledString;
-            }
+    if (newFormEnabled != formEnabled) {
+        const disabledString = newFormEnabled ? "" : "disabled";
+        for (let element of dom.details.form.elements) {
+            element.disabled = disabledString;
         }
+    }
 
+    if (newState.saveDetailsState != state.saveDetailsState) {
         dom.details.submit.style.display =
             newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED ? "none" : "block";
 
         if (newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED) {
             dom.details.status.innerHTML =
-                'Bildet er nå delt <a target=_blank href="' + newState.uploadLocation + '">her</a> 🙌';
+                'Bildet er nå delt <a target=_blank href="' + newState.pixurUrl + '">her</a> 🙌';
         } else {
             let msg;
             switch (newState.saveDetailsState) {
@@ -113,6 +119,13 @@ function gatherDetails() {
     }
 
     return details;
+}
+
+function setDetails(details) {
+    const options = document.querySelector(".uploader-form--recipients").options;
+    for (let option of options) {
+        option.selected = details.recipients.indexOf(option.value) != -1;
+    }
 }
 
 const actions = {
@@ -173,21 +186,22 @@ const actions = {
             phase: PHASE_DETAILS,
             uploadPhase: UPLOAD_PHASE_IN_PROGRESS,
             uploadResult: null,
-            uploadLocation: null,
             uploadError: null,
+            pixurUrl: null,
+            loadDetailsState: LOAD_DETAILS_READY,
         });
     },
     uploadFinished: function (location) {
         updateState({
             uploadPhase: UPLOAD_PHASE_FINISHED,
             uploadResult: UPLOAD_STATE_SUCCESS,
-            uploadLocation: location,
+            pixurUrl: location,
         });
     },
     submitDetails: function () {
         let details = gatherDetails();
 
-        fetch(state.uploadLocation + "/meta", {
+        fetch(state.pixurUrl + "/meta", {
             method: 'POST',
             body: JSON.stringify(details),
             headers: {
@@ -231,6 +245,68 @@ const actions = {
             saveDetailsState: SAVE_DETAILS_IN_PROGRESS,
         });
     },
+    selectExistingImage: function (pixurUrl, thumb) {
+        fetch(pixurUrl + "/meta", {
+            credentials: 'same-origin',
+            redirect: 'follow',
+        })
+            .catch(function (err) {
+                // Low level error situation, such as network error
+                throw {
+                    err: err,
+                    hint: ERROR_CHECK_CONNECTIVITY,
+                };
+            })
+            .then(function (res) {
+                try {
+                    if (!res.ok) {
+                        throw "Unexpected status code: " + res.status + " " + res.statusText;
+                    }
+                    return res.json();
+                }
+                catch (err) {
+                    // Unexpected error
+                    throw {
+                        err: err,
+                        hint: ERROR_TRY_AGAIN,
+                    };
+                }
+            })
+            .then(function (metadata) {
+                try {
+                    // Abstraction leak, updating DOM outside of setState:
+                    setDetails(metadata);
+
+                    updateState({
+                        loadDetailsState: LOAD_DETAILS_READY,
+                        initialMetadata: metadata,
+                    });
+                }
+                catch (err) {
+                    // Unexpected error
+                    throw {
+                        err: err,
+                        hint: ERROR_TRY_AGAIN,
+                    };
+                }
+            })
+            .catch(function (err) {
+                updateState({
+                    loadDetailsState: LOAD_DETAILS_FAILED,
+                    loadDetailsError: err,
+                });
+            });
+
+        updateState({
+            phase: PHASE_DETAILS,
+            uploadPhase: UPLOAD_PHASE_FINISHED,
+            uploadResult: UPLOAD_STATE_SUCCESS,
+            pixurUrl,
+            previewUrl: thumb,
+            loadDetailsState: LOAD_DETAILS_PENDING,
+            saveDetailsState: SAVE_DETAILS_INITIAL,
+        });
+    },
 };
 
 dom.fileInput.addEventListener('change', function (ev) {
@@ -267,6 +343,23 @@ dom.details.form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.submitDetails();
+});
+
+document.querySelector('.thumbnails').addEventListener('click', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    let li = ev.target;
+    while (li && li.tagName != "LI") {
+        li = li.parentNode;
+    }
+
+    if (!li) return;
+
+    let pixurUrl = li.querySelector("a").href;
+    let thumb = li.querySelector("img").src;
+
+    actions.selectExistingImage(pixurUrl, thumb);
 });
 
 actions.selectFile(dom.fileInput.files[0]);
