@@ -10,6 +10,9 @@ const dom = {
     uploader: {
         errorMessage: document.querySelector('.uploader-form--error-message'),
         uploadError: document.querySelector('.uploader-form--upload-error'),
+        statusUploading: document.querySelector('.uploader-form--status__uploading'),
+        statusUploaded: document.querySelector('.uploader-form--status__uploaded'),
+        pixurUrl: document.querySelector('.uploader-form--url'),
     },
     details: {
         form: document.querySelector('.uploader-form--details'),

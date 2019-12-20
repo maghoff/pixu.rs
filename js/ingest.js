@@ -51,6 +51,17 @@ function setState(newState) {
         dom.preview.src = newState.previewUrl;
     }
 
+    if (newState.pixurUrl != state.pixurUrl) {
+        dom.uploader.pixurUrl.href = newState.pixurUrl;
+        dom.uploader.pixurUrl.textContent = newState.pixurUrl;
+    }
+
+    if (newState.uploadPhase != state.uploadPhase) {
+        console.log("Updating for upload phase", newState.uploadPhase);
+        dom.uploader.statusUploading.style.display = (newState.uploadPhase == UPLOAD_PHASE_IN_PROGRESS ? 'block' : 'none');
+        dom.uploader.statusUploaded.style.display = (newState.uploadPhase == UPLOAD_PHASE_FINISHED ? 'block' : 'none');
+    }
+
     if (newState.uploadError != state.uploadError) {
         if (newState.uploadError) {
             dom.uploader.errorMessage.textContent = newState.uploadError.hint;
@@ -79,22 +90,14 @@ function setState(newState) {
     }
 
     if (newState.saveDetailsState != state.saveDetailsState) {
-        dom.details.submit.style.display =
-            newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED ? "none" : "block";
-
-        if (newState.saveDetailsState == SAVE_DETAILS_SUCCEEDED) {
-            dom.details.status.innerHTML =
-                'Bildet er nå delt <a target=_blank href="' + newState.pixurUrl + '">her</a> 🙌';
-        } else {
-            let msg;
-            switch (newState.saveDetailsState) {
-                case SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
-                case SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
-                case SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + newState.saveDetailsError.hint; break;
-            }
-
-            dom.details.status.textContent = msg;
+        let msg;
+        switch (newState.saveDetailsState) {
+            case SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
+            case SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
+            case SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + newState.saveDetailsError.hint; break;
         }
+
+        dom.details.status.textContent = msg;
     }
 
     state = newState;

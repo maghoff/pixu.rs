@@ -169,6 +169,14 @@ h1 {
     text-align: center;
 }
 
+.uploader-form--status__uploading {
+    display: none;
+}
+
+.uploader-form--status__uploaded {
+    display: none;
+}
+
 /* Photos */
 
 /*
