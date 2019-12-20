@@ -245,7 +245,7 @@ const actions = {
             saveDetailsState: SAVE_DETAILS_IN_PROGRESS,
         });
     },
-    selectExistingImage: function (pixurUrl, thumb) {
+    selectExistingImage: function (pixurUrl, thumb, hr) {
         fetch(pixurUrl + "/meta", {
             credentials: 'same-origin',
             redirect: 'follow',
@@ -274,6 +274,8 @@ const actions = {
             })
             .then(function (metadata) {
                 try {
+                    if (state.pixurUrl != pixurUrl) return;
+
                     // Abstraction leak, updating DOM outside of setState:
                     setDetails(metadata);
 
@@ -291,6 +293,7 @@ const actions = {
                 }
             })
             .catch(function (err) {
+                if (state.pixurUrl != pixurUrl) return;
                 updateState({
                     loadDetailsState: LOAD_DETAILS_FAILED,
                     loadDetailsError: err,
@@ -306,6 +309,11 @@ const actions = {
             loadDetailsState: LOAD_DETAILS_PENDING,
             saveDetailsState: SAVE_DETAILS_INITIAL,
         });
+
+        setTimeout(() => {
+            if (state.pixurUrl != pixurUrl) return;
+            updateState({ previewUrl: hr });
+        }, 0);
     },
 };
 
@@ -356,10 +364,11 @@ document.querySelector('.thumbnails').addEventListener('click', function (ev) {
 
     if (!li) return;
 
-    let pixurUrl = li.querySelector("a").href;
-    let thumb = li.querySelector("img").src;
+    const pixurUrl = li.querySelector("a").href;
+    const thumb = li.querySelector("img").src;
+    const hr = li.querySelector("img").getAttribute('data-hr');
 
-    actions.selectExistingImage(pixurUrl, thumb);
+    actions.selectExistingImage(pixurUrl, thumb, hr);
 });
 
 actions.selectFile(dom.fileInput.files[0]);
