@@ -1,0 +1,57 @@
+<img class="uploader-form--preview" src="" alt="preview">
+
+<div class="uploader-form--phase-details">
+    <form id="uploader-form--details" class="uploader-form--details">
+
+        <p>Hvem vil du dele bildet med?</p>
+        <select class="uploader-form--recipients" multiple size="{{recipients.len()}}">
+            <optgroup disabled hidden></optgroup><!-- iOS bug -->
+            {{#recipients}}
+            <option value='{{.}}'>{{.}}</option>
+            {{/recipients}}
+        </select>
+        <button id="uploader-form--add-recipient" class="uploader-form--button" type=button>➕ Legg til en annen</button>
+
+        <div>
+            <input id="send_email" name="send_email" type="checkbox" checked><label for="send_email">Send epost</label>
+        </div>
+
+        <div class="uploader-form--details-submission">
+            <p class="uploader-form--status">Er alt klart da?</p>
+            <button class="uploader-form--button uploader-form--button__default" type="submit">👍 Del bildet</button>
+        </div>
+
+        <p class="uploader-form--status__uploading">Bildet lastes opp&hellip;</p>
+        <p class="uploader-form--status__uploaded">Linken til bildet er <a class="uploader-form--url" href="" target="_blank"></a></p>
+
+    </form>
+</div>
+
+<form id="uploader-form">
+    <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg">
+
+    <div class="uploader-form--phase-initial">
+        <label class="uploader-form--link" for="image">Last opp et bilde 📸</label>
+    </div>
+
+    <div class="uploader-form--phase-preview">
+        <div class="uploader-form--controls">
+            <p>Vil du laste opp dette bildet?</p>
+            <p>
+                <label class="uploader-form--button uploader-form--button__negative" for="image">❌ Nei, et annet</label>
+                <button class="uploader-form--button uploader-form--button__default" type="submit">✔ Ja, dette</button>
+            </p>
+            <p>
+                <button class="uploader-form--link" type="reset">Nei, glem hele opplastingen</button>
+            </p>
+        </div>
+    </div>
+
+    <div class="uploader-form--upload-error">
+        <p>💁 Noe gikk galt med opplastingen. <span class="uploader-form--error-message"></span></p>
+        <p><button class="uploader-form--button uploader-form--button__default" type="submit">Prøv igjen</button></p>
+        <p><button class="uploader-form--link" type="reset">Nei, glem hele opplastingen</button></p>
+    </div>
+</form>
+
+<script src="ingest.js" type="text/javascript" async defer></script>
