@@ -18,8 +18,10 @@ pub struct Index {
     claims: Option<auth::Claims>,
 }
 
-struct UploaderExtra {
+struct UploaderExtra<'a> {
     recipients: Vec<String>,
+    url: &'a str,
+    message: &'a str,
 }
 
 #[derive(BartDisplay)]
@@ -27,7 +29,7 @@ struct UploaderExtra {
 struct Get<'a> {
     self_url: &'a str,
     claims: &'a Option<auth::Claims>,
-    is_uploader: Option<UploaderExtra>,
+    is_uploader: Option<UploaderExtra<'a>>,
     authorized_pixurs: &'a [(Id30, Id30, Id30)],
 }
 
@@ -63,7 +65,11 @@ impl Index {
                     .load::<String>(&*db_connection)
                     .map_err(|_| HandlingError::InternalServerError)?;
 
-                Some(UploaderExtra { recipients })
+                Some(UploaderExtra {
+                    recipients,
+                    message: "",
+                    url: "",
+                })
             }
         };
 

@@ -177,6 +177,30 @@ h1 {
     display: none;
 }
 
+.email-details {
+    border: 1px solid #999;
+    border-radius: 6px;
+    overflow: hidden;
+    padding: 0 10px;
+    box-sizing: border-box;
+    max-height: 0px;
+    transition: ease-out 300ms max-height;
+}
+
+.email-details.show {
+    max-height: 500px;
+}
+
+#email-details--title, #email-details--message {
+    font: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.email-details--preview {
+    border-top: 2px solid black;
+}
+
 /* Photos */
 
 /*
