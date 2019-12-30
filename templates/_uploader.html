@@ -16,9 +16,10 @@
             <input id="send_email" name="send_email" type="checkbox" checked><label for="send_email">Send epost</label>
         </div>
 
-        <div class="email-details">
+        <div class="email-details show">
             <p><label for="email-details--title">Tittel:</label> <input id="email-details--title" name="email-details--title" value="Vi har delt et bilde med deg 📸"></p>
             <p><label for="email-details--message">Beskjed:</label> <input id="email-details--message" name="email-details--message" value="Vi har delt et bilde med deg."></p>
+            <p>Slik blir eposten:</p>
             <div class="email-details--preview">
                 {{>_notification-email-body.html}}
             </div>

@@ -20,6 +20,14 @@ const dom = {
         submit: document.querySelector('.uploader-form--details button[type="submit"]'),
         status: document.querySelector('.uploader-form--status'),
     },
+    email: {
+        sendEmail: document.getElementById('send_email'),
+        emailDetails: document.querySelector('.email-details'),
+        title: document.getElementById('email-details--title'),
+        messageInput: document.getElementById('email-details--message'),
+        messagePreview: document.getElementById('message'),
+        link: document.getElementById('link'),
+    },
 };
 
 

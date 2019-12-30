@@ -29,6 +29,8 @@ const initialState = {
     loadDetailsState: LOAD_DETAILS_READY,
     saveDetailsState: SAVE_DETAILS_INITIAL,
     previewUrl: "",
+    sendEmail: dom.email.sendEmail.defaultValue,
+    emailMessage: dom.email.messageInput.defaultValue,
 };
 let state = initialState;
 
@@ -52,8 +54,8 @@ function setState(newState) {
     }
 
     if (newState.pixurUrl != state.pixurUrl) {
-        dom.uploader.pixurUrl.href = newState.pixurUrl;
-        dom.uploader.pixurUrl.textContent = newState.pixurUrl;
+        dom.email.link.href = dom.uploader.pixurUrl.href = newState.pixurUrl;
+        dom.email.link.textContent = dom.uploader.pixurUrl.textContent = newState.pixurUrl;
     }
 
     if (newState.uploadPhase != state.uploadPhase) {
@@ -100,6 +102,15 @@ function setState(newState) {
         dom.details.status.textContent = msg;
     }
 
+    if (newState.sendEmail != state.sendEmail) {
+        const action = newState.sendEmail ? 'add' : 'remove';
+        dom.email.emailDetails.classList[action]('show');
+    }
+
+    if (newState.emailMessage != state.emailMessage) {
+        dom.email.messagePreview.textContent = newState.emailMessage;
+    }
+
     state = newState;
 }
 
@@ -113,7 +124,7 @@ function gatherDetails() {
         metadata: {
             recipients: [],
         },
-        send_email: document.getElementById("send_email").checked,
+        send_email: dom.email.sendEmail.checked,
     };
 
     const s = document.querySelector(".uploader-form--recipients").selectedOptions;
@@ -374,4 +385,20 @@ document.querySelector('.thumbnails').addEventListener('click', function (ev) {
     actions.selectExistingImage(pixurUrl, thumb, hr);
 });
 
+dom.email.sendEmail.addEventListener('input', function (ev) {
+    updateState({ sendEmail: dom.email.sendEmail.checked });
+});
+
+dom.email.messageInput.addEventListener('input', function (ev) {
+    updateState({ emailMessage: dom.email.messageInput.value });
+});
+
+
+// Handle autofilling by browsers:
 actions.selectFile(dom.fileInput.files[0]);
+
+updateState({
+    sendEmail: dom.email.sendEmail.value,
+    emailMessage: dom.email.messageInput.value,
+});
+dom.email.messagePreview.textContent = state.emailMessage;
