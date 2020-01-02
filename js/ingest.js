@@ -400,6 +400,11 @@ dom.email.messageInput.addEventListener('input', function (ev) {
     updateState({ emailMessage: dom.email.messageInput.value });
 });
 
+dom.email.link.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+});
+
 
 // Handle autofilling by browsers:
 actions.selectFile(dom.fileInput.files[0]);
