@@ -46,6 +46,10 @@ function setState(newState) {
         const newShowPreview = newState.phase >= PHASE_PREVIEW;
         if (newShowPreview != oldShowPreview) {
             dom.preview.style.display = newShowPreview ? "block" : "none";
+
+            if (newShowPreview) {
+                dom.preview.scrollIntoView();
+            }
         }
     }
 
