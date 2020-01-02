@@ -105,6 +105,10 @@ function setState(newState) {
     if (newState.sendEmail != state.sendEmail) {
         const action = newState.sendEmail ? 'add' : 'remove';
         dom.email.emailDetails.classList[action]('show');
+
+        const disabled = !newState.sendEmail;
+        dom.email.title.disabled = disabled;
+        dom.email.messageInput.disabled = disabled;
     }
 
     if (newState.emailMessage != state.emailMessage) {
