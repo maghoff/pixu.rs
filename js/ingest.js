@@ -128,7 +128,10 @@ function gatherDetails() {
         metadata: {
             recipients: [],
         },
-        send_email: dom.email.sendEmail.checked,
+        send_email: dom.email.sendEmail.checked ? {
+            title: dom.email.title.value,
+            message: state.emailMessage,
+        } : null,
     };
 
     const s = document.querySelector(".uploader-form--recipients").selectedOptions;

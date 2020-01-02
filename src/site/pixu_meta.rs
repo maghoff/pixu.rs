@@ -34,11 +34,18 @@ struct MetadataPost<'a> {
 }
 
 #[derive(serde_derive::Deserialize)]
+struct EmailDetails<'a> {
+    title: &'a str,
+    message: &'a str,
+}
+
+#[derive(serde_derive::Deserialize)]
 struct UpdateRequest<'a> {
     #[serde(borrow)]
     metadata: MetadataPost<'a>,
 
-    send_email: bool,
+    #[serde(borrow)]
+    send_email: Option<EmailDetails<'a>>,
 }
 
 impl PixuMeta {
@@ -74,7 +81,7 @@ impl PixuMeta {
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
     }
 
-    fn send_email_notification(&self, recipients: &[&str]) {
+    fn send_email_notification(&self, email_details: &EmailDetails, recipients: &[&str]) {
         #[derive(BartDisplay)]
         #[template = "templates/notification-email.html"]
         struct HtmlMail<'a> {
@@ -91,19 +98,22 @@ impl PixuMeta {
         let url = format!("{}{}", self.base_url, self.id);
 
         let html_body = HtmlMail {
-            title: "Velkommen til magnusogdisa.no 📸",
-            message: "Vi har delt et bilde med deg",
+            title: email_details.title,
+            message: email_details.message,
             url: &url,
         }
         .to_string();
 
-        let text_body = format!("Hei 😊\n\nVi har delt et bilde med deg:\n\n{}", url);
+        let text_body = format!(
+            "Hei 😊\n\n{}\n\nÅpne bildet på magnusogdisa.no: {}",
+            email_details.message, url
+        );
 
         for email in recipients {
             let email = EmailBuilder::new()
                 .to(*email)
                 .from(self.sender.clone())
-                .subject("Vi har delt et bilde med deg 📸")
+                .subject(email_details.title)
                 .alternative(&html_body, &text_body)
                 .build()
                 .unwrap();
@@ -171,8 +181,11 @@ impl PixuMeta {
                     .values(&to_add)
                     .execute(&*db_connection)?;
 
-                if update_request.send_email {
-                    self.send_email_notification(&to_add.iter().map(|x| x.sub).collect::<Vec<_>>());
+                if let Some(email_details) = update_request.send_email {
+                    self.send_email_notification(
+                        &email_details,
+                        &to_add.iter().map(|x| x.sub).collect::<Vec<_>>(),
+                    );
                 }
 
                 let to_remove = old_recipients.difference(&new_recipients);
