@@ -29,7 +29,7 @@ const initialState = {
     loadDetailsState: LOAD_DETAILS_READY,
     saveDetailsState: SAVE_DETAILS_INITIAL,
     previewUrl: "",
-    sendEmail: dom.email.sendEmail.defaultValue,
+    sendEmail: dom.email.sendEmail.defaultChecked,
     emailMessage: dom.email.messageInput.defaultValue,
 };
 let state = initialState;
@@ -402,7 +402,7 @@ dom.email.messageInput.addEventListener('input', function (ev) {
 actions.selectFile(dom.fileInput.files[0]);
 
 updateState({
-    sendEmail: dom.email.sendEmail.value,
+    sendEmail: dom.email.sendEmail.checked,
     emailMessage: dom.email.messageInput.value,
 });
 dom.email.messagePreview.textContent = state.emailMessage;
