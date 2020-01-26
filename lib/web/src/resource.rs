@@ -75,6 +75,7 @@ impl Response {
 
 #[async_trait]
 pub trait Get {
+    // TODO Would it be better to have this unconditionally return CacheControl?
     fn cache_control(&self) -> Option<CacheControl> {
         None
     }
