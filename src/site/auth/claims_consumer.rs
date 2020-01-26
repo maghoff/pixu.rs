@@ -1,10 +1,9 @@
-use web::{Error, FutureBox, Resource};
+use async_trait::async_trait;
+use web::{Error, Resource};
 
+#[async_trait]
 pub trait ClaimsConsumer {
     type Claims;
 
-    fn claims<'a>(
-        self,
-        claims: Option<Self::Claims>,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>>;
+    async fn claims(self, claims: Option<Self::Claims>) -> Result<Resource, Error>;
 }

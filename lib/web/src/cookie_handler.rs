@@ -1,29 +1,20 @@
-use futures::future::FutureExt;
+use super::{Error, Resource};
 
-use super::{Error, FutureBox, Resource};
-
+#[async_trait::async_trait]
 pub trait CookieHandler: Send {
     fn read_cookies(&self) -> &[&str];
 
     // The values are given in the same order as the keys listed by read_cookies()
-    fn cookies<'a>(
-        self: Box<Self>,
-        _values: &'a [Option<&'a str>],
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>>;
+    async fn cookies(self: Box<Self>, values: &'_ [Option<&'_ str>]) -> Result<Resource, Error>;
 }
 
-impl<T> CookieHandler for T
-where
-    T: Resource + Send + 'static,
-{
+#[async_trait::async_trait]
+impl CookieHandler for Resource {
     fn read_cookies(&self) -> &[&str] {
         &[]
     }
 
-    fn cookies<'a>(
-        self: Box<Self>,
-        _values: &'a [Option<&'a str>],
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        async { Ok(self as _) }.boxed()
+    async fn cookies(self: Box<Self>, _values: &'_ [Option<&'_ str>]) -> Result<Resource, Error> {
+        Ok(*self)
     }
 }

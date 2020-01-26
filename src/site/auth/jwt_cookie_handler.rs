@@ -1,7 +1,6 @@
-use futures::future::FutureExt;
 use serde::de::DeserializeOwned;
 
-use web::{CookieHandler, Error, FutureBox, Resource};
+use web::{CookieHandler, Error, Resource};
 
 use super::ClaimsConsumer;
 
@@ -22,11 +21,19 @@ where
     pub fn new(key: Vec<u8>, consumer: Consumer) -> Self {
         JwtCookieHandler { key, consumer }
     }
+}
 
-    async fn cookies_async<'a>(
-        self: Box<Self>,
-        values: &'a [Option<&'a str>],
-    ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
+#[async_trait::async_trait]
+impl<Consumer, Claims> CookieHandler for JwtCookieHandler<Consumer, Claims>
+where
+    Consumer: 'static + ClaimsConsumer<Claims = Claims> + Send,
+    Claims: 'static + DeserializeOwned + Send,
+{
+    fn read_cookies(&self) -> &[&str] {
+        &["let-me-in"]
+    }
+
+    async fn cookies(self: Box<Self>, values: &'_ [Option<&'_ str>]) -> Result<Resource, Error> {
         let token_data = values[0].and_then(|jwt| {
             use jsonwebtoken::{Algorithm, Validation};
 
@@ -44,22 +51,5 @@ where
         });
 
         self.consumer.claims(token_data).await
-    }
-}
-
-impl<Consumer, Claims> CookieHandler for JwtCookieHandler<Consumer, Claims>
-where
-    Consumer: 'static + ClaimsConsumer<Claims = Claims> + Send,
-    Claims: 'static + DeserializeOwned + Send,
-{
-    fn read_cookies(&self) -> &[&str] {
-        &["let-me-in"]
-    }
-
-    fn cookies<'a>(
-        self: Box<Self>,
-        values: &'a [Option<&'a str>],
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        self.cookies_async(values).boxed()
     }
 }

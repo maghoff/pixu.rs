@@ -1,6 +1,7 @@
 use std::fmt;
 
-// String? Really? Maybe Cow or something instead?
+// FIXME String? Really? Maybe Cow or something instead?
+#[derive(Clone)]
 pub enum ETag {
     Weak(String),
     Strong(String),

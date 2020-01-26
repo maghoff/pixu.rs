@@ -1,7 +1,6 @@
-use futures::FutureExt;
 use jsonwebtoken::{encode, Algorithm, Header, Validation};
 use serde_derive::Deserialize;
-use web::{Cookie, CookieHandler, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Cookie, CookieHandler, MediaType, RepresentationBox, Resource, Response};
 
 use super::{AuthPhase, Claims, ValidationClaims};
 use crate::site::handling_error::HandlingError;
@@ -97,17 +96,14 @@ impl VerifyAuth {
             cookies,
         })
     }
+}
 
-    async fn async_get(self: Box<Self>) -> Response {
+#[async_trait::async_trait]
+impl web::Get for VerifyAuth {
+    async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for VerifyAuth {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.async_get().boxed()
     }
 }
 
@@ -118,33 +114,29 @@ struct VerifyAuthCookieHandler {
     redirect: String,
 }
 
-impl VerifyAuthCookieHandler {
-    async fn async_cookies<'a>(
-        self: Box<Self>,
-        values: &'a [Option<&'a str>],
-    ) -> Result<Box<dyn web::Resource + Send + 'static>, web::Error> {
-        let cookie = values[0].map(|x| x.to_string());
-
-        Ok(Box::new(VerifyAuth {
-            title: self.title,
-            key: self.key,
-            claims: self.claims,
-            redirect: self.redirect,
-            head_sign: cookie,
-        }) as _)
-    }
-}
-
+#[async_trait::async_trait]
 impl CookieHandler for VerifyAuthCookieHandler {
     fn read_cookies(&self) -> &[&str] {
         &["let-me-in"]
     }
 
-    fn cookies<'a>(
+    async fn cookies(
         self: Box<Self>,
-        values: &'a [Option<&'a str>],
-    ) -> FutureBox<'a, Result<Box<dyn web::Resource + Send + 'static>, web::Error>> {
-        self.async_cookies(values).boxed() as _
+        values: &'_ [Option<&'_ str>],
+    ) -> Result<Resource, web::Error> {
+        let cookie = values[0].map(|x| x.to_string());
+
+        Ok(Resource {
+            etag: None,
+            get: Some(Box::new(VerifyAuth {
+                title: self.title,
+                key: self.key,
+                claims: self.claims,
+                redirect: self.redirect,
+                head_sign: cookie,
+            })),
+            post: None,
+        })
     }
 }
 

@@ -1,10 +1,9 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::future::FutureExt;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Error, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -74,17 +73,14 @@ impl Pixu {
             )],
         ))
     }
+}
 
-    async fn get_core(self: Box<Self>) -> Response {
+#[async_trait::async_trait]
+impl web::Get for Pixu {
+    async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for Pixu {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.get_core().boxed()
     }
 }
 
@@ -96,12 +92,16 @@ pub struct AuthorizationConsumer {
 impl auth::authorizer::Consumer for AuthorizationConsumer {
     type Authorization = Id30;
 
-    fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, Error> {
-        Ok(Box::new(Pixu {
-            title: self.title,
-            db_pool: self.db_pool,
-            id,
-        }) as _)
+    fn authorization<'a>(self, id: Id30) -> Result<Resource, Error> {
+        Ok(Resource {
+            etag: None,
+            get: Some(Box::new(Pixu {
+                title: self.title,
+                db_pool: self.db_pool,
+                id,
+            })),
+            post: None,
+        })
     }
 }
 

@@ -1,10 +1,9 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::FutureExt;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Error, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -119,17 +118,14 @@ impl Index {
             )],
         ))
     }
+}
 
-    async fn get_core(self: Box<Self>) -> Response {
+#[async_trait::async_trait]
+impl web::Get for Index {
+    async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for Index {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.get_core().boxed()
     }
 }
 
@@ -139,21 +135,20 @@ pub struct IndexLoader {
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
 
+#[async_trait::async_trait]
 impl auth::ClaimsConsumer for IndexLoader {
     type Claims = auth::Claims;
 
-    fn claims<'a>(
-        self,
-        claims: Option<Self::Claims>,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
-        async {
-            Ok(Box::new(Index {
+    async fn claims(self, claims: Option<Self::Claims>) -> Result<Resource, Error> {
+        Ok(Resource {
+            etag: None,
+            get: Some(Box::new(Index {
                 title: self.title,
                 claims,
                 self_url: self.self_url,
                 db_pool: self.db_pool,
-            }) as Box<dyn Resource + Send + 'static>)
-        }
-        .boxed() as _
+            })),
+            post: None,
+        })
     }
 }

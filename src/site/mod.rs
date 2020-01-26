@@ -11,14 +11,13 @@ mod thumbnail;
 use diesel;
 use diesel::sqlite::SqliteConnection;
 use futures::task::Spawn;
-use futures::FutureExt;
 use lettre::SmtpTransport;
 use lettre_email::Mailbox;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
 use regex::{Regex, RegexSet};
 use std::sync::{Arc, Mutex};
-use web::{FutureBox, Lookup, MediaType, QueryHandler, RepresentationBox};
+use web::{Lookup, MediaType, QueryHandler, RepresentationBox, Response};
 
 use auth::{InitiateAuth, JwtCookieHandler, VerifyAuthArgsConsumer};
 use index::IndexLoader;
@@ -33,15 +32,12 @@ struct Layout<'a> {
     body: &'a std::fmt::Display,
 }
 
-fn not_found() -> impl QueryHandler {
-    // TODO: This one seems to only reply to GET, but should give the same
-    // response to the other verbs
-
+fn not_found() -> Response {
     #[derive(BartDisplay)]
     #[template_string = "Not found!\n"]
     struct NotFound;
 
-    (
+    Response::new(
         web::Status::NotFound,
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -50,10 +46,7 @@ fn not_found() -> impl QueryHandler {
     )
 }
 
-fn moved_permanently(redirect: impl Into<String>) -> impl QueryHandler {
-    // TODO: This one seems to only reply to GET, but should give the same
-    // response to the other verbs
-
+fn moved_permanently(redirect: impl Into<String>) -> Response {
     let redirect = redirect.into();
 
     #[derive(BartDisplay)]
@@ -67,7 +60,7 @@ fn moved_permanently(redirect: impl Into<String>) -> impl QueryHandler {
     }
     .to_string();
 
-    (
+    Response::new(
         web::Status::MovedPermanently(redirect),
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
@@ -76,14 +69,31 @@ fn moved_permanently(redirect: impl Into<String>) -> impl QueryHandler {
     )
 }
 
+struct StaticAsset {
+    media_type: MediaType,
+    body: String, // Should be Vec<[u8]>, no?
+}
+
+#[async_trait::async_trait]
+impl web::Get for StaticAsset {
+    // TODO permanent cache-control directives?
+
+    async fn representations(self: Box<Self>) -> web::Response {
+        let body = Box::new(self.body) as RepresentationBox;
+
+        web::Response::new(
+            web::Status::Ok,
+            vec![(self.media_type, Box::new(move || body) as _)],
+        )
+    }
+}
+
 fn static_asset(media_type: MediaType, body: String) -> impl QueryHandler {
-    (
-        web::Status::Ok,
-        vec![(
-            media_type,
-            Box::new(move || Box::new(body) as RepresentationBox) as _,
-        )],
-    )
+    web::Resource {
+        etag: None,
+        get: Some(Box::new(StaticAsset { media_type, body })),
+        post: None,
+    }
 }
 
 pub struct Site<S: Spawn + Clone + Send + Sync + 'static> {
@@ -130,17 +140,17 @@ use super::id30::Id30;
 fn canonicalize_id30(
     given: &str,
     then: impl Fn(Id30) -> Box<dyn QueryHandler + 'static>,
-) -> Box<dyn QueryHandler + 'static> {
+) -> Result<Box<dyn QueryHandler + 'static>, Response> {
     match given.parse::<Id30>() {
         Ok(id) => {
             let canon = id.to_string();
             if given == canon {
-                then(id)
+                Ok(then(id))
             } else {
-                Box::new(moved_permanently(canon)) as _
+                Err(moved_permanently(canon))
             }
         }
-        Err(_) => Box::new(not_found()) as _,
+        Err(_) => Err(not_found()),
     }
 }
 
@@ -165,7 +175,10 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         }
     }
 
-    async fn lookup<'a>(&'a self, path: &'a str) -> Box<dyn QueryHandler + 'static> {
+    async fn lookup<'a>(
+        &'a self,
+        path: &'a str,
+    ) -> Result<Box<dyn QueryHandler + 'static>, Response> {
         // TODO Decode URL escapes, keeping in mind that foo%2Fbar is different from foo/bar
 
         let title = self.title.clone();
@@ -208,46 +221,51 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                             provider,
                             consumer,
                         );
-                        Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                        Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _)
                     },
-                    Err(_) => Box::new(not_found()) as _,
+                    Err(_) => Err(not_found()),
                 }
             },
-            _ = r"^$" => Box::new(
+            _ = r"^$" => Ok(Box::new(
                 JwtCookieHandler::new(
                     self.key.clone(),
                     IndexLoader { title, self_url: self.base_url.clone(), db_pool: self.db_pool.clone() }
                 )
-            ) as _,
-            _ = r"^style\.css$" => Box::new(static_asset(
+            ) as _),
+            _ = r"^style\.css$" => Ok(Box::new(static_asset(
                 MediaType::new("text", "css", vec!["charset=utf-8".to_string()]),
                 include_str!("style.css").to_string(),
-            )) as _,
+            )) as _),
             _ = r"^ingest\.js$" => {
                 #[cfg(not(feature = "dev-server"))]
                 {
-                    Box::new(static_asset(
+                    Ok(Box::new(static_asset(
                         MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
                         include_str!("../../dist/ingest.js").to_string(),
-                    )) as _
+                    )) as _)
                 }
 
                 #[cfg(feature = "dev-server")]
                 panic!("index.js must be served by the dev server");
             },
-            _ = r"^initiate_auth$" => Box::new(InitiateAuth {
+            _ = r"^initiate_auth$" =>
+                Ok(Box::new(web::Resource {
+                    etag: None,
+                    get: None,
+                    post: Some(Box::new(InitiateAuth {
+                        title,
+                        key: self.key.clone(),
+                        base_url: self.base_url.clone(),
+                        db_pool: self.db_pool.clone(),
+                        mailer: self.mailer.clone(),
+                        sender: self.sender.clone(),
+                        spawn: self.spawn.clone(),
+                    })),
+                })),
+            _ = r"^verify_auth$" => Ok(Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
                 title,
                 key: self.key.clone(),
-                base_url: self.base_url.clone(),
-                db_pool: self.db_pool.clone(),
-                mailer: self.mailer.clone(),
-                sender: self.sender.clone(),
-                spawn: self.spawn.clone(),
-            }) as _,
-            _ = r"^verify_auth$" => Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
-                title,
-                key: self.key.clone(),
-            })) as _,
+            })) as _),
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
                     let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
@@ -270,7 +288,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     provider,
                     consumer,
                 );
-                Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _)
             },
             m = r"^img/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
@@ -285,13 +303,14 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
                 })
             },
-            ! => Box::new(not_found()) as _
+            ! => Err(not_found())
         }
     }
 }
 
+#[async_trait::async_trait]
 impl<S: Spawn + Clone + Send + Sync + 'static> Lookup for Site<S> {
-    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryHandler>> {
-        self.lookup(&path).boxed()
+    async fn lookup(&'_ self, path: &'_ str) -> Result<Box<dyn QueryHandler>, Response> {
+        self.lookup(&path).await
     }
 }

@@ -1,6 +1,6 @@
 #![feature(unsized_locals)]
 
-use futures::future::FutureExt;
+use std::fmt::Write;
 
 pub use cookie::Cookie;
 use hyper::http;
@@ -20,13 +20,15 @@ pub use self::query_handler::{Error, QueryHandler};
 pub use self::representation::Representation;
 pub use self::resource::*;
 
+#[async_trait::async_trait]
 pub trait Lookup: Send {
-    fn lookup<'a>(&'a self, path: &'a str) -> FutureBox<'a, Box<dyn QueryHandler>>;
+    async fn lookup(&'_ self, path: &'_ str) -> Result<Box<dyn QueryHandler>, Response>;
 }
 
 enum ResolveError<'a> {
     MalformedUri(&'a http::Uri),
     LookupError(Error),
+    GoodError(Response), // TODO Make this the only variant, remove enum
 }
 
 async fn resolve_resource<'a>(
@@ -36,7 +38,10 @@ async fn resolve_resource<'a>(
     match (uri.path(), uri.query()) {
         ("*", None) => unimplemented!("Should return asterisk resource"),
         (path, query) if path.starts_with('/') => {
-            let queryable_resource = lookup.lookup(&path[1..]).await;
+            let queryable_resource = lookup
+                .lookup(&path[1..])
+                .await
+                .map_err(ResolveError::GoodError)?;
             queryable_resource
                 .query(query)
                 .map_err(ResolveError::LookupError)
@@ -45,32 +50,12 @@ async fn resolve_resource<'a>(
     }
 }
 
-fn method_not_allowed() -> resource::Response {
+fn bad_request() -> resource::Response {
     resource::Response::new(
-        Status::MethodNotAllowed,
-        vec![(
-            MediaType::new("text", "plain", vec![]),
-            Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
-        )],
-    )
-}
-
-fn bad_request() -> impl Resource {
-    (
         Status::BadRequest,
         vec![(
             MediaType::new("text", "plain", vec![]),
             Box::new(move || Box::new("Bad Request\n") as RepresentationBox) as _,
-        )],
-    )
-}
-
-fn _internal_server_error() -> impl Resource {
-    (
-        Status::InternalServerError,
-        vec![(
-            MediaType::new("text", "plain", vec![]),
-            Box::new(move || Box::new("Internal Server Error\n") as RepresentationBox) as _,
         )],
     )
 }
@@ -103,9 +88,8 @@ async fn try_handle_request<'a>(
 ) -> Result<
     (
         Option<ETag>,
-        Status,
-        RepresentationsVec,
-        Vec<Cookie<'static>>,
+        resource::Response,
+        Option<resource::CacheControl>,
     ),
     Error,
 > {
@@ -116,6 +100,7 @@ async fn try_handle_request<'a>(
         .map_err(|x| match x {
             ResolveError::MalformedUri(_) => Error::BadRequest,
             ResolveError::LookupError(_) => Error::InternalServerError,
+            ResolveError::GoodError(x) => Error::BlanketResponse(x),
         })?;
 
     let read_cookies = cookie_handler.read_cookies();
@@ -145,7 +130,7 @@ async fn try_handle_request<'a>(
 
     let resource = cookie_handler.cookies(&cookies).await?;
 
-    let etag = resource.etag();
+    let etag = resource.etag.clone();
 
     if let Some(_if_match) = req.headers.get_ascii(http::header::IF_MATCH)? {
         unimplemented!();
@@ -178,13 +163,12 @@ async fn try_handle_request<'a>(
 
     let _accept = req.headers.get_ascii(http::header::ACCEPT)?;
 
-    let resource::Response {
-        status,
-        representations,
-        cookies,
-    } = match req.method {
+    match req.method {
         // TODO: Implement HEAD and OPTIONS in library
-        hyper::Method::GET => resource.get(),
+        hyper::Method::GET => {
+            let (response, cache_control) = resource.get().await;
+            return Ok((etag, response, cache_control));
+        }
         hyper::Method::POST => {
             let content_type = req
                 .headers
@@ -192,26 +176,29 @@ async fn try_handle_request<'a>(
                 .map(|x| x.to_str().map(|x| x.to_string())); // TODO should be parsed as a MediaType
 
             if let Some(Ok(content_type)) = content_type {
-                resource.post(content_type, body)
+                let response = resource.post(content_type, body).await;
+                return Ok((etag, response, None));
             } else {
-                Box::new(bad_request()).get()
+                return Ok((etag, bad_request(), None));
             }
         }
-        _ => async { method_not_allowed() }.boxed() as _,
-    }
-    .await;
-
-    Ok((etag, status, representations, cookies))
+        _ => return Ok((etag, resource.method_not_allowed(), None)),
+    };
 }
 
 use hyper::http::StatusCode;
 
 async fn build_response(
     etag: Option<ETag>,
-    status: Status,
-    mut representations: RepresentationsVec,
-    cookies: Vec<Cookie<'static>>,
+    response: resource::Response,
+    cache_control: Option<resource::CacheControl>,
 ) -> hyper::Response<Body> {
+    let resource::Response {
+        status,
+        mut representations,
+        cookies,
+    } = response;
+
     let mut response = hyper::Response::builder();
 
     match status {
@@ -245,9 +232,9 @@ async fn build_response(
             // TODO: Set `WWW-Authenticate` header
         }
 
-        Status::MethodNotAllowed => {
+        Status::MethodNotAllowed { allow } => {
             response.status(StatusCode::METHOD_NOT_ALLOWED);
-            // TODO: Set `Allow` header
+            response.header("allow", allow);
         }
 
         Status::NotFound => {
@@ -274,7 +261,35 @@ async fn build_response(
         response.header("etag", etag.to_string());
     }
 
-    // Optionally set Cache-Control
+    if let Some(cache_control) = cache_control {
+        let mut cc = String::new();
+
+        if cache_control.cacheability.private {
+            write!(&mut cc, "private").unwrap();
+        } else {
+            write!(&mut cc, "public").unwrap();
+        }
+
+        match cache_control.cacheability.policy {
+            resource::CacheabilityPolicy::AllowCaching => (),
+            resource::CacheabilityPolicy::NoCache => write!(&mut cc, ", no-cache").unwrap(),
+            resource::CacheabilityPolicy::NoStore => write!(&mut cc, ", no-store").unwrap(),
+        };
+
+        if cache_control.revalidation.must_revalidate {
+            write!(&mut cc, ", must-revalidate").unwrap();
+        }
+
+        if cache_control.revalidation.proxy_revalidate {
+            write!(&mut cc, ", proxy-revalidate").unwrap();
+        }
+
+        if cache_control.revalidation.immutable {
+            write!(&mut cc, ", immutable").unwrap();
+        }
+
+        response.header("cache-control", cc);
+    }
 
     if cookies.len() > 0 {
         response.header(
@@ -296,14 +311,16 @@ async fn handle_request_core<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
 ) -> hyper::Response<Body> {
-    let (etag, status, representations, cookies) = try_handle_request(site, req)
-        .await
-        .unwrap_or_else(|err| match err {
-            Error::BadRequest => unimplemented!(),
-            Error::InternalServerError => unimplemented!(),
-        });
+    let (etag, response, cache_control) =
+        try_handle_request(site, req)
+            .await
+            .unwrap_or_else(|err| match err {
+                Error::BadRequest => unimplemented!(),
+                Error::InternalServerError => unimplemented!(),
+                Error::BlanketResponse(r) => (None, r, None),
+            });
 
-    build_response(etag, status, representations, cookies).await
+    build_response(etag, response, cache_control).await
 }
 
 // This exists merely to allow use of .compat() layer for futures 0.1 support

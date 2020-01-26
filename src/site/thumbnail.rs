@@ -1,10 +1,9 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::future::FutureExt;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Get, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -46,17 +45,14 @@ impl Thumbnail {
             )],
         ))
     }
+}
 
-    async fn get_core(self: Box<Self>) -> Response {
+#[async_trait::async_trait]
+impl Get for Thumbnail {
+    async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
         self.try_get().await.unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for Thumbnail {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.get_core().boxed()
     }
 }
 pub struct AuthorizationConsumer {
@@ -67,12 +63,16 @@ pub struct AuthorizationConsumer {
 impl auth::authorizer::Consumer for AuthorizationConsumer {
     type Authorization = Id30;
 
-    fn authorization<'a>(self, id: Id30) -> Result<Box<dyn Resource + Send + 'static>, web::Error> {
-        Ok(Box::new(Thumbnail {
-            title: self.title,
-            db_pool: self.db_pool,
-            id,
-        }) as _)
+    fn authorization<'a>(self, id: Id30) -> Result<Resource, web::Error> {
+        Ok(Resource {
+            etag: None,
+            get: Some(Box::new(Thumbnail {
+                title: self.title,
+                db_pool: self.db_pool,
+                id,
+            })),
+            post: None,
+        })
     }
 }
 

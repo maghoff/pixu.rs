@@ -48,42 +48,41 @@ pub struct Claims {
 mod test {
     use super::*;
     use futures::executor::block_on;
-    use futures::future::FutureExt;
-    use web::{CookieHandler, Error, FutureBox, Resource, Response};
+    use web::{CookieHandler, Error, Resource, Response};
 
-    pub struct AuthorizationHandler<R: Resource> {
-        ok: R,
+    pub struct AuthorizationHandler {
+        ok: Resource,
     }
 
-    impl<R: Resource> AuthorizationHandler<R> {
-        pub fn new(ok: R) -> AuthorizationHandler<R> {
-            AuthorizationHandler { ok }
-        }
-    }
-
-    impl<R: 'static + Resource> ClaimsConsumer for AuthorizationHandler<R> {
+    #[async_trait::async_trait]
+    impl ClaimsConsumer for AuthorizationHandler {
         type Claims = Claims;
 
-        fn claims<'a>(
-            self,
-            claims: Option<Self::Claims>,
-        ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
+        async fn claims(self, claims: Option<Self::Claims>) -> Result<Resource, Error> {
             let sub = claims.as_ref().map(|x| x.sub.as_str());
 
             if sub == Some("let-me-in") {
-                async { Ok(Box::new(self.ok) as Box<dyn Resource + Send + 'static>) }.boxed() as _
+                Ok(self.ok)
             } else {
                 unimplemented!()
             }
         }
     }
 
-    async fn qr() -> impl Resource {
-        use web::{MediaType, RepresentationBox};
-        vec![(
-            MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-            Box::new(move || Box::new("Ok") as RepresentationBox) as _,
-        )]
+    struct Qr;
+
+    #[async_trait::async_trait]
+    impl web::Get for Qr {
+        async fn representations(self: Box<Self>) -> Response {
+            use web::{MediaType, RepresentationBox};
+            Response::new(
+                web::Status::Ok,
+                vec![(
+                    MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+                    Box::new(move || Box::new("Ok") as RepresentationBox) as _,
+                )],
+            )
+        }
     }
 
     #[test]
@@ -104,10 +103,15 @@ mod test {
             .unwrap();
             let token = &[Some(token.as_str())];
 
-            let c = AuthorizationHandler::new(qr().await);
+            let ok = Resource {
+                etag: None,
+                get: Some(Box::new(Qr)),
+                post: None,
+            };
+            let c = AuthorizationHandler { ok };
             let a = Box::new(JwtCookieHandler::new(KEY.into(), c));
-            let resource = a.cookies(token).await.unwrap();
-            let Response { status, .. } = resource.get().await;
+            let resource = a.cookies(token).await.map_err(|_| ()).unwrap();
+            let (Response { status, .. }, _) = resource.get().await;
             assert_eq!(status, web::Status::Ok);
         });
     }

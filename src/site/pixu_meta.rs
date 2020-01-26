@@ -1,12 +1,12 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
+use futures::{compat::Stream01CompatExt, TryStreamExt};
 use lettre::{SmtpTransport, Transport};
 use lettre_email::{EmailBuilder, Mailbox};
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{Error, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Error, Get, MediaType, Post, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -73,12 +73,6 @@ impl PixuMeta {
                 Box::new(move || Box::new(json) as RepresentationBox) as _,
             )],
         ))
-    }
-
-    async fn async_get(self: Box<Self>) -> Response {
-        let title = self.title.clone();
-
-        self.try_get().await.unwrap_or_else(|e| e.render(&title))
     }
 
     fn send_email_notification(&self, email_details: &EmailDetails, recipients: &[&str]) {
@@ -208,27 +202,25 @@ impl PixuMeta {
             })
             .map_err(|_: diesel::result::Error| HandlingError::InternalServerError)
     }
+}
 
-    async fn async_post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+#[async_trait::async_trait]
+impl Get for PixuMeta {
+    async fn representations(self: Box<Self>) -> Response {
+        let title = self.title.clone();
+
+        self.try_get().await.unwrap_or_else(|e| e.render(&title))
+    }
+}
+
+#[async_trait::async_trait]
+impl Post for PixuMeta {
+    async fn post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
         let title = self.title.clone();
 
         self.try_post(content_type, body)
             .await
             .unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for PixuMeta {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        self.async_get().boxed()
-    }
-
-    fn post<'a>(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        self.async_post(content_type, body).boxed()
     }
 }
 
@@ -244,15 +236,27 @@ pub struct AuthorizationConsumer {
 impl auth::authorizer::Consumer for AuthorizationConsumer {
     type Authorization = ();
 
-    fn authorization<'a>(self, _: ()) -> Result<Box<dyn Resource + Send + 'static>, Error> {
-        Ok(Box::new(PixuMeta {
-            title: self.title,
-            db_pool: self.db_pool,
-            id: self.id,
-            base_url: self.base_url,
-            mailer: self.mailer,
-            sender: self.sender,
-        }) as _)
+    fn authorization(self, _: ()) -> Result<Resource, Error> {
+        Ok(Resource {
+            etag: None,
+            get: Some(Box::new(PixuMeta {
+                title: self.title.clone(),
+                db_pool: self.db_pool.clone(),
+                id: self.id,
+                base_url: self.base_url.clone(),
+                mailer: self.mailer.clone(),
+                sender: self.sender.clone(),
+            })),
+            post: Some(Box::new(PixuMeta {
+                //FIXME Curious duplication of get and post
+                title: self.title,
+                db_pool: self.db_pool,
+                id: self.id,
+                base_url: self.base_url,
+                mailer: self.mailer,
+                sender: self.sender,
+            })),
+        })
     }
 }
 

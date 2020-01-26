@@ -1,9 +1,9 @@
 use super::CookieHandler;
 
-#[derive(Debug)]
 pub enum Error {
     BadRequest,
     InternalServerError,
+    BlanketResponse(super::Response),
 }
 
 pub trait QueryHandler: Send {

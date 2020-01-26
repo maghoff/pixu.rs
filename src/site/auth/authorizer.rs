@@ -4,8 +4,26 @@ use web::{Error, FutureBox, Resource};
 #[derive(BartDisplay)]
 #[template = "templates/not-authorized.html"]
 struct NotAuthorized<'a> {
-    claims: Option<super::Claims>,
+    claims: &'a Option<super::Claims>,
     self_url: &'a str,
+}
+
+fn not_authorized(title: &str, claims: &Option<super::Claims>, self_url: &str) -> web::Response {
+    let body = Box::new(
+        crate::site::Layout {
+            title: title,
+            body: &NotAuthorized { claims, self_url },
+        }
+        .to_string(),
+    ) as web::RepresentationBox;
+
+    web::Response::new(
+        web::Status::Unauthorized,
+        vec![(
+            web::MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
+            Box::new(move || body) as web::RendererBox,
+        )],
+    )
 }
 
 pub trait Provider {
@@ -17,10 +35,7 @@ pub trait Provider {
 pub trait Consumer {
     type Authorization;
 
-    fn authorization(
-        self,
-        authorization: Self::Authorization,
-    ) -> Result<Box<dyn Resource + Send + 'static>, Error>;
+    fn authorization(self, authorization: Self::Authorization) -> Result<Resource, Error>;
 }
 
 pub struct Authorizer<P, C, A>
@@ -64,35 +79,15 @@ where
         self.provider.get_authorization(&claims.sub)
     }
 
-    async fn async_claims(
-        self,
-        claims: Option<super::Claims>,
-    ) -> Result<Box<dyn Resource + Send + 'static>, Error> {
+    async fn async_claims(self, claims: Option<super::Claims>) -> Result<Resource, Error> {
         if let Some(auth) = self.get_authorization(&claims)? {
             self.consumer.authorization(auth)
         } else {
-            let title = self.title;
-            let self_url = self.self_url;
-
-            // TODO Base URL for this template
-            Ok(Box::new((
-                web::Status::Unauthorized,
-                vec![(
-                    web::MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || {
-                        Box::new(
-                            crate::site::Layout {
-                                title: &title,
-                                body: &NotAuthorized {
-                                    claims: claims,
-                                    self_url: &self_url,
-                                },
-                            }
-                            .to_string(),
-                        ) as web::RepresentationBox
-                    }) as web::RendererBox,
-                )],
-            )) as _)
+            Err(Error::BlanketResponse(not_authorized(
+                &self.title,
+                &claims,
+                &self.self_url,
+            )))
         }
     }
 }
@@ -105,10 +100,7 @@ where
 {
     type Claims = super::Claims;
 
-    fn claims<'a>(
-        self,
-        claims: Option<Self::Claims>,
-    ) -> FutureBox<'a, Result<Box<dyn Resource + Send + 'static>, Error>> {
+    fn claims<'a>(self, claims: Option<Self::Claims>) -> FutureBox<'a, Result<Resource, Error>> {
         self.async_claims(claims).boxed()
     }
 }

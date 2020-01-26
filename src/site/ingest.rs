@@ -1,10 +1,10 @@
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
+use futures::{compat::Stream01CompatExt, TryStreamExt};
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-use web::{FutureBox, Resource, Response};
+use web::{Post, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
@@ -47,27 +47,16 @@ impl Ingest {
             cookies: vec![],
         })
     }
+}
 
-    async fn async_post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+#[async_trait::async_trait]
+impl Post for Ingest {
+    async fn post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
         let title = self.title.clone();
 
         self.try_post(content_type, body)
             .await
             .unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl Resource for Ingest {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        unimplemented!()
-    }
-
-    fn post<'a>(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        self.async_post(content_type, body).boxed()
     }
 }
 
@@ -79,11 +68,15 @@ pub struct AuthorizationConsumer {
 impl auth::authorizer::Consumer for AuthorizationConsumer {
     type Authorization = ();
 
-    fn authorization<'a>(self, _: ()) -> Result<Box<dyn Resource + Send + 'static>, web::Error> {
-        Ok(Box::new(Ingest {
-            title: self.title,
-            db_pool: self.db_pool,
-        }) as _)
+    fn authorization(self, _: ()) -> Result<Resource, web::Error> {
+        Ok(Resource {
+            etag: None,
+            get: None,
+            post: Some(Box::new(Ingest {
+                title: self.title,
+                db_pool: self.db_pool,
+            })),
+        })
     }
 }
 

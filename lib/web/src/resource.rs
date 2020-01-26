@@ -1,8 +1,8 @@
 use core::future::Future;
 use std::pin::Pin;
 
+use async_trait::async_trait;
 use cookie::Cookie;
-use futures::future::FutureExt;
 
 use super::etag::ETag;
 use super::media_type::MediaType;
@@ -27,10 +27,34 @@ pub enum Status {
     BadRequest,
     Unauthorized, // TODO: `WWW-Authenticate` header
     NotFound,
-    MethodNotAllowed, // TODO: `Allow` header
+    MethodNotAllowed { allow: String },
 
     // 5__
     InternalServerError,
+}
+
+pub enum CacheabilityPolicy {
+    AllowCaching,
+    NoCache, //< User-agent must revalidate before using cached response
+    NoStore,
+}
+
+pub struct Cacheability {
+    pub private: bool,
+    pub policy: CacheabilityPolicy,
+}
+
+pub struct Revalidation {
+    pub must_revalidate: bool,
+    pub proxy_revalidate: bool,
+    pub immutable: bool,
+}
+
+pub struct CacheControl {
+    pub cacheability: Cacheability,
+    // expiration, see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#Expiration
+    pub revalidation: Revalidation,
+    // other, see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#Other
 }
 
 pub struct Response {
@@ -49,46 +73,59 @@ impl Response {
     }
 }
 
-fn method_not_allowed() -> Response {
-    Response::new(
-        Status::MethodNotAllowed,
-        vec![(
-            MediaType::new("text", "plain", vec![]),
-            Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
-        )],
-    )
-}
-
-pub trait Resource: Send {
-    fn etag(&self) -> Option<ETag> {
+#[async_trait]
+pub trait Get {
+    fn cache_control(&self) -> Option<CacheControl> {
         None
     }
 
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response>;
-
-    fn post<'a>(
-        self: Box<Self>,
-        _content_type: String,
-        _body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        async { method_not_allowed() }.boxed()
-    }
+    async fn representations(self: Box<Self>) -> Response;
 }
 
-impl Resource for (Status, RepresentationsVec) {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        async { Response::new(self.0, self.1) }.boxed()
-    }
+#[async_trait]
+pub trait Post {
+    async fn post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response;
 }
 
-impl Resource for RepresentationsVec {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        async { Response::new(Status::Ok, *self) }.boxed()
-    }
+pub struct Resource {
+    pub etag: Option<ETag>,
+    pub get: Option<Box<dyn Get + Send>>,
+    pub post: Option<Box<dyn Post + Send>>,
 }
 
-impl<R: Resource, T: FnOnce() -> Box<R> + Send> Resource for T {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        (*self)().get()
+impl Resource {
+    pub fn method_not_allowed(&self) -> Response {
+        let mut allow = "OPTIONS".to_string();
+        if self.get.is_some() {
+            allow.push_str(", GET, HEAD");
+        }
+        if self.post.is_some() {
+            allow.push_str(", POST");
+        }
+
+        Response::new(
+            Status::MethodNotAllowed { allow },
+            vec![(
+                MediaType::new("text", "plain", vec![]),
+                Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
+            )],
+        )
+    }
+
+    pub async fn get(self) -> (Response, Option<CacheControl>) {
+        match self.get {
+            Some(get) => {
+                let cache_control = get.cache_control();
+                (get.representations().await, cache_control)
+            }
+            None => (self.method_not_allowed(), None),
+        }
+    }
+
+    pub async fn post(self, content_type: String, body: hyper::Body) -> Response {
+        match self.post {
+            Some(post) => post.post(content_type, body).await,
+            None => self.method_not_allowed(),
+        }
     }
 }

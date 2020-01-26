@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use diesel;
 use diesel::sqlite::SqliteConnection;
 use futures::task::{Spawn, SpawnExt};
-use futures::{compat::Stream01CompatExt, FutureExt, TryStreamExt};
+use futures::{compat::Stream01CompatExt, TryStreamExt};
 use jsonwebtoken::Header;
 use lettre::{SmtpTransport, Transport};
 use lettre_email::{EmailBuilder, Mailbox};
@@ -11,7 +11,7 @@ use r2d2_diesel::ConnectionManager;
 use serde_derive::{Deserialize, Serialize};
 use serde_urlencoded;
 use std::sync::{Arc, Mutex};
-use web::{Cookie, FutureBox, MediaType, RepresentationBox, Resource, Response};
+use web::{Cookie, MediaType, RepresentationBox, Response};
 
 use super::super::handling_error::HandlingError;
 use super::{AuthPhase, ValidationClaims};
@@ -216,26 +216,15 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
             cookies: vec![cookie],
         })
     }
+}
 
-    async fn post_core(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
+#[async_trait::async_trait]
+impl<S: Spawn + Send + 'static> web::Post for InitiateAuth<S> {
+    async fn post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
         let title = self.title.clone();
 
         self.try_post(content_type, body)
             .await
             .unwrap_or_else(|e| e.render(&title))
-    }
-}
-
-impl<S: Spawn + Send + 'static> Resource for InitiateAuth<S> {
-    fn get<'a>(self: Box<Self>) -> FutureBox<'a, Response> {
-        unimplemented!()
-    }
-
-    fn post<'a>(
-        self: Box<Self>,
-        content_type: String,
-        body: hyper::Body,
-    ) -> FutureBox<'a, Response> {
-        self.post_core(content_type, body).boxed()
     }
 }
