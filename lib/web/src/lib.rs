@@ -4,6 +4,7 @@ pub use cookie::Cookie;
 use hyper::http;
 use hyper::{Body, Request};
 
+mod cache_control;
 mod cookie_handler;
 mod etag;
 mod media_type;
@@ -11,6 +12,7 @@ mod query_handler;
 mod representation;
 mod resource;
 
+pub use self::cache_control::*;
 pub use self::cookie_handler::CookieHandler;
 pub use self::etag::ETag;
 pub use self::media_type::MediaType;
@@ -83,14 +85,7 @@ fn parse_cookie_header(
 async fn try_handle_request<'a>(
     site: &'a (dyn Lookup + 'a + Send + Sync),
     req: Request<Body>,
-) -> Result<
-    (
-        Option<ETag>,
-        resource::Response,
-        Option<resource::CacheControl>,
-    ),
-    Error,
-> {
+) -> Result<(Option<ETag>, resource::Response, Option<CacheControl>), Error> {
     let (req, body) = req.into_parts();
 
     let cookie_handler: Box<dyn CookieHandler + Send> = resolve_resource(site, &req.uri)
@@ -189,7 +184,7 @@ use hyper::http::StatusCode;
 async fn build_response(
     etag: Option<ETag>,
     response: resource::Response,
-    cache_control: Option<resource::CacheControl>,
+    cache_control: Option<CacheControl>,
 ) -> hyper::Response<Body> {
     let resource::Response {
         status,
