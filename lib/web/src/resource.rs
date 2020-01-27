@@ -39,17 +39,34 @@ pub enum CacheabilityPolicy {
     NoStore,
 }
 
+impl Default for CacheabilityPolicy {
+    fn default() -> Self {
+        CacheabilityPolicy::AllowCaching
+    }
+}
+
 pub struct Cacheability {
     pub private: bool,
     pub policy: CacheabilityPolicy,
 }
 
+impl Default for Cacheability {
+    fn default() -> Self {
+        Cacheability {
+            private: true,
+            policy: Default::default(),
+        }
+    }
+}
+
+#[derive(Default)]
 pub struct Revalidation {
     pub must_revalidate: bool,
     pub proxy_revalidate: bool,
     pub immutable: bool,
 }
 
+#[derive(Default)]
 pub struct CacheControl {
     pub cacheability: Cacheability,
     // expiration, see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#Expiration
