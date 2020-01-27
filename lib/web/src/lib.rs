@@ -285,7 +285,7 @@ async fn build_response(
         }
 
         if cache_control.revalidation.immutable {
-            write!(&mut cc, ", immutable").unwrap();
+            write!(&mut cc, ", max-age=31536000, immutable").unwrap();
         }
 
         response.header("cache-control", cc);

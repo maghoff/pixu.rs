@@ -50,6 +50,20 @@ impl Image {
 
 #[async_trait::async_trait]
 impl Get for Image {
+    fn cache_control(&self) -> Option<web::CacheControl> {
+        Some(web::CacheControl {
+            cacheability: web::Cacheability {
+                private: true,
+                policy: web::CacheabilityPolicy::AllowCaching,
+            },
+            revalidation: web::Revalidation {
+                must_revalidate: false,
+                proxy_revalidate: false,
+                immutable: true,
+            },
+        })
+    }
+
     async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
