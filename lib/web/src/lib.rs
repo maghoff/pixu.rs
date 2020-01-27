@@ -1,7 +1,5 @@
 #![feature(unsized_locals)]
 
-use std::fmt::Write;
-
 pub use cookie::Cookie;
 use hyper::http;
 use hyper::{Body, Request};
@@ -262,33 +260,7 @@ async fn build_response(
     }
 
     if let Some(cache_control) = cache_control {
-        let mut cc = String::new();
-
-        if cache_control.cacheability.private {
-            write!(&mut cc, "private").unwrap();
-        } else {
-            write!(&mut cc, "public").unwrap();
-        }
-
-        match cache_control.cacheability.policy {
-            resource::CacheabilityPolicy::AllowCaching => (),
-            resource::CacheabilityPolicy::NoCache => write!(&mut cc, ", no-cache").unwrap(),
-            resource::CacheabilityPolicy::NoStore => write!(&mut cc, ", no-store").unwrap(),
-        };
-
-        if cache_control.revalidation.must_revalidate {
-            write!(&mut cc, ", must-revalidate").unwrap();
-        }
-
-        if cache_control.revalidation.proxy_revalidate {
-            write!(&mut cc, ", proxy-revalidate").unwrap();
-        }
-
-        if cache_control.revalidation.immutable {
-            write!(&mut cc, ", max-age=31536000, immutable").unwrap();
-        }
-
-        response.header("cache-control", cc);
+        response.header("cache-control", cache_control.to_string());
     }
 
     if cookies.len() > 0 {

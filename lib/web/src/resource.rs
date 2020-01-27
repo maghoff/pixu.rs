@@ -57,6 +57,36 @@ pub struct CacheControl {
     // other, see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control#Other
 }
 
+impl std::fmt::Display for CacheControl {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.cacheability.private {
+            write!(fmt, "private")?;
+        } else {
+            write!(fmt, "public")?;
+        }
+
+        match self.cacheability.policy {
+            CacheabilityPolicy::AllowCaching => (),
+            CacheabilityPolicy::NoCache => write!(fmt, ", no-cache")?,
+            CacheabilityPolicy::NoStore => write!(fmt, ", no-store")?,
+        };
+
+        if self.revalidation.must_revalidate {
+            write!(fmt, ", must-revalidate")?;
+        }
+
+        if self.revalidation.proxy_revalidate {
+            write!(fmt, ", proxy-revalidate")?;
+        }
+
+        if self.revalidation.immutable {
+            write!(fmt, ", max-age=31536000, immutable")?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Response {
     pub status: Status,
     pub representations: RepresentationsVec,
