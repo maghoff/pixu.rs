@@ -41,7 +41,7 @@ fn not_found() -> Response {
         web::Status::NotFound,
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-            Box::new(move || Box::new(NotFound.to_string()) as RepresentationBox) as _,
+            Box::new(move || Box::new(NotFound.to_string()) as RepresentationBox),
         )],
     )
 }
@@ -64,7 +64,7 @@ fn moved_permanently(redirect: impl Into<String>) -> Response {
         web::Status::MovedPermanently(redirect),
         vec![(
             MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-            Box::new(move || Box::new(body) as RepresentationBox) as _,
+            Box::new(move || Box::new(body) as RepresentationBox),
         )],
     )
 }
@@ -83,7 +83,7 @@ impl web::Get for StaticAsset {
 
         web::Response::new(
             web::Status::Ok,
-            vec![(self.media_type, Box::new(move || body) as _)],
+            vec![(self.media_type, Box::new(move || body))],
         )
     }
 }
@@ -197,7 +197,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                         provider,
                         consumer,
                     );
-                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer))
                 })
             },
             m = r"^([a-zA-Z0-9]{6})/meta$" => {
@@ -221,7 +221,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                             provider,
                             consumer,
                         );
-                        Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _)
+                        Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
                     },
                     Err(_) => Err(not_found()),
                 }
@@ -231,18 +231,18 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     self.key.clone(),
                     IndexLoader { title, self_url: self.base_url.clone(), db_pool: self.db_pool.clone() }
                 )
-            ) as _),
+            )),
             _ = r"^style\.css$" => Ok(Box::new(static_asset(
                 MediaType::new("text", "css", vec!["charset=utf-8".to_string()]),
                 include_str!("style.css").to_string(),
-            )) as _),
+            ))),
             _ = r"^ingest\.js$" => {
                 #[cfg(not(feature = "dev-server"))]
                 {
                     Ok(Box::new(static_asset(
                         MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
                         include_str!("../../dist/ingest.js").to_string(),
-                    )) as _)
+                    )))
                 }
 
                 #[cfg(feature = "dev-server")]
@@ -265,7 +265,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             _ = r"^verify_auth$" => Ok(Box::new(query_args::QueryArgsParser::new(VerifyAuthArgsConsumer {
                 title,
                 key: self.key.clone(),
-            })) as _),
+            }))),
             m = r"^thumb/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
                     let provider = thumbnail::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
@@ -276,7 +276,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                         provider,
                         consumer,
                     );
-                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer))
                 })
             },
             _ = r"^img/$" => {
@@ -288,7 +288,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     provider,
                     consumer,
                 );
-                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _)
+                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
             },
             m = r"^img/([a-zA-Z0-9]{6})$" => {
                 canonicalize_id30(&m[1], |id| {
@@ -300,7 +300,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                         provider,
                         consumer,
                     );
-                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)) as _
+                    Box::new(JwtCookieHandler::new(self.key.clone(), authorizer))
                 })
             },
             ! => Err(not_found())

@@ -55,7 +55,7 @@ fn bad_request() -> resource::Response {
         Status::BadRequest,
         vec![(
             MediaType::new("text", "plain", vec![]),
-            Box::new(move || Box::new("Bad Request\n") as RepresentationBox) as _,
+            Box::new(move || Box::new("Bad Request\n") as RepresentationBox),
         )],
     )
 }

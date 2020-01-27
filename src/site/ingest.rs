@@ -42,7 +42,7 @@ impl Ingest {
             status: web::Status::Created(id.to_string()), // TODO Use base_url
             representations: vec![(
                 web::MediaType::new("image", "jpeg", vec![]),
-                Box::new(move || Box::new(body) as web::RepresentationBox) as _,
+                Box::new(move || Box::new(body) as web::RepresentationBox),
             )],
             cookies: vec![],
         })

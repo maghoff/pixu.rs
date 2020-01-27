@@ -70,7 +70,7 @@ impl PixuMeta {
             web::Status::Ok,
             vec![(
                 MediaType::new("application", "json", vec![]),
-                Box::new(move || Box::new(json) as RepresentationBox) as _,
+                Box::new(move || Box::new(json) as RepresentationBox),
             )],
         ))
     }
@@ -195,7 +195,7 @@ impl PixuMeta {
                     status: web::Status::Ok,
                     representations: vec![(
                         MediaType::new("text", "plain", vec!["charset=utf-8".to_string()]),
-                        Box::new(move || Box::new("OK") as RepresentationBox) as _,
+                        Box::new(move || Box::new("OK") as RepresentationBox),
                     )],
                     cookies: vec![],
                 })

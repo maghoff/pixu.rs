@@ -29,7 +29,7 @@ impl HandlingError {
                     Status::BadRequest,
                     vec![(
                         MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                        Box::new(move || body) as _,
+                        Box::new(move || body),
                     )],
                 )
             }
@@ -40,7 +40,7 @@ impl HandlingError {
                     Status::InternalServerError,
                     vec![(
                         MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                        Box::new(move || body) as _,
+                        Box::new(move || body),
                     )],
                 )
             }

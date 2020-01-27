@@ -69,7 +69,7 @@ impl Pixu {
                         }
                         .to_string(),
                     ) as RepresentationBox
-                }) as _,
+                }),
             )],
         ))
     }

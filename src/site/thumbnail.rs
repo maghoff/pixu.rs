@@ -41,7 +41,7 @@ impl Thumbnail {
             web::Status::Ok,
             vec![(
                 MediaType::parse(&pix.media_type),
-                Box::new(move || Box::new(pix.data) as RepresentationBox) as _,
+                Box::new(move || Box::new(pix.data) as RepresentationBox),
             )],
         ))
     }

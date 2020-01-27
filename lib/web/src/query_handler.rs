@@ -15,6 +15,6 @@ impl<T: 'static + CookieHandler + Send> QueryHandler for T {
         self: Box<Self>,
         _query: Option<&str>,
     ) -> Result<Box<dyn CookieHandler + Send>, Error> {
-        Ok(self as _)
+        Ok(self)
     }
 }

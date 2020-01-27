@@ -114,7 +114,7 @@ impl Index {
                         }
                         .to_string(),
                     ) as RepresentationBox
-                }) as _,
+                }),
             )],
         ))
     }

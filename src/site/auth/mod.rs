@@ -79,7 +79,7 @@ mod test {
                 web::Status::Ok,
                 vec![(
                     MediaType::new("text", "html", vec!["charset=utf-8".to_string()]),
-                    Box::new(move || Box::new("Ok") as RepresentationBox) as _,
+                    Box::new(move || Box::new("Ok") as RepresentationBox),
                 )],
             )
         }

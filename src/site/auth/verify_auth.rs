@@ -91,7 +91,7 @@ impl VerifyAuth {
                         }
                         .to_string(),
                     ) as RepresentationBox
-                }) as _,
+                }),
             )],
             cookies,
         })

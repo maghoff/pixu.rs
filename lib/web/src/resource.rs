@@ -83,7 +83,7 @@ impl Resource {
             Status::MethodNotAllowed { allow },
             vec![(
                 MediaType::new("text", "plain", vec![]),
-                Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox) as _,
+                Box::new(move || Box::new("Method Not Allowed\n") as RepresentationBox),
             )],
         )
     }

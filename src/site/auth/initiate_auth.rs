@@ -211,7 +211,7 @@ impl<S: Spawn + Send + 'static> InitiateAuth<S> {
                         }
                         .to_string(),
                     ) as RepresentationBox
-                }) as _,
+                }),
             )],
             cookies: vec![cookie],
         })
