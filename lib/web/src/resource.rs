@@ -122,9 +122,8 @@ impl Response {
 
 #[async_trait]
 pub trait Get {
-    // TODO Would it be better to have this unconditionally return CacheControl?
-    fn cache_control(&self) -> Option<CacheControl> {
-        None
+    fn cache_control(&self) -> CacheControl {
+        Default::default()
     }
 
     async fn representations(self: Box<Self>) -> Response;
@@ -164,7 +163,7 @@ impl Resource {
         match self.get {
             Some(get) => {
                 let cache_control = get.cache_control();
-                (get.representations().await, cache_control)
+                (get.representations().await, Some(cache_control))
             }
             None => (self.method_not_allowed(), None),
         }

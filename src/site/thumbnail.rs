@@ -49,8 +49,8 @@ impl Thumbnail {
 
 #[async_trait::async_trait]
 impl Get for Thumbnail {
-    fn cache_control(&self) -> Option<web::CacheControl> {
-        Some(web::CacheControl {
+    fn cache_control(&self) -> web::CacheControl {
+        web::CacheControl {
             cacheability: web::Cacheability {
                 private: true,
                 policy: web::CacheabilityPolicy::AllowCaching,
@@ -60,7 +60,7 @@ impl Get for Thumbnail {
                 proxy_revalidate: false,
                 immutable: true,
             },
-        })
+        }
     }
 
     async fn representations(self: Box<Self>) -> Response {
