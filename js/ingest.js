@@ -41,20 +41,20 @@ function setState(newState) {
         dom.phase.initial.style.display = (newState.phase == PHASE_INITIAL ? 'block' : 'none');
         dom.phase.preview.style.display = (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
         dom.phase.details.style.display = (newState.phase == PHASE_DETAILS ? 'block' : 'none');
-
-        const oldShowPreview = state.phase >= PHASE_PREVIEW;
-        const newShowPreview = newState.phase >= PHASE_PREVIEW;
-        if (newShowPreview != oldShowPreview) {
-            dom.preview.style.display = newShowPreview ? "block" : "none";
-
-            if (newShowPreview) {
-                dom.preview.scrollIntoView();
-            }
-        }
     }
 
     if (newState.previewUrl != state.previewUrl) {
         dom.preview.src = newState.previewUrl;
+    }
+
+    const oldShowPreview = state.phase >= PHASE_PREVIEW;
+    const newShowPreview = newState.phase >= PHASE_PREVIEW;
+    if (newShowPreview != oldShowPreview) {
+        dom.preview.style.display = newShowPreview ? "block" : "none";
+    }
+
+    if ((newShowPreview && !oldShowPreview) || (newState.previewUrl != state.previewUrl)) {
+        dom.preview.scrollIntoView();
     }
 
     if (newState.pixurUrl != state.pixurUrl) {
