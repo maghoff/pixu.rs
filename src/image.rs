@@ -289,85 +289,99 @@ pub fn ingest_jpeg(
     let (small_jpeg, col) = r2?;
 
     let db_connection = db_pool.get()?;
-    db_connection.transaction(|| {
-        use rand::{rngs::SmallRng, SeedableRng};
+    db_connection
+        .transaction(|| {
+            use rand::{rngs::SmallRng, SeedableRng};
 
-        let mut rng = SmallRng::from_entropy();
+            let mut rng = SmallRng::from_entropy();
 
-        #[derive(Insertable)]
-        #[table_name = "thumbs"]
-        struct Thumb<'a> {
-            id: Id30,
-            media_type: &'a str,
-            data: &'a [u8],
-        }
+            #[derive(Insertable)]
+            #[table_name = "thumbs"]
+            struct Thumb<'a> {
+                id: Id30,
+                media_type: &'a str,
+                data: &'a [u8],
+            }
 
-        let thumbs_id = Id30::new_random(&mut rng);
+            let thumbs_id = Id30::new_random(&mut rng);
 
-        diesel::insert_into(thumbs::table)
-            .values(&Thumb {
-                id: thumbs_id,
-                media_type: "image/jpeg",
-                data: &small_jpeg,
-            })
-            .execute(&*db_connection)?;
+            diesel::insert_into(thumbs::table)
+                .values(&Thumb {
+                    id: thumbs_id,
+                    media_type: "image/jpeg",
+                    data: &small_jpeg,
+                })
+                .execute(&*db_connection)?;
 
-        #[derive(Insertable)]
-        #[table_name = "pixurs"]
-        struct Pixur {
-            id: Id30,
-            average_color: i32,
-            thumbs_id: Id30,
-        }
+            #[derive(Insertable)]
+            #[table_name = "pixurs"]
+            struct Pixur {
+                id: Id30,
+                average_color: i32,
+                thumbs_id: Id30,
 
-        let pixurs_id = Id30::new_random(&mut rng);
+                image_aspect_ratio: f32,
 
-        diesel::insert_into(pixurs::table)
-            .values(&Pixur {
-                id: pixurs_id,
-                average_color: ((col.channels()[0] as i32) << 16)
-                    + ((col.channels()[1] as i32) << 8)
-                    + ((col.channels()[2] as i32) << 0),
-                thumbs_id,
-            })
-            .execute(&*db_connection)?;
+                crop_left: f32,
+                crop_right: f32,
+                crop_top: f32,
+                crop_bottom: f32,
+            }
 
-        #[derive(Insertable)]
-        #[table_name = "images"]
-        struct Image<'a> {
-            id: Id30,
-            media_type: &'a str,
-            data: &'a [u8],
-        }
+            let pixurs_id = Id30::new_random(&mut rng);
 
-        let images_id = Id30::new_random(&mut rng);
+            diesel::insert_into(pixurs::table)
+                .values(&Pixur {
+                    id: pixurs_id,
+                    average_color: ((col.channels()[0] as i32) << 16)
+                        + ((col.channels()[1] as i32) << 8)
+                        + ((col.channels()[2] as i32) << 0),
+                    thumbs_id,
+                    image_aspect_ratio: large.width() as f32 / large.height() as f32,
+                    crop_left: 0.5,
+                    crop_right: 0.5,
+                    crop_top: 0.5,
+                    crop_bottom: 0.5,
+                })
+                .execute(&*db_connection)?;
 
-        diesel::insert_into(images::table)
-            .values(&Image {
-                id: images_id,
-                media_type: "image/jpeg",
-                data: &large_jpeg,
-            })
-            .execute(&*db_connection)?;
+            #[derive(Insertable)]
+            #[table_name = "images"]
+            struct Image<'a> {
+                id: Id30,
+                media_type: &'a str,
+                data: &'a [u8],
+            }
 
-        #[derive(Insertable)]
-        #[table_name = "images_meta"]
-        struct ImageMeta {
-            id: Id30,
-            width: i32,
-            height: i32,
-            pixurs_id: Id30,
-        }
+            let images_id = Id30::new_random(&mut rng);
 
-        diesel::insert_into(images_meta::table)
-            .values(&ImageMeta {
-                id: images_id,
-                width: large.width() as i32,
-                height: large.height() as i32,
-                pixurs_id,
-            })
-            .execute(&*db_connection)?;
+            diesel::insert_into(images::table)
+                .values(&Image {
+                    id: images_id,
+                    media_type: "image/jpeg",
+                    data: &large_jpeg,
+                })
+                .execute(&*db_connection)?;
 
-        Ok(pixurs_id)
-    })
+            #[derive(Insertable)]
+            #[table_name = "images_meta"]
+            struct ImageMeta {
+                id: Id30,
+                width: i32,
+                height: i32,
+                pixurs_id: Id30,
+            }
+
+            diesel::insert_into(images_meta::table)
+                .values(&ImageMeta {
+                    id: images_id,
+                    width: large.width() as i32,
+                    height: large.height() as i32,
+                    pixurs_id,
+                })
+                .execute(&*db_connection)?;
+
+            Ok(pixurs_id)
+        })
+        .map_err(|x| dbg!(x))
 }

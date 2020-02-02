@@ -79,11 +79,13 @@ impl Index {
                 if is_uploader.is_some() {
                     pixurs::table
                         .inner_join(images_meta::table)
+                        .order(pixurs::created.desc())
                         .select((pixurs::id, pixurs::thumbs_id, images_meta::id))
                         .load::<(Id30, Id30, Id30)>(&*db_connection)
                 } else {
                     pixur_authorizations::table
                         .inner_join(pixurs::table.inner_join(images_meta::table))
+                        .order(pixurs::created.desc())
                         .filter(pixur_authorizations::sub.eq(&claims.sub))
                         .select((
                             pixur_authorizations::pixur_id,

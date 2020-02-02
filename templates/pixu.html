@@ -1,14 +1,14 @@
-<div class="photo" style="background: {{average_color}}">
-    <div class="photo--img-container">
-        <div class="photo--img photo--thumbnail" style="background-image: url({{thumb_url}})"></div>
-        <div class="photo--img photo--large" style="background-image: url({{large_url}})"></div>
+<div class="photo-list--container">
+    <div class="photo-list--top-background" style="background: {{top_color}}"></div>
+    <div class="photo-list--list">
+        {{#photos}}
+        <div class="photo" style="background: {{.average_color}}; height: {{.height}}; {{#.max_height}}max-height: {{.}}{{/.max_height}}">
+            <div class="photo--img-container" {{#.max_width}}style="max-width: {{.}};"{{/.max_width}}>
+                <div class="photo--img photo--thumbnail" style="background-image: url({{.thumb_url}}); background-position: {{.background_position}}"></div>
+                <div class="photo--img photo--large" style="background-image: url({{.large_url}}); background-position: {{.background_position}}"></div>
+            </div>
+        </div>
+        {{/photos}}
     </div>
+    <div class="photo-list--bottom-background" style="background: {{bottom_color}}"></div>
 </div>
-<!--
-<div class="photo" style="background: {{average_color}}">
-    <div class="photo--img-container">
-        <div class="photo--img photo--thumbnail" style="background-image: url({{thumb_url}})"></div>
-        <div class="photo--img photo--large" style="background-image: url({{large_url}})"></div>
-    </div>
-</div>
--->

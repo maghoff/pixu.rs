@@ -30,7 +30,11 @@ pub fn create_pool(
         .connection_customizer(Box::new(SqliteInitializer {}))
         .build(manager)?;
 
-    embedded_migrations::run(&*pool.get()?)?;
+    let conn = pool.get()?;
+    sql::<Integer>("PRAGMA foreign_keys = OFF").execute(&*conn)?;
+    embedded_migrations::run(&*conn)?;
+    sql::<Integer>("PRAGMA foreign_keys = ON").execute(&*conn)?;
+    drop(conn);
 
     Ok(pool)
 }

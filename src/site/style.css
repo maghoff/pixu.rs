@@ -203,36 +203,21 @@ h1 {
 
 /* Photos */
 
-/*
-.photo {
-    height: 97vh;
-    width: 100%;
-    overflow: hidden;
+.photo-list--container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
 }
 
-.photo--img-container {
-    margin-left: auto;
-    margin-right: auto;
-
-    width: 100%;
-    height: 100%;
-    max-width: 100vh;
-
-    position: relative;
+.photo-list--top-background, .photo-list--bottom-background {
+    flex-grow: 1;
 }
 
-.photo--img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-
-    background-position: 50% 50%;
-    background-size: cover;
-    background-repeat: no-repeat;
+.photo-list--list {
+    flex-grow: 0;
 }
-*/
+
 .photo {
     height: 100vh;
     width: 100%;

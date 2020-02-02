@@ -27,6 +27,12 @@ table! {
         id -> Integer,
         average_color -> Integer,
         thumbs_id -> Integer,
+        created -> Timestamp,
+        image_aspect_ratio -> Float,
+        crop_left -> Float,
+        crop_right -> Float,
+        crop_top -> Float,
+        crop_bottom -> Float,
     }
 }
 
