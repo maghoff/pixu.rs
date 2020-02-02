@@ -25,12 +25,22 @@ pub struct PixuMeta {
 #[derive(serde_derive::Serialize)]
 struct MetadataGet {
     recipients: Vec<String>,
+
+    crop_left: f32,
+    crop_right: f32,
+    crop_top: f32,
+    crop_bottom: f32,
 }
 
 #[derive(serde_derive::Deserialize)]
 struct MetadataPost<'a> {
     #[serde(borrow)]
     recipients: std::collections::BTreeSet<&'a str>,
+
+    crop_left: Option<f32>,
+    crop_right: Option<f32>,
+    crop_top: Option<f32>,
+    crop_bottom: Option<f32>,
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -61,7 +71,24 @@ impl PixuMeta {
             .load(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let metadata = MetadataGet { recipients };
+        let (crop_left, crop_right, crop_top, crop_bottom) = pixurs::table
+            .filter(pixurs::id.eq(self.id))
+            .select((
+                pixurs::crop_left,
+                pixurs::crop_right,
+                pixurs::crop_top,
+                pixurs::crop_bottom,
+            ))
+            .first(&*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)?;
+
+        let metadata = MetadataGet {
+            recipients,
+            crop_left,
+            crop_right,
+            crop_top,
+            crop_bottom,
+        };
 
         let json =
             serde_json::to_string(&metadata).map_err(|_| HandlingError::InternalServerError)?;
@@ -191,6 +218,29 @@ impl PixuMeta {
                 )
                 .execute(&*db_connection)?;
 
+                #[derive(AsChangeset)]
+                #[table_name = "pixurs"]
+                struct UpdateCrop {
+                    crop_left: Option<f32>,
+                    crop_right: Option<f32>,
+                    crop_top: Option<f32>,
+                    crop_bottom: Option<f32>,
+                }
+
+                diesel::update(pixurs::table.filter(pixurs::id.eq(self.id)))
+                    .set(UpdateCrop {
+                        crop_left: update_request.metadata.crop_left,
+                        crop_right: update_request.metadata.crop_right,
+                        crop_top: update_request.metadata.crop_top,
+                        crop_bottom: update_request.metadata.crop_bottom,
+                    })
+                    .execute(&*db_connection)
+                    .or_else(|err| match err {
+                        // When there are no changes, QueryBuilderError results:
+                        diesel::result::Error::QueryBuilderError(_) => Ok(0),
+                        err => Err(err),
+                    })?;
+
                 Ok(Response {
                     status: web::Status::Ok,
                     representations: vec![(
@@ -200,7 +250,10 @@ impl PixuMeta {
                     cookies: vec![],
                 })
             })
-            .map_err(|_: diesel::result::Error| HandlingError::InternalServerError)
+            .map_err(|e: diesel::result::Error| {
+                dbg!(e);
+                HandlingError::InternalServerError
+            })
     }
 }
 
