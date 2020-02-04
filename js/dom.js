@@ -1,4 +1,4 @@
-const dom = {
+const DOM = {
     preview: document.querySelector('.uploader-form--preview'),
     uploaderForm: document.getElementById('uploader-form'),
     fileInput: document.querySelector('#uploader-form input[type="file"]'),
@@ -30,4 +30,4 @@ const dom = {
     },
 };
 
-export default dom;
+export default DOM;

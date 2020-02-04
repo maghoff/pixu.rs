@@ -1,124 +1,22 @@
-import dom from './dom.js';
-
-const PHASE_INITIAL = 0;
-const PHASE_PREVIEW = 1;
-const PHASE_DETAILS = 2;
-
-const UPLOAD_PHASE_INACTIVE = 0;
-const UPLOAD_PHASE_IN_PROGRESS = 1;
-const UPLOAD_PHASE_FINISHED = 2;
-
-const UPLOAD_STATE_FAILURE = false;
-const UPLOAD_STATE_SUCCESS = true;
-
-const ERROR_TRY_AGAIN = "Prøv igjen 🤷";
-const ERROR_CHECK_CONNECTIVITY = "🤔 Er du tilkoblet Internett?";
-
-const LOAD_DETAILS_READY = 0;
-const LOAD_DETAILS_PENDING = 1;
-const LOAD_DETAILS_FAILED = 2;
-
-const SAVE_DETAILS_INITIAL = 0;
-const SAVE_DETAILS_IN_PROGRESS = 1;
-const SAVE_DETAILS_SUCCEEDED = 2;
-const SAVE_DETAILS_FAILED = 3;
+import DOM from './dom.js';
+import render from './render.js';
+import * as s from './states.js';
 
 const initialState = {
-    phase: PHASE_INITIAL,
-    uploadPhase: UPLOAD_PHASE_INACTIVE,
-    loadDetailsState: LOAD_DETAILS_READY,
-    saveDetailsState: SAVE_DETAILS_INITIAL,
+    phase: s.PHASE_INITIAL,
+    uploadPhase: s.UPLOAD_PHASE_INACTIVE,
+    loadDetailsState: s.LOAD_DETAILS_READY,
+    saveDetailsState: s.SAVE_DETAILS_INITIAL,
     previewUrl: "",
-    sendEmail: dom.email.sendEmail.defaultChecked,
-    emailMessage: dom.email.messageInput.defaultValue,
+    sendEmail: DOM.email.sendEmail.defaultChecked,
+    emailMessage: DOM.email.messageInput.defaultValue,
 };
 let state = initialState;
 
+
 function setState(newState) {
     console.log(newState);
-
-    if (newState.phase != state.phase) {
-        dom.phase.initial.style.display = (newState.phase == PHASE_INITIAL ? 'block' : 'none');
-        dom.phase.preview.style.display = (newState.phase == PHASE_PREVIEW ? 'block' : 'none');
-        dom.phase.details.style.display = (newState.phase == PHASE_DETAILS ? 'block' : 'none');
-    }
-
-    if (newState.previewUrl != state.previewUrl) {
-        dom.preview.src = newState.previewUrl;
-    }
-
-    const oldShowPreview = state.phase >= PHASE_PREVIEW;
-    const newShowPreview = newState.phase >= PHASE_PREVIEW;
-    if (newShowPreview != oldShowPreview) {
-        dom.preview.style.display = newShowPreview ? "block" : "none";
-    }
-
-    if ((newShowPreview && !oldShowPreview) || (newState.previewUrl != state.previewUrl)) {
-        dom.preview.scrollIntoView();
-    }
-
-    if (newState.pixurUrl != state.pixurUrl) {
-        dom.email.link.href = dom.uploader.pixurUrl.href = newState.pixurUrl;
-        dom.email.link.textContent = dom.uploader.pixurUrl.textContent = newState.pixurUrl;
-    }
-
-    if (newState.uploadPhase != state.uploadPhase) {
-        console.log("Updating for upload phase", newState.uploadPhase);
-        dom.uploader.statusUploading.style.display = (newState.uploadPhase == UPLOAD_PHASE_IN_PROGRESS ? 'block' : 'none');
-        dom.uploader.statusUploaded.style.display = (newState.uploadPhase == UPLOAD_PHASE_FINISHED ? 'block' : 'none');
-    }
-
-    if (newState.uploadError != state.uploadError) {
-        if (newState.uploadError) {
-            dom.uploader.errorMessage.textContent = newState.uploadError.hint;
-        }
-
-        dom.uploader.uploadError.style.display = newState.uploadError ? 'block' : 'none';
-    }
-
-    if (newState.uploadResult !== state.uploadResult) {
-        dom.details.detailsSubmission.style.display =
-            newState.uploadResult == UPLOAD_STATE_SUCCESS ? "block" : "none";
-    }
-
-    let formEnabled =
-        (state.saveDetailsState != SAVE_DETAILS_IN_PROGRESS) &&
-        (state.loadDetailsState == LOAD_DETAILS_READY);
-    let newFormEnabled =
-        (newState.saveDetailsState != SAVE_DETAILS_IN_PROGRESS) &&
-        (newState.loadDetailsState == LOAD_DETAILS_READY);
-
-    if (newFormEnabled != formEnabled) {
-        const disabledString = newFormEnabled ? "" : "disabled";
-        for (let element of dom.details.form.elements) {
-            element.disabled = disabledString;
-        }
-    }
-
-    if (newState.saveDetailsState != state.saveDetailsState) {
-        let msg;
-        switch (newState.saveDetailsState) {
-            case SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
-            case SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
-            case SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + newState.saveDetailsError.hint; break;
-        }
-
-        dom.details.status.textContent = msg;
-    }
-
-    if (newState.sendEmail != state.sendEmail) {
-        const action = newState.sendEmail ? 'add' : 'remove';
-        dom.email.emailDetails.classList[action]('show');
-
-        const disabled = !newState.sendEmail;
-        dom.email.title.disabled = disabled;
-        dom.email.messageInput.disabled = disabled;
-    }
-
-    if (newState.emailMessage != state.emailMessage) {
-        dom.email.messagePreview.textContent = newState.emailMessage;
-    }
-
+    render(state, newState);
     state = newState;
 }
 
@@ -132,8 +30,8 @@ function gatherDetails() {
         metadata: {
             recipients: [],
         },
-        send_email: dom.email.sendEmail.checked ? {
-            title: dom.email.title.value,
+        send_email: DOM.email.sendEmail.checked ? {
+            title: DOM.email.title.value,
             message: state.emailMessage,
         } : null,
     };
@@ -156,7 +54,7 @@ function setDetails(details) {
 const actions = {
     selectFile: function (file) {
         updateState({
-            phase: file ? PHASE_PREVIEW : PHASE_INITIAL,
+            phase: file ? s.PHASE_PREVIEW : s.PHASE_INITIAL,
             file: file || null,
             previewUrl: file ? window.URL.createObjectURL(file) : "",
         });
@@ -175,7 +73,7 @@ const actions = {
                 // Low level error situation, such as network error
                 throw {
                     err: err,
-                    hint: ERROR_CHECK_CONNECTIVITY,
+                    hint: s.ERROR_CHECK_CONNECTIVITY,
                 };
             })
             .then(function (res) {
@@ -195,31 +93,31 @@ const actions = {
                     // Unexpected error
                     throw {
                         err: err,
-                        hint: ERROR_TRY_AGAIN,
+                        hint: s.ERROR_TRY_AGAIN,
                     };
                 }
             })
             .catch(function (err) {
                 updateState({
-                    uploadPhase: UPLOAD_PHASE_FINISHED,
-                    uploadResult: UPLOAD_STATE_FAILURE,
+                    uploadPhase: s.UPLOAD_PHASE_FINISHED,
+                    uploadResult: s.UPLOAD_STATE_FAILURE,
                     uploadError: err,
                 });
             });
 
         updateState({
-            phase: PHASE_DETAILS,
-            uploadPhase: UPLOAD_PHASE_IN_PROGRESS,
+            phase: s.PHASE_DETAILS,
+            uploadPhase: s.UPLOAD_PHASE_IN_PROGRESS,
             uploadResult: null,
             uploadError: null,
             pixurUrl: null,
-            loadDetailsState: LOAD_DETAILS_READY,
+            loadDetailsState: s.LOAD_DETAILS_READY,
         });
     },
     uploadFinished: function (location) {
         updateState({
-            uploadPhase: UPLOAD_PHASE_FINISHED,
-            uploadResult: UPLOAD_STATE_SUCCESS,
+            uploadPhase: s.UPLOAD_PHASE_FINISHED,
+            uploadResult: s.UPLOAD_STATE_SUCCESS,
             pixurUrl: location,
         });
     },
@@ -239,7 +137,7 @@ const actions = {
                 // Low level error situation, such as network error
                 throw {
                     err: err,
-                    hint: ERROR_CHECK_CONNECTIVITY,
+                    hint: s.ERROR_CHECK_CONNECTIVITY,
                 };
             })
             .then(function (res) {
@@ -248,26 +146,26 @@ const actions = {
                         throw "Unexpected status code: " + res.status + " " + res.statusText;
                     }
                     updateState({
-                        saveDetailsState: SAVE_DETAILS_SUCCEEDED,
+                        saveDetailsState: s.SAVE_DETAILS_SUCCEEDED,
                     });
                 }
                 catch (err) {
                     // Unexpected error
                     throw {
                         err: err,
-                        hint: ERROR_TRY_AGAIN,
+                        hint: s.ERROR_TRY_AGAIN,
                     };
                 }
             })
             .catch(function (err) {
                 updateState({
-                    saveDetailsState: SAVE_DETAILS_FAILED,
+                    saveDetailsState: s.SAVE_DETAILS_FAILED,
                     saveDetailsError: err,
                 });
             });
 
         updateState({
-            saveDetailsState: SAVE_DETAILS_IN_PROGRESS,
+            saveDetailsState: s.SAVE_DETAILS_IN_PROGRESS,
         });
     },
     selectExistingImage: function (pixurUrl, thumb, hr) {
@@ -279,7 +177,7 @@ const actions = {
                 // Low level error situation, such as network error
                 throw {
                     err: err,
-                    hint: ERROR_CHECK_CONNECTIVITY,
+                    hint: s.ERROR_CHECK_CONNECTIVITY,
                 };
             })
             .then(function (res) {
@@ -293,7 +191,7 @@ const actions = {
                     // Unexpected error
                     throw {
                         err: err,
-                        hint: ERROR_TRY_AGAIN,
+                        hint: s.ERROR_TRY_AGAIN,
                     };
                 }
             })
@@ -305,7 +203,7 @@ const actions = {
                     setDetails(metadata);
 
                     updateState({
-                        loadDetailsState: LOAD_DETAILS_READY,
+                        loadDetailsState: s.LOAD_DETAILS_READY,
                         initialMetadata: metadata,
                     });
                 }
@@ -313,26 +211,26 @@ const actions = {
                     // Unexpected error
                     throw {
                         err: err,
-                        hint: ERROR_TRY_AGAIN,
+                        hint: s.ERROR_TRY_AGAIN,
                     };
                 }
             })
             .catch(function (err) {
                 if (state.pixurUrl != pixurUrl) return;
                 updateState({
-                    loadDetailsState: LOAD_DETAILS_FAILED,
+                    loadDetailsState: s.LOAD_DETAILS_FAILED,
                     loadDetailsError: err,
                 });
             });
 
         updateState({
-            phase: PHASE_DETAILS,
-            uploadPhase: UPLOAD_PHASE_FINISHED,
-            uploadResult: UPLOAD_STATE_SUCCESS,
+            phase: s.PHASE_DETAILS,
+            uploadPhase: s.UPLOAD_PHASE_FINISHED,
+            uploadResult: s.UPLOAD_STATE_SUCCESS,
             pixurUrl,
             previewUrl: thumb,
-            loadDetailsState: LOAD_DETAILS_PENDING,
-            saveDetailsState: SAVE_DETAILS_INITIAL,
+            loadDetailsState: s.LOAD_DETAILS_PENDING,
+            saveDetailsState: s.SAVE_DETAILS_INITIAL,
         });
 
         setTimeout(() => {
@@ -342,17 +240,17 @@ const actions = {
     },
 };
 
-dom.fileInput.addEventListener('change', function (ev) {
+DOM.fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    actions.selectFile(dom.fileInput.files[0]);
+    actions.selectFile(DOM.fileInput.files[0]);
 });
 
-dom.uploaderForm.addEventListener('reset', function (ev) {
+DOM.uploaderForm.addEventListener('reset', function (ev) {
     actions.reset();
 });
 
-dom.uploaderForm.addEventListener('submit', function (ev) {
+DOM.uploaderForm.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.upload(state.file);
@@ -372,7 +270,7 @@ document.getElementById("uploader-form--add-recipient").addEventListener('click'
     }
 });
 
-dom.details.form.addEventListener('submit', function (ev) {
+DOM.details.form.addEventListener('submit', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
     actions.submitDetails();
@@ -396,25 +294,25 @@ document.querySelector('.thumbnails').addEventListener('click', function (ev) {
     actions.selectExistingImage(pixurUrl, thumb, hr);
 });
 
-dom.email.sendEmail.addEventListener('input', function (ev) {
-    updateState({ sendEmail: dom.email.sendEmail.checked });
+DOM.email.sendEmail.addEventListener('input', function (ev) {
+    updateState({ sendEmail: DOM.email.sendEmail.checked });
 });
 
-dom.email.messageInput.addEventListener('input', function (ev) {
-    updateState({ emailMessage: dom.email.messageInput.value });
+DOM.email.messageInput.addEventListener('input', function (ev) {
+    updateState({ emailMessage: DOM.email.messageInput.value });
 });
 
-dom.email.link.addEventListener('click', function (ev) {
+DOM.email.link.addEventListener('click', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
 });
 
 
 // Handle autofilling by browsers:
-actions.selectFile(dom.fileInput.files[0]);
+actions.selectFile(DOM.fileInput.files[0]);
 
 updateState({
-    sendEmail: dom.email.sendEmail.checked,
-    emailMessage: dom.email.messageInput.value,
+    sendEmail: DOM.email.sendEmail.checked,
+    emailMessage: DOM.email.messageInput.value,
 });
-dom.email.messagePreview.textContent = state.emailMessage;
+DOM.email.messagePreview.textContent = state.emailMessage;
