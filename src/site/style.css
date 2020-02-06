@@ -22,6 +22,11 @@ h1 {
     font-weight: normal;
 }
 
+h2 {
+    font-weight: bold;
+    font-size: inherit;
+}
+
 /* Login etc */
 
 .input-row {
@@ -199,6 +204,63 @@ h1 {
 
 .email-details--preview {
     border-top: 2px solid black;
+}
+
+/* Cropping */
+.cropping {
+    width: 100%;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+
+    line-height: 0;
+
+    position: relative;
+}
+
+.cropping--image {
+    width: 100%;
+    border-radius: 6px;
+}
+
+.cropping--guide {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    background: rgba(0, 0, 0, 0.35);
+
+    border: 0 dashed rgba(255, 255, 255, 0.5);
+}
+
+.cropping--guide__left {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+
+    border-right-width: 1px;
+}
+
+.cropping--guide__right {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+
+    border-left-width: 1px;
+}
+
+.cropping--guide__top {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+
+    border-bottom-width: 1px;
+}
+
+.cropping--guide__bottom {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+
+    border-top-width: 1px;
 }
 
 /* Photos */

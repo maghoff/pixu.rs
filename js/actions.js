@@ -204,6 +204,10 @@ export const actions = {
                     updateState({
                         loadDetailsState: s.LOAD_DETAILS_READY,
                         initialMetadata: metadata,
+                        cropLeft: metadata.crop_left,
+                        cropRight: metadata.crop_right,
+                        cropTop: metadata.crop_top,
+                        cropBottom: metadata.crop_bottom,
                     });
                 }
                 catch (err) {

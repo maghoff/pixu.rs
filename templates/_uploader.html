@@ -1,9 +1,11 @@
-<img class="uploader-form--preview" src="" alt="preview">
+<img class="uploader-form--preview uploader-form--preview-image" src="" alt="preview">
 
 <div class="uploader-form--phase-details">
     <form id="uploader-form--details" class="uploader-form--details">
 
-        <p>Hvem vil du dele bildet med?</p>
+        {{>_dynamic-cropping.html}}
+
+        <h2>Hvem vil du dele bildet med?</h2>
         <select class="uploader-form--recipients" multiple size="{{recipients.len()}}">
             <optgroup disabled hidden></optgroup><!-- iOS bug -->
             {{#recipients}}

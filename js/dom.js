@@ -1,5 +1,6 @@
 const DOM = {
     preview: document.querySelector('.uploader-form--preview'),
+    previewImages: document.querySelectorAll('.uploader-form--preview-image'),
     uploaderForm: document.getElementById('uploader-form'),
     fileInput: document.querySelector('#uploader-form input[type="file"]'),
     phase: {
@@ -13,6 +14,12 @@ const DOM = {
         statusUploading: document.querySelector('.uploader-form--status__uploading'),
         statusUploaded: document.querySelector('.uploader-form--status__uploaded'),
         pixurUrl: document.querySelector('.uploader-form--url'),
+    },
+    crop: {
+        left: document.querySelector('.cropping--guide__left'),
+        right: document.querySelector('.cropping--guide__right'),
+        top: document.querySelector('.cropping--guide__top'),
+        bottom: document.querySelector('.cropping--guide__bottom'),
     },
     details: {
         form: document.querySelector('.uploader-form--details'),

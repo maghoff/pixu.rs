@@ -10,7 +10,9 @@ function render(prev, next) {
 
     // Preview
     if (next.previewUrl != prev.previewUrl) {
-        DOM.preview.src = next.previewUrl;
+        for (let img of DOM.previewImages) {
+            img.src = next.previewUrl;
+        }
     }
 
     const oldShowPreview = prev.phase >= s.PHASE_PREVIEW;
@@ -41,6 +43,20 @@ function render(prev, next) {
     if (next.uploadResult !== prev.uploadResult) {
         DOM.details.detailsSubmission.style.display =
             next.uploadResult == s.UPLOAD_STATE_SUCCESS ? "block" : "none";
+    }
+
+    // Cropping
+    if (next.cropLeft !== prev.cropLeft) {
+        DOM.crop.left.style.right = ((1 - next.cropLeft) * 100) + "%";
+    }
+    if (next.cropRight !== prev.cropRight) {
+        DOM.crop.right.style.left = (next.cropRight * 100) + "%";
+    }
+    if (next.cropTop !== prev.cropTop) {
+        DOM.crop.top.style.bottom = ((1 - next.cropTop) * 100) + "%";
+    }
+    if (next.cropBottom !== prev.cropBottom) {
+        DOM.crop.bottom.style.top = (next.cropBottom * 100) + "%";
     }
 
     // Metadata form
