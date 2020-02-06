@@ -24,7 +24,12 @@ module.exports = {
         index: '',
         proxy: {
             context: () => true,
-            target: 'http://127.0.0.1:1212'
+            target: 'http://127.0.0.1:1212',
+            bypass: function (req, res, proxyOptions) {
+                if (req.url == '/style.css') {
+                    return 'src/site/style.css';
+                }
+            }
         }
     }
 };
