@@ -1,5 +1,6 @@
 import DOM from './dom.js';
 import { actions, updateState, state } from './actions.js';
+import crop from './crop.js';
 
 DOM.fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();

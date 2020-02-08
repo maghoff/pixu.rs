@@ -59,6 +59,15 @@ function render(prev, next) {
         DOM.crop.bottom.style.top = (next.cropBottom * 100) + "%";
     }
 
+    if (next.cropLeftDrag !== prev.cropLeftDrag) {
+        const action = next.cropLeftDrag ? "add" : "remove";
+        DOM.crop.leftHandle.classList[action]("cropping--handle__active");
+    }
+    if (next.cropRightDrag !== prev.cropRightDrag) {
+        const action = next.cropRightDrag ? "add" : "remove";
+        DOM.crop.rightHandle.classList[action]("cropping--handle__active");
+    }
+
     // Metadata form
     let formEnabled =
         (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&

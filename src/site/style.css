@@ -208,10 +208,11 @@ h2 {
 
 /* Cropping */
 .cropping {
-    width: 100%;
+    width: calc(100% - 64px);
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
+    margin-bottom: 32px;
 
     line-height: 0;
 
@@ -230,9 +231,9 @@ h2 {
     left: 0;
     right: 0;
 
-    background: rgba(0, 0, 0, 0.35);
-
     border: 0 dashed rgba(255, 255, 255, 0.5);
+
+    background: rgba(0, 0, 0, 0.35);
 }
 
 .cropping--guide__left {
@@ -261,6 +262,35 @@ h2 {
     border-bottom-right-radius: 6px;
 
     border-top-width: 1px;
+}
+
+.cropping--handle {
+    position: absolute;
+
+    height: 30px;
+    width: 30px;
+
+    border: 1px outset #ddd;
+    border-radius: 6px;
+    background: #ccc;
+}
+
+.cropping--handle__active {
+    border: 1px solid #ccc;
+}
+
+.cropping--handle__left {
+    top: calc(100% + 2px);
+    right: -1px;
+
+    border-top-right-radius: 0;
+}
+
+.cropping--handle__right {
+    top: calc(100% + 2px);
+    left: -1px;
+
+    border-top-left-radius: 0;
 }
 
 /* Photos */

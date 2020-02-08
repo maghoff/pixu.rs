@@ -28,6 +28,10 @@ function gatherDetails() {
     const details = {
         metadata: {
             recipients: [],
+            crop_left: state.cropLeft,
+            crop_right: state.cropRight,
+            crop_top: state.cropTop,
+            crop_bottom: state.cropBottom,
         },
         send_email: DOM.email.sendEmail.checked ? {
             title: DOM.email.title.value,
@@ -56,6 +60,10 @@ export const actions = {
             phase: file ? s.PHASE_PREVIEW : s.PHASE_INITIAL,
             file: file || null,
             previewUrl: file ? window.URL.createObjectURL(file) : "",
+            cropLeft: 0.4,
+            cropRight: 0.6,
+            cropTop: 0.4,
+            cropBottom: 0.6,
         });
     },
     reset: function () {
