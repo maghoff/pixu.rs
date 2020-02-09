@@ -8,7 +8,7 @@ function handleLeftMousedown(ev) {
     ev.stopPropagation();
 
     const rect = DOM.crop.leftHandle.getBoundingClientRect();
-    const x = ev.clientX || e.targetTouches[0].pageX;
+    const x = ev.clientX || ev.targetTouches[0].pageX;
     const dx = rect.right - x;
 
     updateState({
@@ -30,7 +30,7 @@ function handleRightMousedown(ev) {
     ev.stopPropagation();
 
     const rect = DOM.crop.rightHandle.getBoundingClientRect();
-    const x = ev.clientX || e.targetTouches[0].pageX;
+    const x = ev.clientX || ev.targetTouches[0].pageX;
     const dx = rect.left - x;
 
     updateState({
