@@ -1,11 +1,13 @@
 import DOM from './dom.js';
 import { actions, updateState, state } from './actions.js';
 
-DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
+function handleLeftMousedown(ev) {
+    if (state.cropLeftDrag) return;
+
     ev.preventDefault();
     ev.stopPropagation();
 
-    const rect = DOM.crop.left.getBoundingClientRect();
+    const rect = DOM.crop.leftHandle.getBoundingClientRect();
     const dx = rect.right - ev.clientX;
 
     updateState({
@@ -15,13 +17,18 @@ DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
             imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
         }
     });
-});
+}
 
-DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
+DOM.crop.leftHandle.addEventListener('touchstart', handleLeftMousedown);
+DOM.crop.leftHandle.addEventListener('mousedown', handleLeftMousedown);
+
+function handleRightMousedown(ev) {
+    if (state.cropRightDrag) return;
+
     ev.preventDefault();
     ev.stopPropagation();
 
-    const rect = DOM.crop.right.getBoundingClientRect();
+    const rect = DOM.crop.rightHandle.getBoundingClientRect();
     const dx = rect.left - ev.clientX;
 
     updateState({
@@ -31,7 +38,9 @@ DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
             imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
         }
     });
-});
+}
+DOM.crop.rightHandle.addEventListener('touchstart', handleRightMousedown);
+DOM.crop.rightHandle.addEventListener('mousedown', handleRightMousedown);
 
 window.addEventListener('mousemove', function (ev) {
     if (state.cropLeftDrag) {
