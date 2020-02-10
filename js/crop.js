@@ -1,15 +1,12 @@
 import DOM from './dom.js';
 import { actions, updateState, state } from './actions.js';
 
-function handleLeftMousedown(ev) {
-    if (state.cropLeftDrag) return;
-
+DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
 
-    const rect = DOM.crop.leftHandle.getBoundingClientRect();
-    const x = ev.clientX || ev.targetTouches[0].pageX;
-    const dx = rect.right - x;
+    const rect = DOM.crop.left.getBoundingClientRect();
+    const dx = rect.right - ev.clientX;
 
     updateState({
         cropLeftDrag: {
@@ -18,20 +15,14 @@ function handleLeftMousedown(ev) {
             imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
         }
     });
-}
+});
 
-DOM.crop.leftHandle.addEventListener('touchstart', handleLeftMousedown);
-DOM.crop.leftHandle.addEventListener('mousedown', handleLeftMousedown);
-
-function handleRightMousedown(ev) {
-    if (state.cropRightDrag) return;
-
+DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
 
-    const rect = DOM.crop.rightHandle.getBoundingClientRect();
-    const x = ev.clientX || ev.targetTouches[0].pageX;
-    const dx = rect.left - x;
+    const rect = DOM.crop.right.getBoundingClientRect();
+    const dx = rect.left - ev.clientX;
 
     updateState({
         cropRightDrag: {
@@ -40,9 +31,7 @@ function handleRightMousedown(ev) {
             imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
         }
     });
-}
-DOM.crop.rightHandle.addEventListener('touchstart', handleRightMousedown);
-DOM.crop.rightHandle.addEventListener('mousedown', handleRightMousedown);
+});
 
 window.addEventListener('mousemove', function (ev) {
     if (state.cropLeftDrag) {
