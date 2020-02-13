@@ -4,6 +4,7 @@ import DOM from './dom.js';
 const CROP_DRAG_START = "CROP_DRAG_START";
 const CROP_DRAG_MOVE = "CROP_DRAG_MOVE";
 const CROP_DRAG_STOP = "CROP_DRAG_STOP";
+const CROP_DRAG_CANCEL = "CROP_DRAG_CANCEL";
 
 function startHorizontalDrag(dx, imageRect, dragging, otherInitial) {
     return {
@@ -25,6 +26,12 @@ function moveHandle(clientX) {
 function stopHorizontalDrag() {
     return {
         type: CROP_DRAG_STOP,
+    }
+}
+
+function cancelHorizontalDrag() {
+    return {
+        type: CROP_DRAG_CANCEL,
     }
 }
 
@@ -71,6 +78,9 @@ export function reducer(state, action) {
                 right: state.right,
             };
 
+        case CROP_DRAG_CANCEL:
+            return state.initial;
+
         default:
             return state;
     }
@@ -90,33 +100,29 @@ function rightDxFromX(x) {
 }
 
 export function init(dispatch) {
+    const image = DOM.crop.horizontalImage;
+
+    // Mouse interaction
+
     DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', handleRelease);
-
-        const dx = leftDxFromX(ev.clientX);
-        const imageRect = DOM.crop.horizontalImage.getBoundingClientRect();
-        const dragging = "left";
-
-        dispatch(startHorizontalDrag(dx, imageRect, dragging));
+        handleMouseDown(ev, leftDxFromX(ev.clientX), "left");
     });
 
     DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
+        handleMouseDown(ev, rightDxFromX(ev.clientX), "right");
+    });
+
+    function handleMouseDown(ev, dx, dragging) {
         ev.preventDefault();
         ev.stopPropagation();
 
         window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleRelease);
 
-        const dx = rightDxFromX(ev.clientX);
-        const imageRect = DOM.crop.horizontalImage.getBoundingClientRect();
-        const dragging = "right";
+        const imageRect = image.getBoundingClientRect();
 
         dispatch(startHorizontalDrag(dx, imageRect, dragging));
-    });
+    }
 
     function handleMove(ev) {
         dispatch(moveHandle(ev.clientX));
@@ -127,5 +133,48 @@ export function init(dispatch) {
         window.removeEventListener('mouseup', handleRelease);
 
         dispatch(stopHorizontalDrag());
+    }
+
+    // Touch interaction
+
+    DOM.crop.leftHandle.addEventListener('touchstart', function (ev) {
+        handleTouchStart(ev, leftDxFromX(ev.touches[0].clientX), "left");
+    });
+
+    DOM.crop.rightHandle.addEventListener('touchstart', function (ev) {
+        handleTouchStart(ev, rightDxFromX(ev.touches[0].clientX), "right");
+    });
+
+    function handleTouchStart(ev, dx, dragging) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        window.addEventListener('touchmove', handleTouchMove);
+        window.addEventListener('touchend', handleTouchEnd);
+        window.addEventListener('touchcancel', handleTouchCancel);
+
+        const imageRect = image.getBoundingClientRect();
+
+        dispatch(startHorizontalDrag(dx, imageRect, dragging));
+    }
+
+    function handleTouchMove(ev) {
+        dispatch(moveHandle(ev.touches[0].clientX));
+    }
+
+    function handleTouchEnd(ev) {
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+        window.removeEventListener('touchcancel', handleTouchCancel);
+
+        dispatch(stopHorizontalDrag());
+    }
+
+    function handleTouchCancel(ev) {
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleTouchEnd);
+        window.removeEventListener('touchcancel', handleTouchCancel);
+
+        dispatch(cancelHorizontalDrag());
     }
 }
