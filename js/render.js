@@ -46,11 +46,11 @@ function render(prev, next) {
     }
 
     // Cropping
-    if (next.cropLeft !== prev.cropLeft) {
-        DOM.crop.left.style.right = ((1 - next.cropLeft) * 100) + "%";
+    if (next.cropHorizontal.left !== prev.cropHorizontal.left) {
+        DOM.crop.left.style.right = ((1 - next.cropHorizontal.left) * 100) + "%";
     }
-    if (next.cropRight !== prev.cropRight) {
-        DOM.crop.right.style.left = (next.cropRight * 100) + "%";
+    if (next.cropHorizontal.right !== prev.cropHorizontal.right) {
+        DOM.crop.right.style.left = (next.cropHorizontal.right * 100) + "%";
     }
     if (next.cropTop !== prev.cropTop) {
         DOM.crop.top.style.bottom = ((1 - next.cropTop) * 100) + "%";
@@ -59,12 +59,17 @@ function render(prev, next) {
         DOM.crop.bottom.style.top = (next.cropBottom * 100) + "%";
     }
 
-    if (next.cropLeftDrag !== prev.cropLeftDrag) {
-        const action = next.cropLeftDrag ? "add" : "remove";
+    const nextCropLeftDrag = next.cropHorizontal.dragging == "left";
+    const prevCropLeftDrag = prev.cropHorizontal.dragging == "left";
+    if (nextCropLeftDrag !== prevCropLeftDrag) {
+        const action = nextCropLeftDrag ? "add" : "remove";
         DOM.crop.leftHandle.classList[action]("cropping--handle__active");
     }
-    if (next.cropRightDrag !== prev.cropRightDrag) {
-        const action = next.cropRightDrag ? "add" : "remove";
+
+    const nextCropRightDrag = next.cropHorizontal.dragging == "right";
+    const prevCropRightDrag = prev.cropHorizontal.dragging == "right";
+    if (nextCropRightDrag !== prevCropRightDrag) {
+        const action = nextCropRightDrag ? "add" : "remove";
         DOM.crop.rightHandle.classList[action]("cropping--handle__active");
     }
 

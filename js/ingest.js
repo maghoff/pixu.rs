@@ -1,6 +1,7 @@
+import * as crop from './crop.js';
 import DOM from './dom.js';
-import { actions, updateState, state } from './actions.js';
-import crop from './crop.js';
+import { actions } from './actions.js';
+import { updateState, state, dispatch } from './store.js';
 
 DOM.fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();
@@ -70,6 +71,9 @@ DOM.email.link.addEventListener('click', function (ev) {
     ev.preventDefault();
     ev.stopPropagation();
 });
+
+
+crop.init(dispatch);
 
 
 // Handle autofilling by browsers:

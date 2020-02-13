@@ -1,71 +1,131 @@
 import DOM from './dom.js';
-import { actions, updateState, state } from './actions.js';
 
-DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
+// Actions
+const CROP_DRAG_START = "CROP_DRAG_START";
+const CROP_DRAG_MOVE = "CROP_DRAG_MOVE";
+const CROP_DRAG_STOP = "CROP_DRAG_STOP";
 
+function startHorizontalDrag(dx, imageRect, dragging, otherInitial) {
+    return {
+        type: CROP_DRAG_START,
+        dx,
+        imageRect,
+        dragging,
+        otherInitial,
+    };
+}
+
+function moveHandle(clientX) {
+    return {
+        type: CROP_DRAG_MOVE,
+        clientX
+    };
+}
+
+function stopHorizontalDrag() {
+    return {
+        type: CROP_DRAG_STOP,
+    }
+}
+
+// ---
+
+export function reducer(state, action) {
+    switch (action.type) {
+        case CROP_DRAG_START:
+            return {
+                dx: action.dx,
+                imageRect: action.imageRect,
+                dragging: action.dragging,
+                initial: {
+                    left: state.left,
+                    right: state.right,
+                },
+                left: state.left,
+                right: state.right,
+            };
+
+        case CROP_DRAG_MOVE:
+            const targetPos = action.clientX + state.dx;
+            let pos = (targetPos - state.imageRect.left) / state.imageRect.width;
+            pos = Math.max(pos, 0);
+            pos = Math.min(pos, 1);
+
+            if (state.dragging == "left") {
+                var left = pos;
+                var right = Math.max(state.initial.right, left);
+            } else {
+                var right = pos;
+                var left = Math.min(state.initial.left, right);
+            }
+
+            return {
+                ...state,
+                left,
+                right,
+            };
+
+        case CROP_DRAG_STOP:
+            return {
+                left: state.left,
+                right: state.right,
+            };
+
+        default:
+            return state;
+    }
+}
+
+
+function leftDxFromX(x) {
+    // TODO Use .clientLeft and .clientWidth instead of .getBounding...?
+    // TODO Consider using ev.target instead of DOM.crop
     const rect = DOM.crop.left.getBoundingClientRect();
-    const dx = rect.right - ev.clientX;
+    return rect.right - x;
+}
 
-    updateState({
-        cropLeftDrag: {
-            dx,
-            startCropRight: state.cropRight,
-            imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
-        }
-    });
-});
-
-DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-
+function rightDxFromX(x) {
     const rect = DOM.crop.right.getBoundingClientRect();
-    const dx = rect.left - ev.clientX;
+    return rect.left - x;
+}
 
-    updateState({
-        cropRightDrag: {
-            dx,
-            startCropLeft: state.cropLeft,
-            imageRect: DOM.crop.horizontalImage.getBoundingClientRect(),
-        }
+export function init(dispatch) {
+    DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleRelease);
+
+        const dx = leftDxFromX(ev.clientX);
+        const imageRect = DOM.crop.horizontalImage.getBoundingClientRect();
+        const dragging = "left";
+
+        dispatch(startHorizontalDrag(dx, imageRect, dragging));
     });
-});
 
-window.addEventListener('mousemove', function (ev) {
-    if (state.cropLeftDrag) {
-        const targetPos = ev.clientX + state.cropLeftDrag.dx;
+    DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
 
-        let left = (targetPos - state.cropLeftDrag.imageRect.left) / state.cropLeftDrag.imageRect.width;
-        left = Math.max(left, 0);
-        left = Math.min(left, 1);
-        let right = Math.max(state.cropLeftDrag.startCropRight, left);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleRelease);
 
-        updateState({
-            cropLeft: left,
-            cropRight: right,
-        });
+        const dx = rightDxFromX(ev.clientX);
+        const imageRect = DOM.crop.horizontalImage.getBoundingClientRect();
+        const dragging = "right";
+
+        dispatch(startHorizontalDrag(dx, imageRect, dragging));
+    });
+
+    function handleMove(ev) {
+        dispatch(moveHandle(ev.clientX));
     }
 
-    if (state.cropRightDrag) {
-        const targetPos = ev.clientX + state.cropRightDrag.dx;
+    function handleRelease(ev) {
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleRelease);
 
-        let right = (targetPos - state.cropRightDrag.imageRect.left) / state.cropRightDrag.imageRect.width;
-        right = Math.max(right, 0);
-        right = Math.min(right, 1);
-        let left = Math.min(state.cropRightDrag.startCropLeft, right);
-
-        updateState({
-            cropLeft: left,
-            cropRight: right,
-        });
+        dispatch(stopHorizontalDrag());
     }
-});
-
-window.addEventListener('mouseup', function (ev) {
-    updateState({
-        cropLeftDrag: null,
-        cropRightDrag: null,
-    });
-});
+}
