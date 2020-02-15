@@ -1,7 +1,7 @@
 import * as crop from './crop.js';
 import DOM from './dom.js';
 import { actions } from './actions.js';
-import { updateState, state, dispatch } from './store.js';
+import { updateState, state } from './store.js';
 
 DOM.fileInput.addEventListener('change', function (ev) {
     ev.preventDefault();
@@ -73,7 +73,14 @@ DOM.email.link.addEventListener('click', function (ev) {
 });
 
 
-crop.init(dispatch);
+crop.init(action => {
+    const newState = crop.reducer(state.cropHorizontal, action);
+    updateState({ cropHorizontal: newState });
+}, DOM.crop.horizontal, "horizontal");
+crop.init(action => {
+    const newState = crop.reducer(state.cropVertical, action);
+    updateState({ cropVertical: newState });
+}, DOM.crop.vertical, "vertical");
 
 
 // Handle autofilling by browsers:

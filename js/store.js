@@ -35,7 +35,6 @@ function rootReducer(state, action) {
 }
 
 export function dispatch(action) {
-    console.log(action);
     let newState = rootReducer(state, action);
     setState(newState);
 }

@@ -6,19 +6,20 @@ const CROP_DRAG_MOVE = "CROP_DRAG_MOVE";
 const CROP_DRAG_STOP = "CROP_DRAG_STOP";
 const CROP_DRAG_CANCEL = "CROP_DRAG_CANCEL";
 
-function startDrag(dx, imageRect, dragging) {
+function startDrag(delta, imageStart, imageSize, dragging) {
     return {
         type: CROP_DRAG_START,
-        dx,
-        imageRect,
+        delta,
+        imageStart,
+        imageSize,
         dragging,
     };
 }
 
-function moveHandle(clientX) {
+function moveHandle(clientPos) {
     return {
         type: CROP_DRAG_MOVE,
-        clientX
+        clientPos
     };
 }
 
@@ -40,8 +41,9 @@ export function reducer(state, action) {
     switch (action.type) {
         case CROP_DRAG_START:
             return {
-                dx: action.dx,
-                imageRect: action.imageRect,
+                delta: action.delta,
+                imageStart: action.imageStart,
+                imageSize: action.imageSize,
                 dragging: action.dragging,
                 initial: {
                     start: state.start,
@@ -52,8 +54,8 @@ export function reducer(state, action) {
             };
 
         case CROP_DRAG_MOVE:
-            const targetPos = action.clientX + state.dx;
-            let pos = (targetPos - state.imageRect.left) / state.imageRect.width;
+            const targetPos = action.clientPos + state.delta;
+            let pos = (targetPos - state.imageStart) / state.imageSize;
             pos = Math.max(pos, 0);
             pos = Math.min(pos, 1);
 
@@ -85,16 +87,39 @@ export function reducer(state, action) {
     }
 }
 
-export function init(dispatch) {
-    const dom = DOM.crop.horizontal;
+const EDGES_BY_AXIS = {
+    "horizontal": {
+        "start": "right",
+        "end": "left",
+    },
+    "vertical": {
+        "start": "bottom",
+        "end": "top",
+    },
+};
 
-    function dxFromX(x, handle) {
-        const edge = {
-            "start": "right",
-            "end": "left",
-        };
+const CLIENTPOS_BY_AXIS = {
+    "horizontal": "clientX",
+    "vertical": "clientY",
+};
+
+const EXTENTS_BY_AXIS = {
+    "horizontal": ["left", "width"],
+    "vertical": ["top", "height"],
+};
+
+export function init(dispatch, dom, axis) {
+    if (!EDGES_BY_AXIS.hasOwnProperty(axis)) {
+        throw new Error("Invalid axis");
+    }
+
+    const edge = EDGES_BY_AXIS[axis];
+    const clientPos = CLIENTPOS_BY_AXIS[axis];
+    const extents = EXTENTS_BY_AXIS[axis];
+
+    function deltaFromPos(pos, handle) {
         const rect = dom[handle].getBoundingClientRect();
-        return rect[edge[handle]] - x;
+        return rect[edge[handle]] - pos;
     }
 
     // Mouse interaction
@@ -113,15 +138,14 @@ export function init(dispatch) {
         window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleRelease);
 
-        // TODO Vertical support
-        const dx = dxFromX(ev.clientX, handle);
+        const delta = deltaFromPos(ev[clientPos], handle);
         const imageRect = dom.image.getBoundingClientRect();
 
-        dispatch(startDrag(dx, imageRect, handle));
+        dispatch(startDrag(delta, imageRect[extents[0]], imageRect[extents[1]], handle));
     }
 
     function handleMove(ev) {
-        dispatch(moveHandle(ev.clientX));
+        dispatch(moveHandle(ev[clientPos]));
     }
 
     function handleRelease(ev) {
@@ -149,15 +173,14 @@ export function init(dispatch) {
         window.addEventListener('touchend', handleTouchEnd);
         window.addEventListener('touchcancel', handleTouchCancel);
 
-        // TODO Vertical support
-        const dx = dxFromX(ev.touches[0].clientX, handle);
+        const delta = deltaFromPos(ev.touches[0][clientPos], handle);
         const imageRect = dom.image.getBoundingClientRect();
 
-        dispatch(startDrag(dx, imageRect, handle));
+        dispatch(startDrag(delta, imageRect[extents[0]], imageRect[extents[1]], handle));
     }
 
     function handleTouchMove(ev) {
-        dispatch(moveHandle(ev.touches[0].clientX));
+        dispatch(moveHandle(ev.touches[0][clientPos]));
     }
 
     function handleTouchEnd(ev) {
