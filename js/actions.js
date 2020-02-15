@@ -6,10 +6,10 @@ function gatherDetails() {
     const details = {
         metadata: {
             recipients: [],
-            crop_left: state.cropHorizontal.left,
-            crop_right: state.cropHorizontal.right,
-            crop_top: state.cropTop,
-            crop_bottom: state.cropBottom,
+            crop_left: state.cropHorizontal.start,
+            crop_right: state.cropHorizontal.end,
+            crop_top: state.cropVertical.start,
+            crop_bottom: state.cropVertical.end,
         },
         send_email: DOM.email.sendEmail.checked ? {
             title: DOM.email.title.value,
@@ -39,11 +39,13 @@ export const actions = {
             file: file || null,
             previewUrl: file ? window.URL.createObjectURL(file) : "",
             cropHorizontal: {
-                left: 0.4,
-                right: 0.6,
+                start: 0.4,
+                end: 0.6,
             },
-            cropTop: 0.4,
-            cropBottom: 0.6,
+            cropVertical: {
+                start: 0.4,
+                end: 0.6,
+            }
         });
     },
     reset: function () {
@@ -193,11 +195,13 @@ export const actions = {
                         loadDetailsState: s.LOAD_DETAILS_READY,
                         initialMetadata: metadata,
                         cropHorizontal: {
-                            left: metadata.crop_left,
-                            right: metadata.crop_right,
+                            start: metadata.crop_left,
+                            end: metadata.crop_right,
                         },
-                        cropTop: metadata.crop_top,
-                        cropBottom: metadata.crop_bottom,
+                        cropVertical: {
+                            start: metadata.crop_top,
+                            end: metadata.crop_bottom,
+                        }
                     });
                 }
                 catch (err) {

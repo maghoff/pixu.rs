@@ -6,13 +6,12 @@ const CROP_DRAG_MOVE = "CROP_DRAG_MOVE";
 const CROP_DRAG_STOP = "CROP_DRAG_STOP";
 const CROP_DRAG_CANCEL = "CROP_DRAG_CANCEL";
 
-function startHorizontalDrag(dx, imageRect, dragging, otherInitial) {
+function startDrag(dx, imageRect, dragging) {
     return {
         type: CROP_DRAG_START,
         dx,
         imageRect,
         dragging,
-        otherInitial,
     };
 }
 
@@ -23,13 +22,13 @@ function moveHandle(clientX) {
     };
 }
 
-function stopHorizontalDrag() {
+function stopDrag() {
     return {
         type: CROP_DRAG_STOP,
     }
 }
 
-function cancelHorizontalDrag() {
+function cancelDrag() {
     return {
         type: CROP_DRAG_CANCEL,
     }
@@ -45,11 +44,11 @@ export function reducer(state, action) {
                 imageRect: action.imageRect,
                 dragging: action.dragging,
                 initial: {
-                    left: state.left,
-                    right: state.right,
+                    start: state.start,
+                    end: state.end,
                 },
-                left: state.left,
-                right: state.right,
+                start: state.start,
+                end: state.end,
             };
 
         case CROP_DRAG_MOVE:
@@ -58,24 +57,24 @@ export function reducer(state, action) {
             pos = Math.max(pos, 0);
             pos = Math.min(pos, 1);
 
-            if (state.dragging == "left") {
-                var left = pos;
-                var right = Math.max(state.initial.right, left);
+            if (state.dragging == "start") {
+                var start = pos;
+                var end = Math.max(state.initial.end, start);
             } else {
-                var right = pos;
-                var left = Math.min(state.initial.left, right);
+                var end = pos;
+                var start = Math.min(state.initial.start, end);
             }
 
             return {
                 ...state,
-                left,
-                right,
+                start,
+                end,
             };
 
         case CROP_DRAG_STOP:
             return {
-                left: state.left,
-                right: state.right,
+                start: state.start,
+                end: state.end,
             };
 
         case CROP_DRAG_CANCEL:
@@ -86,42 +85,39 @@ export function reducer(state, action) {
     }
 }
 
-
-function leftDxFromX(x) {
-    // TODO Use .clientLeft and .clientWidth instead of .getBounding...?
-    // TODO Consider using ev.target instead of DOM.crop
-    const rect = DOM.crop.left.getBoundingClientRect();
-    return rect.right - x;
-}
-
-function rightDxFromX(x) {
-    const rect = DOM.crop.right.getBoundingClientRect();
-    return rect.left - x;
-}
-
 export function init(dispatch) {
-    const image = DOM.crop.horizontalImage;
+    const dom = DOM.crop.horizontal;
+
+    function dxFromX(x, handle) {
+        const edge = {
+            "start": "right",
+            "end": "left",
+        };
+        const rect = dom[handle].getBoundingClientRect();
+        return rect[edge[handle]] - x;
+    }
 
     // Mouse interaction
-
-    DOM.crop.leftHandle.addEventListener('mousedown', function (ev) {
-        handleMouseDown(ev, leftDxFromX(ev.clientX), "left");
+    dom.startHandle.addEventListener('mousedown', function (ev) {
+        handleMouseDown(ev, "start");
     });
 
-    DOM.crop.rightHandle.addEventListener('mousedown', function (ev) {
-        handleMouseDown(ev, rightDxFromX(ev.clientX), "right");
+    dom.endHandle.addEventListener('mousedown', function (ev) {
+        handleMouseDown(ev, "end");
     });
 
-    function handleMouseDown(ev, dx, dragging) {
+    function handleMouseDown(ev, handle) {
         ev.preventDefault();
         ev.stopPropagation();
 
         window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleRelease);
 
-        const imageRect = image.getBoundingClientRect();
+        // TODO Vertical support
+        const dx = dxFromX(ev.clientX, handle);
+        const imageRect = dom.image.getBoundingClientRect();
 
-        dispatch(startHorizontalDrag(dx, imageRect, dragging));
+        dispatch(startDrag(dx, imageRect, handle));
     }
 
     function handleMove(ev) {
@@ -132,20 +128,20 @@ export function init(dispatch) {
         window.removeEventListener('mousemove', handleMove);
         window.removeEventListener('mouseup', handleRelease);
 
-        dispatch(stopHorizontalDrag());
+        dispatch(stopDrag());
     }
 
     // Touch interaction
 
-    DOM.crop.leftHandle.addEventListener('touchstart', function (ev) {
-        handleTouchStart(ev, leftDxFromX(ev.touches[0].clientX), "left");
+    dom.startHandle.addEventListener('touchstart', function (ev) {
+        handleTouchStart(ev, "start");
     });
 
-    DOM.crop.rightHandle.addEventListener('touchstart', function (ev) {
-        handleTouchStart(ev, rightDxFromX(ev.touches[0].clientX), "right");
+    dom.endHandle.addEventListener('touchstart', function (ev) {
+        handleTouchStart(ev, "end");
     });
 
-    function handleTouchStart(ev, dx, dragging) {
+    function handleTouchStart(ev, handle) {
         ev.preventDefault();
         ev.stopPropagation();
 
@@ -153,9 +149,11 @@ export function init(dispatch) {
         window.addEventListener('touchend', handleTouchEnd);
         window.addEventListener('touchcancel', handleTouchCancel);
 
-        const imageRect = image.getBoundingClientRect();
+        // TODO Vertical support
+        const dx = dxFromX(ev.touches[0].clientX, handle);
+        const imageRect = dom.image.getBoundingClientRect();
 
-        dispatch(startHorizontalDrag(dx, imageRect, dragging));
+        dispatch(startDrag(dx, imageRect, handle));
     }
 
     function handleTouchMove(ev) {
@@ -167,7 +165,7 @@ export function init(dispatch) {
         window.removeEventListener('touchend', handleTouchEnd);
         window.removeEventListener('touchcancel', handleTouchCancel);
 
-        dispatch(stopHorizontalDrag());
+        dispatch(stopDrag());
     }
 
     function handleTouchCancel(ev) {
@@ -175,6 +173,6 @@ export function init(dispatch) {
         window.removeEventListener('touchend', handleTouchEnd);
         window.removeEventListener('touchcancel', handleTouchCancel);
 
-        dispatch(cancelHorizontalDrag());
+        dispatch(cancelDrag());
     }
 }

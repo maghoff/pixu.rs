@@ -16,17 +16,21 @@ const DOM = {
         pixurUrl: document.querySelector('.uploader-form--url'),
     },
     crop: {
-        horizontalImage: document.querySelector('.cropping--image__horizontal'),
-        left: document.querySelector('.cropping--guide__left'),
-        leftHandle: document.querySelector('.cropping--handle__left'),
-        right: document.querySelector('.cropping--guide__right'),
-        rightHandle: document.querySelector('.cropping--handle__right'),
+        horizontal: {
+            image: document.querySelector('.cropping--image__horizontal'),
+            start: document.querySelector('.cropping--guide__left'),
+            startHandle: document.querySelector('.cropping--handle__left'),
+            end: document.querySelector('.cropping--guide__right'),
+            endHandle: document.querySelector('.cropping--handle__right'),
+        },
 
-        verticalImage: document.querySelector('.cropping--image__vertical'),
-        top: document.querySelector('.cropping--guide__top'),
-        topHandle: document.querySelector('.cropping--handle__top'),
-        bottom: document.querySelector('.cropping--guide__bottom'),
-        bottomHandle: document.querySelector('.cropping--handle__bottom'),
+        vertical: {
+            image: document.querySelector('.cropping--image__vertical'),
+            start: document.querySelector('.cropping--guide__top'),
+            startHandle: document.querySelector('.cropping--handle__top'),
+            end: document.querySelector('.cropping--guide__bottom'),
+            endHandle: document.querySelector('.cropping--handle__bottom'),
+        },
     },
     details: {
         form: document.querySelector('.uploader-form--details'),

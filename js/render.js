@@ -46,32 +46,31 @@ function render(prev, next) {
     }
 
     // Cropping
-    if (next.cropHorizontal.left !== prev.cropHorizontal.left) {
-        DOM.crop.left.style.right = ((1 - next.cropHorizontal.left) * 100) + "%";
-    }
-    if (next.cropHorizontal.right !== prev.cropHorizontal.right) {
-        DOM.crop.right.style.left = (next.cropHorizontal.right * 100) + "%";
-    }
-    if (next.cropTop !== prev.cropTop) {
-        DOM.crop.top.style.bottom = ((1 - next.cropTop) * 100) + "%";
-    }
-    if (next.cropBottom !== prev.cropBottom) {
-        DOM.crop.bottom.style.top = (next.cropBottom * 100) + "%";
+    function renderCrop(dom, prev, next, startAnchor, endAnchor) {
+        if (next.start !== prev.start) {
+            dom.start.style[startAnchor] = ((1 - next.start) * 100) + "%";
+        }
+        if (next.end !== prev.end) {
+            dom.end.style[endAnchor] = (next.end * 100) + "%";
+        }
+
+        const nextStartDrag = next.dragging == "start";
+        const prevStartDrag = prev.dragging == "start";
+        if (nextStartDrag !== prevStartDrag) {
+            const action = nextStartDrag ? "add" : "remove";
+            dom.startHandle.classList[action]("cropping--handle__active");
+        }
+
+        const nextEndDrag = next.dragging == "end";
+        const prevEndDrag = prev.dragging == "end";
+        if (nextEndDrag !== prevEndDrag) {
+            const action = nextEndDrag ? "add" : "remove";
+            dom.endHandle.classList[action]("cropping--handle__active");
+        }
     }
 
-    const nextCropLeftDrag = next.cropHorizontal.dragging == "left";
-    const prevCropLeftDrag = prev.cropHorizontal.dragging == "left";
-    if (nextCropLeftDrag !== prevCropLeftDrag) {
-        const action = nextCropLeftDrag ? "add" : "remove";
-        DOM.crop.leftHandle.classList[action]("cropping--handle__active");
-    }
-
-    const nextCropRightDrag = next.cropHorizontal.dragging == "right";
-    const prevCropRightDrag = prev.cropHorizontal.dragging == "right";
-    if (nextCropRightDrag !== prevCropRightDrag) {
-        const action = nextCropRightDrag ? "add" : "remove";
-        DOM.crop.rightHandle.classList[action]("cropping--handle__active");
-    }
+    renderCrop(DOM.crop.horizontal, prev.cropHorizontal, next.cropHorizontal, "right", "left");
+    renderCrop(DOM.crop.vertical, prev.cropVertical, next.cropVertical, "bottom", "top");
 
     // Metadata form
     let formEnabled =

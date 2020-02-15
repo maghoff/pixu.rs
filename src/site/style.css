@@ -293,6 +293,20 @@ h2 {
     border-top-left-radius: 0;
 }
 
+.cropping--handle__top {
+    left: calc(100% + 2px);
+    bottom: -1px;
+
+    border-bottom-left-radius: 0;
+}
+
+.cropping--handle__bottom {
+    left: calc(100% + 2px);
+    top: -1px;
+
+    border-top-left-radius: 0;
+}
+
 /* Photos */
 
 .photo-list--container {

@@ -12,6 +12,7 @@ const initialState = {
     sendEmail: DOM.email.sendEmail.defaultChecked,
     emailMessage: DOM.email.messageInput.defaultValue,
     cropHorizontal: {},
+    cropVertical: {},
 };
 export let state = initialState;
 
@@ -34,6 +35,7 @@ function rootReducer(state, action) {
 }
 
 export function dispatch(action) {
+    console.log(action);
     let newState = rootReducer(state, action);
     setState(newState);
 }
