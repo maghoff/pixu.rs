@@ -45,6 +45,32 @@ function render(prev, next) {
             next.uploadResult == s.UPLOAD_STATE_SUCCESS ? "block" : "none";
     }
 
+    // Metadata form
+    const prevFormEnabled =
+        (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
+        (prev.loadDetailsState == s.LOAD_DETAILS_READY);
+    const nextFormEnabled =
+        (next.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
+        (next.loadDetailsState == s.LOAD_DETAILS_READY);
+
+    if (nextFormEnabled != prevFormEnabled) {
+        const disabledString = nextFormEnabled ? "" : "disabled";
+        for (let element of DOM.details.form.elements) {
+            element.disabled = disabledString;
+        }
+    }
+
+    if (next.saveDetailsState != prev.saveDetailsState) {
+        let msg;
+        switch (next.saveDetailsState) {
+            case s.SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
+            case s.SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
+            case s.SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + next.saveDetailsError.hint; break;
+        }
+
+        DOM.details.status.textContent = msg;
+    }
+
     // Cropping
     function renderCrop(dom, prev, next, startAnchor, endAnchor) {
         if (next.start !== prev.start) {
@@ -69,34 +95,34 @@ function render(prev, next) {
         }
     }
 
+    if (nextFormEnabled != prevFormEnabled) {
+        const action = nextFormEnabled ? "removeAttribute" : "setAttribute";
+        const elements = [
+            DOM.crop.horizontal.start,
+            DOM.crop.horizontal.startHandle,
+            DOM.crop.horizontal.end,
+            DOM.crop.horizontal.endHandle,
+            DOM.crop.vertical.start,
+            DOM.crop.vertical.startHandle,
+            DOM.crop.vertical.end,
+            DOM.crop.vertical.endHandle,
+        ];
+        for (let element of elements) {
+            element[action]("disabled", "disabled");
+        }
+    }
+
+    const prevInitialized = prev.loadDetailsState == s.LOAD_DETAILS_READY;
+    const nextInitialized = next.loadDetailsState == s.LOAD_DETAILS_READY;
+
+    if (nextInitialized != prevInitialized) {
+        const action = nextInitialized ? "remove" : "add";
+        DOM.crop.horizontal.root.classList[action]("cropping__uninitialized");
+        DOM.crop.vertical.root.classList[action]("cropping__uninitialized");
+    }
+
     renderCrop(DOM.crop.horizontal, prev.cropHorizontal, next.cropHorizontal, "right", "left");
     renderCrop(DOM.crop.vertical, prev.cropVertical, next.cropVertical, "bottom", "top");
-
-    // Metadata form
-    let formEnabled =
-        (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (prev.loadDetailsState == s.LOAD_DETAILS_READY);
-    let newFormEnabled =
-        (next.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (next.loadDetailsState == s.LOAD_DETAILS_READY);
-
-    if (newFormEnabled != formEnabled) {
-        const disabledString = newFormEnabled ? "" : "disabled";
-        for (let element of DOM.details.form.elements) {
-            element.disabled = disabledString;
-        }
-    }
-
-    if (next.saveDetailsState != prev.saveDetailsState) {
-        let msg;
-        switch (next.saveDetailsState) {
-            case s.SAVE_DETAILS_INITIAL: msg = "Er alt klart da?"; break;
-            case s.SAVE_DETAILS_IN_PROGRESS: msg = "Deler…"; break;
-            case s.SAVE_DETAILS_FAILED: msg = "😕 Noe skar seg. " + next.saveDetailsError.hint; break;
-        }
-
-        DOM.details.status.textContent = msg;
-    }
 
     // Email form
     if (next.pixurUrl != prev.pixurUrl) {

@@ -307,6 +307,39 @@ h2 {
     border-top-left-radius: 0;
 }
 
+.cropping--handle[disabled] {
+    border: 1px solid #ccc;
+}
+
+.cropping--guide[disabled] {
+    border-color: rgba(0, 0, 0, 0);
+}
+
+.cropping--uninitialized-screen {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.35);
+
+    display: none;
+}
+
+.cropping__uninitialized .cropping--uninitialized-screen {
+    display: block;
+}
+
+.cropping__uninitialized .cropping--handle {
+    visibility: hidden;
+}
+
+.cropping__uninitialized .cropping--guide {
+    visibility: hidden;
+}
+
 /* Photos */
 
 .photo-list--container {

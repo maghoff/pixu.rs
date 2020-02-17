@@ -132,6 +132,10 @@ export function init(dispatch, dom, axis) {
     });
 
     function handleMouseDown(ev, handle) {
+        if (ev.target.getAttribute("disabled")) {
+            return;
+        }
+
         ev.preventDefault();
         ev.stopPropagation();
 
@@ -166,6 +170,10 @@ export function init(dispatch, dom, axis) {
     });
 
     function handleTouchStart(ev, handle) {
+        if (ev.target.getAttribute("disabled")) {
+            return;
+        }
+
         ev.preventDefault();
         ev.stopPropagation();
 

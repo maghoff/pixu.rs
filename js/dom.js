@@ -17,6 +17,7 @@ const DOM = {
     },
     crop: {
         horizontal: {
+            root: document.querySelector('.cropping__horizontal'),
             image: document.querySelector('.cropping--image__horizontal'),
             start: document.querySelector('.cropping--guide__left'),
             startHandle: document.querySelector('.cropping--handle__left'),
@@ -25,6 +26,7 @@ const DOM = {
         },
 
         vertical: {
+            root: document.querySelector('.cropping__vertical'),
             image: document.querySelector('.cropping--image__vertical'),
             start: document.querySelector('.cropping--guide__top'),
             startHandle: document.querySelector('.cropping--handle__top'),
