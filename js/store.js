@@ -3,7 +3,7 @@ import * as s from './states.js';
 import DOM from './dom.js';
 import render from './render.js';
 
-const initialState = {
+export const initialState = {
     phase: s.PHASE_INITIAL,
     uploadPhase: s.UPLOAD_PHASE_INACTIVE,
     loadDetailsState: s.LOAD_DETAILS_READY,

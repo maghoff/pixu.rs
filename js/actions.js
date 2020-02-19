@@ -1,6 +1,6 @@
 import * as s from './states.js';
 import DOM from './dom.js';
-import { state, setState, updateState } from './store.js';
+import { state, setState, updateState, initialState } from './store.js';
 
 // Safe aspect ratios:
 
