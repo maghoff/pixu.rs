@@ -2,9 +2,13 @@ import * as s from './states.js';
 import DOM from './dom.js';
 import { state, setState, updateState } from './store.js';
 
-// Safe aspect ratios, from the author's tall, narrow phone:
+// Safe aspect ratios:
+
+// From the author's tall, narrow phone:
 const SAFE_PORTRAIT_ASPECT = 414 / 837;
-const SAFE_LANDSCAPE_ASPECT = 143 / 918;
+
+// From a browser window on a small laptop:
+const SAFE_LANDSCAPE_ASPECT = 699 / 1280;
 
 function gatherDetails() {
     const details = {
