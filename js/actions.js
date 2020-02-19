@@ -42,29 +42,31 @@ function setDetails(details) {
 
 export const actions = {
     selectFile: function (file) {
-        const img = new Image();
+        if (file) {
+            const img = new Image();
 
-        // It is glitch-free to initialize the crop values async. The image
-        // will load immediately and definitely before the user proceeds to
-        // the phase where the crop controls are visible.
-        img.onload = () => {
-            const imageAspect = img.naturalWidth / img.naturalHeight;
+            // It is glitch-free to initialize the crop values async. The image
+            // will load immediately and definitely before the user proceeds to
+            // the phase where the crop controls are visible.
+            img.onload = () => {
+                const imageAspect = img.naturalWidth / img.naturalHeight;
 
-            const cropHalfWidth = Math.min(SAFE_PORTRAIT_ASPECT / imageAspect, 1) / 2;
-            const cropHalfHeight = Math.min(SAFE_LANDSCAPE_ASPECT * imageAspect, 1) / 2;
+                const cropHalfWidth = Math.min(SAFE_PORTRAIT_ASPECT / imageAspect, 1) / 2;
+                const cropHalfHeight = Math.min(SAFE_LANDSCAPE_ASPECT * imageAspect, 1) / 2;
 
-            updateState({
-                cropHorizontal: {
-                    start: 0.5 - cropHalfWidth,
-                    end: 0.5 + cropHalfWidth,
-                },
-                cropVertical: {
-                    start: 0.5 - cropHalfHeight,
-                    end: 0.5 + cropHalfHeight,
-                }
-            })
-        };
-        img.src = window.URL.createObjectURL(file);
+                updateState({
+                    cropHorizontal: {
+                        start: 0.5 - cropHalfWidth,
+                        end: 0.5 + cropHalfWidth,
+                    },
+                    cropVertical: {
+                        start: 0.5 - cropHalfHeight,
+                        end: 0.5 + cropHalfHeight,
+                    }
+                })
+            };
+            img.src = window.URL.createObjectURL(file);
+        }
 
         updateState({
             phase: file ? s.PHASE_PREVIEW : s.PHASE_INITIAL,
