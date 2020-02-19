@@ -2,6 +2,10 @@ import * as s from './states.js';
 import DOM from './dom.js';
 import { state, setState, updateState } from './store.js';
 
+// Safe aspect ratios, from the author's tall, narrow phone:
+const SAFE_PORTRAIT_ASPECT = 414 / 837;
+const SAFE_LANDSCAPE_ASPECT = 143 / 918;
+
 function gatherDetails() {
     const details = {
         metadata: {
@@ -34,17 +38,41 @@ function setDetails(details) {
 
 export const actions = {
     selectFile: function (file) {
+        const img = new Image();
+
+        // It is glitch-free to initialize the crop values async. The image
+        // will load immediately and definitely before the user proceeds to
+        // the phase where the crop controls are visible.
+        img.onload = () => {
+            const imageAspect = img.naturalWidth / img.naturalHeight;
+
+            const cropHalfWidth = Math.min(SAFE_PORTRAIT_ASPECT / imageAspect, 1) / 2;
+            const cropHalfHeight = Math.min(SAFE_LANDSCAPE_ASPECT * imageAspect, 1) / 2;
+
+            updateState({
+                cropHorizontal: {
+                    start: 0.5 - cropHalfWidth,
+                    end: 0.5 + cropHalfWidth,
+                },
+                cropVertical: {
+                    start: 0.5 - cropHalfHeight,
+                    end: 0.5 + cropHalfHeight,
+                }
+            })
+        };
+        img.src = window.URL.createObjectURL(file);
+
         updateState({
             phase: file ? s.PHASE_PREVIEW : s.PHASE_INITIAL,
             file: file || null,
             previewUrl: file ? window.URL.createObjectURL(file) : "",
             cropHorizontal: {
-                start: 0.4,
-                end: 0.6,
+                start: 0.5,
+                end: 0.5,
             },
             cropVertical: {
-                start: 0.4,
-                end: 0.6,
+                start: 0.5,
+                end: 0.5,
             }
         });
     },
