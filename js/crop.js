@@ -62,9 +62,25 @@ export function reducer(state, action) {
             if (state.dragging == "start") {
                 var start = pos;
                 var end = Math.max(state.initial.end, start);
-            } else {
+            } else if (state.dragging == "end") {
                 var end = pos;
                 var start = Math.min(state.initial.start, end);
+            } else if (state.dragging == "middle") {
+                console.log('DRAGGIN!');
+                let hwidth = (state.initial.end - state.initial.start) / 2;
+                console.log(hwidth);
+                console.log(pos);
+                hwidth = Math.min(pos, hwidth);
+                console.log(hwidth);
+                hwidth = Math.min(1 - pos, hwidth);
+                console.log(hwidth);
+                var start = pos - hwidth;
+                var end = pos + hwidth;
+                console.log(start);
+                console.log(end);
+            } else {
+                console.error(`Invalid dragging handle: ${state.dragging}`);
+                return state;
             }
 
             return {
@@ -90,10 +106,12 @@ export function reducer(state, action) {
 const EDGES_BY_AXIS = {
     "horizontal": {
         "start": "right",
+        "middle": "left",
         "end": "left",
     },
     "vertical": {
         "start": "bottom",
+        "middle": "top",
         "end": "top",
     },
 };
@@ -125,6 +143,10 @@ export function init(dispatch, dom, axis) {
     // Mouse interaction
     dom.startHandle.addEventListener('mousedown', function (ev) {
         handleMouseDown(ev, "start");
+    });
+
+    dom.middleHandle.addEventListener('mousedown', function (ev) {
+        handleMouseDown(ev, "middle");
     });
 
     dom.endHandle.addEventListener('mousedown', function (ev) {
@@ -163,6 +185,10 @@ export function init(dispatch, dom, axis) {
 
     dom.startHandle.addEventListener('touchstart', function (ev) {
         handleTouchStart(ev, "start");
+    });
+
+    dom.startHandle.addEventListener('touchstart', function (ev) {
+        handleTouchStart(ev, "middle");
     });
 
     dom.endHandle.addEventListener('touchstart', function (ev) {

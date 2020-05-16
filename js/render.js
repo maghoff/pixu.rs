@@ -90,6 +90,13 @@ function render(prev, next) {
             dom.startHandle.classList[action]("cropping--handle__active");
         }
 
+        const nextMiddleDrag = next.dragging == "middle";
+        const prevMiddleDrag = prev.dragging == "middle";
+        if (nextMiddleDrag !== prevMiddleDrag) {
+            const action = nextMiddleDrag ? "add" : "remove";
+            dom.middleHandle.classList[action]("cropping--handle__active");
+        }
+
         const nextEndDrag = next.dragging == "end";
         const prevEndDrag = prev.dragging == "end";
         if (nextEndDrag !== prevEndDrag) {

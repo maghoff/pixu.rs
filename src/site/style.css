@@ -316,8 +316,6 @@ h2 {
 .cropping--handle__hcenter {
     top: -34px;
     left: -15px;
-
-    display: none;
 }
 
 .cropping--handle__right {
@@ -337,8 +335,6 @@ h2 {
 .cropping--handle__vcenter {
     left: -34px;
     top: -15px;
-
-    display: none;
 }
 
 .cropping--handle__bottom {
