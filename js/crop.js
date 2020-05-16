@@ -187,7 +187,7 @@ export function init(dispatch, dom, axis) {
         handleTouchStart(ev, "start");
     });
 
-    dom.startHandle.addEventListener('touchstart', function (ev) {
+    dom.middleHandle.addEventListener('touchstart', function (ev) {
         handleTouchStart(ev, "middle");
     });
 
