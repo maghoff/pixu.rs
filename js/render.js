@@ -79,6 +79,9 @@ function render(prev, next) {
         if (next.end !== prev.end) {
             dom.end.style[endAnchor] = (next.end * 100) + "%";
         }
+        if ((next.start !== prev.start) || (next.end !== prev.end)) {
+            dom.middle.style[endAnchor] = ((next.start + next.end) / 2 * 100) + "%";
+        }
 
         const nextStartDrag = next.dragging == "start";
         const prevStartDrag = prev.dragging == "start";
@@ -100,10 +103,14 @@ function render(prev, next) {
         const elements = [
             DOM.crop.horizontal.start,
             DOM.crop.horizontal.startHandle,
+            DOM.crop.horizontal.middle,
+            DOM.crop.horizontal.middleHandle,
             DOM.crop.horizontal.end,
             DOM.crop.horizontal.endHandle,
             DOM.crop.vertical.start,
             DOM.crop.vertical.startHandle,
+            DOM.crop.vertical.middle,
+            DOM.crop.vertical.middleHandle,
             DOM.crop.vertical.end,
             DOM.crop.vertical.endHandle,
         ];

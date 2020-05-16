@@ -212,6 +212,7 @@ h2 {
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
+    margin-top: 32px;
     margin-bottom: 32px;
 
     line-height: 0;
@@ -243,6 +244,19 @@ h2 {
     border-right-width: 1px;
 }
 
+.cropping--guide__hcenter {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+
+    border-right-width: 1px;
+
+    left: unset;
+    right: unset;
+    width: 0;
+
+    background: none;
+}
+
 .cropping--guide__right {
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -255,6 +269,19 @@ h2 {
     border-top-right-radius: 6px;
 
     border-bottom-width: 1px;
+}
+
+.cropping--guide__vcenter {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+
+    border-bottom-width: 1px;
+
+    top: unset;
+    bottom: unset;
+    height: 0;
+
+    background: none;
 }
 
 .cropping--guide__bottom {
@@ -286,6 +313,13 @@ h2 {
     border-top-right-radius: 0;
 }
 
+.cropping--handle__hcenter {
+    top: -34px;
+    left: -15px;
+
+    display: none;
+}
+
 .cropping--handle__right {
     top: calc(100% + 2px);
     left: -1px;
@@ -298,6 +332,13 @@ h2 {
     bottom: -1px;
 
     border-bottom-left-radius: 0;
+}
+
+.cropping--handle__vcenter {
+    left: -34px;
+    top: -15px;
+
+    display: none;
 }
 
 .cropping--handle__bottom {
