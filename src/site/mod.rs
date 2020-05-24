@@ -175,6 +175,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
         }
     }
 
+    #[cfg_attr(feature = "dev-server", allow(unreachable_code))]
     async fn lookup<'a>(
         &'a self,
         path: &'a str,
