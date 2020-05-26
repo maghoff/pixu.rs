@@ -48,7 +48,7 @@ fn is_registered_user_core(
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     email: &str,
 ) -> Result<bool, String> {
-    use crate::db::schema::pixur_authorizations::dsl::*;
+    use crate::db::schema::{pixur_authorizations, uploaders};
     use diesel::dsl::*;
     use diesel::prelude::*;
 
@@ -56,9 +56,14 @@ fn is_registered_user_core(
         .get()
         .map_err(|e| format!("Unable to get db connection: {}", e))?;
 
-    let exists = select(exists(pixur_authorizations.filter(sub.eq(email))))
-        .first::<bool>(&*db_connection)
-        .map_err(|e| format!("Unable to get db result: {}", e))?;
+    let is_uploader = select(exists(uploaders::table.filter(uploaders::sub.eq(email))))
+        .first(&*db_connection)
+        .expect("Query must return 1 result");
+
+    let exists = is_uploader ||
+        select(exists(pixur_authorizations::table.filter(pixur_authorizations::sub.eq(email))))
+            .first(&*db_connection)
+            .map_err(|e| format!("Unable to get db result: {}", e))?;
 
     Ok(exists)
 }
