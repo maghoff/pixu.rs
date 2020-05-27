@@ -38,7 +38,7 @@ function cancelDrag() {
 
 // ---
 
-export function render(prev, next, prevFormEnabled, nextFormEnabled) {
+export function render(prev, next) {
     function renderCrop(dom, prev, next, startAnchor, endAnchor) {
         if (next.start !== prev.start) {
             dom.start.style[startAnchor] = ((1 - next.start) * 100) + "%";
@@ -72,8 +72,8 @@ export function render(prev, next, prevFormEnabled, nextFormEnabled) {
         }
     }
 
-    if (nextFormEnabled != prevFormEnabled) {
-        const action = nextFormEnabled ? "removeAttribute" : "setAttribute";
+    if (next.formEnabled != prev.formEnabled) {
+        const action = next.formEnabled ? "removeAttribute" : "setAttribute";
         const elements = [
             DOM.crop.horizontal.start,
             DOM.crop.horizontal.startHandle,

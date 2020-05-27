@@ -2,6 +2,7 @@ import * as crop from './crop.js';
 import * as s from './states.js';
 import DOM from './dom.js';
 import render from './render.js';
+import viewModel from './viewmodel.js';
 
 export const initialState = {
     phase: s.PHASE_INITIAL,
@@ -16,10 +17,16 @@ export const initialState = {
 };
 export let state = initialState;
 
+let cachedViewModel = viewModel(state);
+
 export function setState(newState) {
     console.log(newState);
-    render(state, newState);
+
+    let newViewModel = viewModel(newState);
+    render(cachedViewModel, newViewModel);
+
     state = newState;
+    cachedViewModel = newViewModel;
 }
 
 export function updateState(delta) {

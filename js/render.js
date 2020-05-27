@@ -41,9 +41,9 @@ function renderUpload(prev, next) {
     }
 }
 
-function renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled) {
-    if (nextFormEnabled != prevFormEnabled) {
-        const disabledString = nextFormEnabled ? "" : "disabled";
+function renderMetadataForm(prev, next) {
+    if (next.formEnabled != prev.formEnabled) {
+        const disabledString = next.formEnabled ? "" : "disabled";
         for (let element of DOM.details.form.elements) {
             element.disabled = disabledString;
         }
@@ -82,15 +82,6 @@ function renderEmailForm(prev, next) {
 }
 
 function render(prev, next) {
-    const prevFormEnabled =
-        (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (prev.loadDetailsState == s.LOAD_DETAILS_READY);
-    const nextFormEnabled =
-        (next.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (next.loadDetailsState == s.LOAD_DETAILS_READY);
-
-    // ---
-
     if (next.phase != prev.phase) {
         DOM.phase.initial.style.display = (next.phase == s.PHASE_INITIAL ? 'block' : 'none');
         DOM.phase.preview.style.display = (next.phase == s.PHASE_PREVIEW ? 'block' : 'none');
@@ -99,8 +90,8 @@ function render(prev, next) {
 
     renderPreview(prev, next);
     renderUpload(prev, next);
-    renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled);
-    crop.render(prev, next, prevFormEnabled, nextFormEnabled);
+    renderMetadataForm(prev, next);
+    crop.render(prev, next);
     renderEmailForm(prev, next);
 }
 
