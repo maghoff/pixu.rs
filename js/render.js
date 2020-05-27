@@ -1,14 +1,7 @@
 import DOM from './dom.js';
 import * as s from './states.js';
 
-function render(prev, next) {
-    if (next.phase != prev.phase) {
-        DOM.phase.initial.style.display = (next.phase == s.PHASE_INITIAL ? 'block' : 'none');
-        DOM.phase.preview.style.display = (next.phase == s.PHASE_PREVIEW ? 'block' : 'none');
-        DOM.phase.details.style.display = (next.phase == s.PHASE_DETAILS ? 'block' : 'none');
-    }
-
-    // Preview
+function renderPreview(prev, next) {
     if (next.previewUrl != prev.previewUrl) {
         for (let img of DOM.previewImages) {
             img.src = next.previewUrl;
@@ -24,8 +17,9 @@ function render(prev, next) {
     if ((newShowPreview && !oldShowPreview) || (next.previewUrl != prev.previewUrl)) {
         DOM.preview.scrollIntoView();
     }
+}
 
-    // Upload
+function renderUpload(prev, next) {
     if (next.uploadPhase != prev.uploadPhase) {
         console.log("Updating for upload phase", next.uploadPhase);
         DOM.uploader.statusUploading.style.display = (next.uploadPhase == s.UPLOAD_PHASE_IN_PROGRESS ? 'block' : 'none');
@@ -44,15 +38,9 @@ function render(prev, next) {
         DOM.details.detailsSubmission.style.display =
             next.uploadResult == s.UPLOAD_STATE_SUCCESS ? "block" : "none";
     }
+}
 
-    // Metadata form
-    const prevFormEnabled =
-        (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (prev.loadDetailsState == s.LOAD_DETAILS_READY);
-    const nextFormEnabled =
-        (next.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
-        (next.loadDetailsState == s.LOAD_DETAILS_READY);
-
+function renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled) {
     if (nextFormEnabled != prevFormEnabled) {
         const disabledString = nextFormEnabled ? "" : "disabled";
         for (let element of DOM.details.form.elements) {
@@ -70,8 +58,9 @@ function render(prev, next) {
 
         DOM.details.status.textContent = msg;
     }
+}
 
-    // Cropping
+function renderCropping(prev, next, prevFormEnabled, nextFormEnabled) {
     function renderCrop(dom, prev, next, startAnchor, endAnchor) {
         if (next.start !== prev.start) {
             dom.start.style[startAnchor] = ((1 - next.start) * 100) + "%";
@@ -137,8 +126,9 @@ function render(prev, next) {
 
     renderCrop(DOM.crop.horizontal, prev.cropHorizontal, next.cropHorizontal, "right", "left");
     renderCrop(DOM.crop.vertical, prev.cropVertical, next.cropVertical, "bottom", "top");
+}
 
-    // Email form
+function renderEmailForm(prev, next) {
     if (next.pixurUrl != prev.pixurUrl) {
         DOM.email.link.href = DOM.uploader.pixurUrl.href = next.pixurUrl;
         DOM.email.link.textContent = DOM.uploader.pixurUrl.textContent = next.pixurUrl;
@@ -156,6 +146,29 @@ function render(prev, next) {
     if (next.emailMessage != prev.emailMessage) {
         DOM.email.messagePreview.textContent = next.emailMessage;
     }
+}
+
+function render(prev, next) {
+    const prevFormEnabled =
+        (prev.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
+        (prev.loadDetailsState == s.LOAD_DETAILS_READY);
+    const nextFormEnabled =
+        (next.saveDetailsState != s.SAVE_DETAILS_IN_PROGRESS) &&
+        (next.loadDetailsState == s.LOAD_DETAILS_READY);
+
+    // ---
+
+    if (next.phase != prev.phase) {
+        DOM.phase.initial.style.display = (next.phase == s.PHASE_INITIAL ? 'block' : 'none');
+        DOM.phase.preview.style.display = (next.phase == s.PHASE_PREVIEW ? 'block' : 'none');
+        DOM.phase.details.style.display = (next.phase == s.PHASE_DETAILS ? 'block' : 'none');
+    }
+
+    renderPreview(prev, next);
+    renderUpload(prev, next);
+    renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled);
+    renderCropping(prev, next, prevFormEnabled, nextFormEnabled);
+    renderEmailForm(prev, next);
 }
 
 export default render;
