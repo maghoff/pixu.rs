@@ -66,18 +66,11 @@ export function reducer(state, action) {
                 var end = pos;
                 var start = Math.min(state.initial.start, end);
             } else if (state.dragging == "middle") {
-                console.log('DRAGGIN!');
                 let hwidth = (state.initial.end - state.initial.start) / 2;
-                console.log(hwidth);
-                console.log(pos);
                 hwidth = Math.min(pos, hwidth);
-                console.log(hwidth);
                 hwidth = Math.min(1 - pos, hwidth);
-                console.log(hwidth);
                 var start = pos - hwidth;
                 var end = pos + hwidth;
-                console.log(start);
-                console.log(end);
             } else {
                 console.error(`Invalid dragging handle: ${state.dragging}`);
                 return state;
