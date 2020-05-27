@@ -1,5 +1,6 @@
 import DOM from './dom.js';
 import * as s from './states.js';
+import * as crop from './crop.js';
 
 function renderPreview(prev, next) {
     if (next.previewUrl != prev.previewUrl) {
@@ -60,74 +61,6 @@ function renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled) {
     }
 }
 
-function renderCropping(prev, next, prevFormEnabled, nextFormEnabled) {
-    function renderCrop(dom, prev, next, startAnchor, endAnchor) {
-        if (next.start !== prev.start) {
-            dom.start.style[startAnchor] = ((1 - next.start) * 100) + "%";
-        }
-        if (next.end !== prev.end) {
-            dom.end.style[endAnchor] = (next.end * 100) + "%";
-        }
-        if ((next.start !== prev.start) || (next.end !== prev.end)) {
-            dom.middle.style[endAnchor] = ((next.start + next.end) / 2 * 100) + "%";
-        }
-
-        const nextStartDrag = next.dragging == "start";
-        const prevStartDrag = prev.dragging == "start";
-        if (nextStartDrag !== prevStartDrag) {
-            const action = nextStartDrag ? "add" : "remove";
-            dom.startHandle.classList[action]("cropping--handle__active");
-        }
-
-        const nextMiddleDrag = next.dragging == "middle";
-        const prevMiddleDrag = prev.dragging == "middle";
-        if (nextMiddleDrag !== prevMiddleDrag) {
-            const action = nextMiddleDrag ? "add" : "remove";
-            dom.middleHandle.classList[action]("cropping--handle__active");
-        }
-
-        const nextEndDrag = next.dragging == "end";
-        const prevEndDrag = prev.dragging == "end";
-        if (nextEndDrag !== prevEndDrag) {
-            const action = nextEndDrag ? "add" : "remove";
-            dom.endHandle.classList[action]("cropping--handle__active");
-        }
-    }
-
-    if (nextFormEnabled != prevFormEnabled) {
-        const action = nextFormEnabled ? "removeAttribute" : "setAttribute";
-        const elements = [
-            DOM.crop.horizontal.start,
-            DOM.crop.horizontal.startHandle,
-            DOM.crop.horizontal.middle,
-            DOM.crop.horizontal.middleHandle,
-            DOM.crop.horizontal.end,
-            DOM.crop.horizontal.endHandle,
-            DOM.crop.vertical.start,
-            DOM.crop.vertical.startHandle,
-            DOM.crop.vertical.middle,
-            DOM.crop.vertical.middleHandle,
-            DOM.crop.vertical.end,
-            DOM.crop.vertical.endHandle,
-        ];
-        for (let element of elements) {
-            element[action]("disabled", "disabled");
-        }
-    }
-
-    const prevInitialized = prev.loadDetailsState == s.LOAD_DETAILS_READY;
-    const nextInitialized = next.loadDetailsState == s.LOAD_DETAILS_READY;
-
-    if (nextInitialized != prevInitialized) {
-        const action = nextInitialized ? "remove" : "add";
-        DOM.crop.horizontal.root.classList[action]("cropping__uninitialized");
-        DOM.crop.vertical.root.classList[action]("cropping__uninitialized");
-    }
-
-    renderCrop(DOM.crop.horizontal, prev.cropHorizontal, next.cropHorizontal, "right", "left");
-    renderCrop(DOM.crop.vertical, prev.cropVertical, next.cropVertical, "bottom", "top");
-}
-
 function renderEmailForm(prev, next) {
     if (next.pixurUrl != prev.pixurUrl) {
         DOM.email.link.href = DOM.uploader.pixurUrl.href = next.pixurUrl;
@@ -167,7 +100,7 @@ function render(prev, next) {
     renderPreview(prev, next);
     renderUpload(prev, next);
     renderMetadataForm(prev, next, prevFormEnabled, nextFormEnabled);
-    renderCropping(prev, next, prevFormEnabled, nextFormEnabled);
+    crop.render(prev, next, prevFormEnabled, nextFormEnabled);
     renderEmailForm(prev, next);
 }
 
