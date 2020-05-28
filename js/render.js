@@ -9,13 +9,11 @@ function renderPreview(prev, next) {
         }
     }
 
-    const oldShowPreview = prev.phase >= s.PHASE_PREVIEW;
-    const newShowPreview = next.phase >= s.PHASE_PREVIEW;
-    if (newShowPreview != oldShowPreview) {
-        DOM.preview.style.display = newShowPreview ? "block" : "none";
+    if (next.showPreview != prev.showPreview) {
+        DOM.preview.style.display = next.showPreview ? "block" : "none";
     }
 
-    if ((newShowPreview && !oldShowPreview) || (next.previewUrl != prev.previewUrl)) {
+    if ((next.showPreview && !prev.showPreview) || (next.previewUrl != prev.previewUrl)) {
         DOM.preview.scrollIntoView();
     }
 }
