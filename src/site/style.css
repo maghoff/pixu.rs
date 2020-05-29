@@ -253,8 +253,6 @@ h2 {
     left: unset;
     right: unset;
     width: 0;
-
-    background: none;
 }
 
 .cropping--guide__right {
@@ -280,8 +278,6 @@ h2 {
     top: unset;
     bottom: unset;
     height: 0;
-
-    background: none;
 }
 
 .cropping--guide__bottom {
