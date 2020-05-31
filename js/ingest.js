@@ -72,7 +72,7 @@ DOM.email.link.addEventListener('click', function (ev) {
     ev.stopPropagation();
 });
 
-
+// ## Crop ##
 crop.init(action => {
     const newState = crop.reducer(state.cropHorizontal, action);
     updateState({ cropHorizontal: newState });
@@ -82,6 +82,17 @@ crop.init(action => {
     updateState({ cropVertical: newState });
 }, DOM.crop.vertical, "vertical");
 
+
+// ---
+
+for (let link of document.querySelectorAll(".internal-link")) {
+    link.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        document.getElementById(ev.target.getAttribute('href').slice(1)).scrollIntoView();
+    });
+}
 
 // Handle autofilling by browsers:
 actions.selectFile(DOM.fileInput.files[0]);

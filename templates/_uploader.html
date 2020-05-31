@@ -5,7 +5,7 @@
 
         {{>_dynamic-cropping.html}}
 
-        <h2>Hvem vil du dele bildet med?</h2>
+        <h2 id="uploader-form--recipients">Hvem vil du dele bildet med? <a class="internal-link" href="#uploader-form--details-submission">(hopp over)</a></h2>
         <select class="uploader-form--recipients" multiple size="{{recipients.len()}}">
             <optgroup disabled hidden></optgroup><!-- iOS bug -->
             {{#recipients}}
@@ -27,7 +27,7 @@
             </div>
         </div>
 
-        <div class="uploader-form--details-submission">
+        <div id="uploader-form--details-submission" class="uploader-form--details-submission">
             <p class="uploader-form--status">Er alt klart da?</p>
             <button class="uploader-form--button uploader-form--button__default" type="submit">👍 Del bildet</button>
         </div>

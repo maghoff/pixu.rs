@@ -10,7 +10,7 @@
 {{#is_uploader}}{{>_uploader.html}}{{/is_uploader}}
 
 {{#authorized_pixurs?}}
-<p>Her er bildene vi har delt med deg</p>
+<h3>Her er bildene vi har delt med deg</h3>
 <ul class="thumbnails">
 {{#authorized_pixurs}}
     <li class="thumbnails--item"><a class="thumbnails--link" href="{{.0}}"><img class="thumbnails--thumbnail" src="thumb/{{.1}}" data-hr="img/{{.2}}" alt="Pixur {{.0}}"></a></li>
