@@ -12,21 +12,22 @@ export const initialState = {
     previewUrl: "",
     sendEmail: DOM.email.sendEmail.defaultChecked,
     emailMessage: DOM.email.messageInput.defaultValue,
+    savedRecipients: [],
+    recipients: [],
     cropHorizontal: {},
     cropVertical: {},
 };
 export let state = initialState;
 
-let cachedViewModel = viewModel(state);
+let lastViewModel = viewModel(state);
 
 export function setState(newState) {
-    console.log(newState);
-
     let newViewModel = viewModel(newState);
-    render(cachedViewModel, newViewModel);
+    console.log(newViewModel);
+    render(lastViewModel, newViewModel);
 
     state = newState;
-    cachedViewModel = newViewModel;
+    lastViewModel = newViewModel;
 }
 
 export function updateState(delta) {
@@ -38,6 +39,7 @@ function rootReducer(state, action) {
     return {
         ...state,
         cropHorizontal: crop.reducer(state.cropHorizontal, action),
+        cropVertical: crop.reducer(state.cropVertical, action),
     };
 }
 

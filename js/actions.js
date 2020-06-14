@@ -13,7 +13,7 @@ const SAFE_LANDSCAPE_ASPECT = 699 / 1280;
 function gatherDetails() {
     const details = {
         metadata: {
-            recipients: [],
+            recipients: state.recipients.slice(0),
             crop_left: state.cropHorizontal.start,
             crop_right: state.cropHorizontal.end,
             crop_top: state.cropVertical.start,
@@ -25,16 +25,11 @@ function gatherDetails() {
         } : null,
     };
 
-    const s = document.querySelector(".uploader-form--recipients").selectedOptions;
-    for (let i = 0; i < s.length; ++i) {
-        details.metadata.recipients.push(s[i].value);
-    }
-
     return details;
 }
 
 function setDetails(details) {
-    const options = document.querySelector(".uploader-form--recipients").options;
+    const options = DOM.details.recipients.options;
     for (let option of options) {
         option.selected = details.recipients.indexOf(option.value) != -1;
     }
@@ -58,10 +53,14 @@ export const actions = {
                     cropHorizontal: {
                         start: 0.5 - cropHalfWidth,
                         end: 0.5 + cropHalfWidth,
+                        savedStart: null,
+                        savedEnd: null,
                     },
                     cropVertical: {
                         start: 0.5 - cropHalfHeight,
                         end: 0.5 + cropHalfHeight,
+                        savedStart: null,
+                        savedEnd: null,
                     }
                 })
             };
@@ -72,13 +71,19 @@ export const actions = {
             phase: file ? s.PHASE_PREVIEW : s.PHASE_INITIAL,
             file: file || null,
             previewUrl: file ? window.URL.createObjectURL(file) : "",
+            savedRecipients: [],
+            recipients: [],
             cropHorizontal: {
                 start: 0.5,
                 end: 0.5,
+                savedStart: null,
+                savedEnd: null,
             },
             cropVertical: {
                 start: 0.5,
                 end: 0.5,
+                savedStart: null,
+                savedEnd: null,
             }
         });
     },
@@ -168,8 +173,22 @@ export const actions = {
                     if (!res.ok) {
                         throw "Unexpected status code: " + res.status + " " + res.statusText;
                     }
+                    alert("Lagret ✔");
                     updateState({
                         saveDetailsState: s.SAVE_DETAILS_SUCCEEDED,
+                        savedRecipients: state.recipients,
+                        cropHorizontal: {
+                            start: state.cropHorizontal.start,
+                            end: state.cropHorizontal.end,
+                            savedStart: state.cropHorizontal.start,
+                            savedEnd: state.cropHorizontal.end,
+                        },
+                        cropVertical: {
+                            start: state.cropVertical.start,
+                            end: state.cropVertical.end,
+                            savedStart: state.cropVertical.start,
+                            savedEnd: state.cropVertical.end,
+                        },
                     });
                 }
                 catch (err) {
@@ -227,14 +246,19 @@ export const actions = {
 
                     updateState({
                         loadDetailsState: s.LOAD_DETAILS_READY,
-                        initialMetadata: metadata,
+                        savedRecipients: metadata.recipients,
+                        recipients: metadata.recipients,
                         cropHorizontal: {
                             start: metadata.crop_left,
                             end: metadata.crop_right,
+                            savedStart: metadata.crop_left,
+                            savedEnd: metadata.crop_right,
                         },
                         cropVertical: {
                             start: metadata.crop_top,
                             end: metadata.crop_bottom,
+                            savedStart: metadata.crop_top,
+                            savedEnd: metadata.crop_bottom,
                         }
                     });
                 }

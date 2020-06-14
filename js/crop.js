@@ -120,6 +120,8 @@ export function reducer(state, action) {
                 },
                 start: state.start,
                 end: state.end,
+                savedStart: state.savedStart,
+                savedEnd: state.savedEnd,
             };
 
         case CROP_DRAG_MOVE:
@@ -155,6 +157,8 @@ export function reducer(state, action) {
             return {
                 start: state.start,
                 end: state.end,
+                savedStart: state.savedStart,
+                savedEnd: state.savedEnd,
             };
 
         case CROP_DRAG_CANCEL:

@@ -40,11 +40,15 @@ const DOM = {
     },
     details: {
         form: document.querySelector('.uploader-form--details'),
+        recipients: document.querySelector('.uploader-form--recipients'),
         detailsSubmission: document.querySelector('.uploader-form--details-submission'),
         submit: document.querySelector('.uploader-form--details button[type="submit"]'),
+        summary: document.querySelector('.uploader-form--summary'),
         status: document.querySelector('.uploader-form--status'),
     },
     email: {
+        container: document.querySelector('.email-container'),
+        recipients: document.querySelector('.email-container--recipients'),
         sendEmail: document.getElementById('send_email'),
         emailDetails: document.querySelector('.email-details'),
         title: document.getElementById('email-details--title'),

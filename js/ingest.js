@@ -19,6 +19,19 @@ DOM.uploaderForm.addEventListener('submit', function (ev) {
     actions.upload(state.file);
 });
 
+function updateRecipients() {
+    const recipients = [];
+    const rec = DOM.details.recipients.selectedOptions;
+    for (let i = 0; i < rec.length; ++i) {
+        recipients.push(rec[i].value);
+    }
+    updateState({ recipients });
+}
+
+DOM.details.recipients.addEventListener('input', function (ev) {
+    updateRecipients();
+});
+
 document.getElementById("uploader-form--add-recipient").addEventListener('click', function (ev) {
     const email = prompt("Epostadresse");
     if (email) {
@@ -30,13 +43,9 @@ document.getElementById("uploader-form--add-recipient").addEventListener('click'
         const sel = document.querySelector(".uploader-form--recipients");
         sel.appendChild(opt);
         sel.size = sel.options.length;
-    }
-});
 
-DOM.details.form.addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    actions.submitDetails();
+        updateRecipients();
+    }
 });
 
 // ## Metadata editor ##

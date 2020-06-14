@@ -14,22 +14,25 @@
         </select>
         <button id="uploader-form--add-recipient" class="uploader-form--button" type=button>➕ Legg til en annen</button>
 
-        <div>
-            <input id="send_email" name="send_email" type="checkbox" checked><label for="send_email">Send epost</label>
-        </div>
+        <div class="email-container">
+            <div>
+                <input id="send_email" name="send_email" type="checkbox" checked><label for="send_email">Send epost til <span class="email-container--recipients"></span></label>
+            </div>
 
-        <div class="email-details show">
-            <p><label for="email-details--title">Tittel:</label> <input id="email-details--title" name="email-details--title" value="Vi har delt et bilde med deg 📸"></p>
-            <p><label for="email-details--message">Beskjed:</label> <input id="email-details--message" name="email-details--message" value="Vi har delt et bilde med deg."></p>
-            <p>Slik blir eposten:</p>
-            <div class="email-details--preview">
-                {{>_notification-email-body.html}}
+            <div class="email-details show">
+                <p><label for="email-details--title">Tittel:</label> <input id="email-details--title" name="email-details--title" value="Vi har delt et bilde med deg 📸"></p>
+                <p><label for="email-details--message">Beskjed:</label> <input id="email-details--message" name="email-details--message" value="Vi har delt et bilde med deg."></p>
+                <p>Slik blir eposten:</p>
+                <div class="email-details--preview">
+                    {{>_notification-email-body.html}}
+                </div>
             </div>
         </div>
 
         <div id="uploader-form--details-submission" class="uploader-form--details-submission">
-            <p class="uploader-form--status">Er alt klart da?</p>
+            <p class="uploader-form--summary"></p>
             <button class="uploader-form--button uploader-form--button__default" type="submit">👍 Del bildet</button>
+            <p class="uploader-form--status"></p>
         </div>
 
         <p class="uploader-form--status__uploading">Bildet lastes opp&hellip;</p>
