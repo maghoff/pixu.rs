@@ -185,7 +185,9 @@ h2 {
 .email-container {
     overflow: hidden;
     box-sizing: border-box;
+
     max-height: 0px;
+    transition: ease-out 300ms max-height;
 }
 
 .email-container.show {
