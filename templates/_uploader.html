@@ -6,7 +6,7 @@
         {{>_dynamic-cropping.html}}
 
         <h2 id="uploader-form--recipients">Hvem vil du dele bildet med? <a class="internal-link" href="#uploader-form--details-submission">(hopp over)</a></h2>
-        <select class="uploader-form--recipients" multiple size="{{recipients.len()}}">
+        <select class="uploader-form--recipients" multiple size="{{recipients.len()}}" autocomplete=off>
             <optgroup disabled hidden></optgroup><!-- iOS bug -->
             {{#recipients}}
             <option value='{{.}}'>{{.}}</option>
@@ -16,12 +16,12 @@
 
         <div class="email-container">
             <div>
-                <input id="send_email" name="send_email" type="checkbox" checked><label for="send_email">Send epost til <span class="email-container--recipients"></span></label>
+                <input id="send_email" name="send_email" type="checkbox" checked autocomplete=off><label for="send_email">Send epost til <span class="email-container--recipients"></span></label>
             </div>
 
             <div class="email-details show">
-                <p><label for="email-details--title">Tittel:</label> <input id="email-details--title" name="email-details--title" value="Vi har delt et bilde med deg 📸"></p>
-                <p><label for="email-details--message">Beskjed:</label> <input id="email-details--message" name="email-details--message" value="Vi har delt et bilde med deg."></p>
+                <p><label for="email-details--title">Tittel:</label> <input autocomplete=off id="email-details--title" name="email-details--title" value="Vi har delt et bilde med deg 📸"></p>
+                <p><label for="email-details--message">Beskjed:</label> <input autocomplete=off id="email-details--message" name="email-details--message" value="Vi har delt et bilde med deg."></p>
                 <p>Slik blir eposten:</p>
                 <div class="email-details--preview">
                     {{>_notification-email-body.html}}
@@ -42,7 +42,7 @@
 </div>
 
 <form id="uploader-form">
-    <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg, image/png">
+    <input class="uploader-form--file-input" id="image" name="image" required type="file" accept="image/jpeg, image/png" autocomplete=off>
 
     <div class="uploader-form--phase-initial">
         <label class="uploader-form--link" for="image">Last opp et bilde 📸</label>
