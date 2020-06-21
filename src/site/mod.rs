@@ -1,4 +1,5 @@
 mod auth;
+mod auth_provider;
 mod handling_error;
 mod image;
 mod index;
@@ -207,7 +208,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
 
                 match m[1].parse() {
                     Ok(id) => {
-                        let provider = pixu_meta::AuthorizationProvider { db_pool: self.db_pool.clone() };
+                        let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
                         let consumer = pixu_meta::AuthorizationConsumer {
                             title: title.clone(),
                             db_pool: self.db_pool.clone(),
@@ -281,7 +282,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 })
             },
             _ = r"^img/$" => {
-                let provider = ingest::AuthorizationProvider { db_pool: self.db_pool.clone() };
+                let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
                 let consumer = ingest::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                 let authorizer = auth::authorizer::Authorizer::new(
                     title,

@@ -9,6 +9,7 @@ use r2d2_diesel::ConnectionManager;
 use web::{Error, Get, MediaType, Post, RepresentationBox, Resource, Response};
 
 use super::auth;
+use super::auth_provider;
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
 use crate::id30::Id30;
@@ -287,7 +288,7 @@ pub struct AuthorizationConsumer {
 }
 
 impl auth::authorizer::Consumer for AuthorizationConsumer {
-    type Authorization = ();
+    type Authorization = auth_provider::CanEdit;
 
     fn authorization(self, _: ()) -> Result<Resource, Error> {
         Ok(Resource {
@@ -310,33 +311,5 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
                 sender: self.sender,
             })),
         })
-    }
-}
-
-// TODO Deduplicate. This is in fact identical to ingest::AuthorizationProvider
-pub struct AuthorizationProvider {
-    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
-}
-
-impl auth::authorizer::Provider for AuthorizationProvider {
-    type Authorization = ();
-
-    fn get_authorization(&self, sub: &str) -> Result<Option<Self::Authorization>, web::Error> {
-        use diesel::dsl::*;
-
-        let db_connection = self
-            .db_pool
-            .get()
-            .map_err(|_| web::Error::InternalServerError)?;
-
-        let authorized: bool = select(exists(uploaders::table.filter(uploaders::sub.eq(sub))))
-            .first::<bool>(&*db_connection)
-            .expect("Query must return 1 result");
-
-        if authorized {
-            Ok(Some(()))
-        } else {
-            Ok(None)
-        }
     }
 }

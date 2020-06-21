@@ -1,5 +1,4 @@
 use diesel;
-use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::{compat::Stream01CompatExt, TryStreamExt};
 use r2d2::Pool;
@@ -7,8 +6,8 @@ use r2d2_diesel::ConnectionManager;
 use web::{Post, Resource, Response};
 
 use super::auth;
+use super::auth_provider;
 use super::handling_error::HandlingError;
-use crate::db::schema::*;
 use crate::image;
 
 pub struct Ingest {
@@ -66,9 +65,9 @@ pub struct AuthorizationConsumer {
 }
 
 impl auth::authorizer::Consumer for AuthorizationConsumer {
-    type Authorization = ();
+    type Authorization = auth_provider::CanEdit;
 
-    fn authorization(self, _: ()) -> Result<Resource, web::Error> {
+    fn authorization(self, _: Self::Authorization) -> Result<Resource, web::Error> {
         Ok(Resource {
             etag: None,
             get: None,
@@ -77,32 +76,5 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
                 db_pool: self.db_pool,
             })),
         })
-    }
-}
-
-pub struct AuthorizationProvider {
-    pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
-}
-
-impl auth::authorizer::Provider for AuthorizationProvider {
-    type Authorization = ();
-
-    fn get_authorization(&self, sub: &str) -> Result<Option<Self::Authorization>, web::Error> {
-        use diesel::dsl::*;
-
-        let db_connection = self
-            .db_pool
-            .get()
-            .map_err(|_| web::Error::InternalServerError)?;
-
-        let authorized: bool = select(exists(uploaders::table.filter(uploaders::sub.eq(sub))))
-            .first::<bool>(&*db_connection)
-            .expect("Query must return 1 result");
-
-        if authorized {
-            Ok(Some(()))
-        } else {
-            Ok(None)
-        }
     }
 }
