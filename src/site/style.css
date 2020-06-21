@@ -433,3 +433,11 @@ h2 {
 .photo--thumbnail {
     filter: blur(1vmax);
 }
+
+.photo--large {
+    display: none;
+}
+
+.in-view .photo--large {
+    display: inherit;
+}
