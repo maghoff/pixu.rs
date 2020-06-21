@@ -206,27 +206,23 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 // Don't canonicalize URL, or else the trailing /meta would disappear
                 // Besides: Users won't type in this URL
 
-                match m[1].parse() {
-                    Ok(id) => {
-                        let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
-                        let consumer = pixu_meta::AuthorizationConsumer {
-                            title: title.clone(),
-                            db_pool: self.db_pool.clone(),
-                            id,
-                            base_url: self.base_url.clone(),
-                            mailer: self.mailer.clone(),
-                            sender: self.sender.clone()
-                        };
-                        let authorizer = auth::authorizer::Authorizer::new(
-                            title,
-                            path.to_string(),
-                            provider,
-                            consumer,
-                        );
-                        Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
-                    },
-                    Err(_) => Err(not_found()),
-                }
+                let id = m[1].parse().map_err(|_| not_found())?;
+                let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
+                let consumer = pixu_meta::AuthorizationConsumer {
+                    title: title.clone(),
+                    db_pool: self.db_pool.clone(),
+                    id,
+                    base_url: self.base_url.clone(),
+                    mailer: self.mailer.clone(),
+                    sender: self.sender.clone()
+                };
+                let authorizer = auth::authorizer::Authorizer::new(
+                    title,
+                    path.to_string(),
+                    provider,
+                    consumer,
+                );
+                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
             },
             _ = r"^$" => Ok(Box::new(
                 JwtCookieHandler::new(
