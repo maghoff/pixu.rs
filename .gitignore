@@ -4,3 +4,4 @@ config.toml
 config-dev-server.toml
 node_modules
 dist
+test.db
