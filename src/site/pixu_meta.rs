@@ -290,7 +290,7 @@ pub struct AuthorizationConsumer {
 impl auth::authorizer::Consumer for AuthorizationConsumer {
     type Authorization = auth_provider::CanEdit;
 
-    fn authorization(self, _: ()) -> Result<Resource, Error> {
+    fn authorization(self, _: Self::Authorization) -> Result<Resource, Error> {
         Ok(Resource {
             etag: None,
             get: Some(Box::new(PixuMeta {
