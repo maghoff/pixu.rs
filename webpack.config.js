@@ -2,8 +2,8 @@ const path = require('path');
 
 module.exports = {
     entry: {
-        ingest: './js/ingest.js',
-        viewer: './js/viewer.js',
+        ingest: './js/ingest/ingest.js',
+        viewer: './js/viewer/viewer.js',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
