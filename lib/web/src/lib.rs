@@ -1,5 +1,3 @@
-#![feature(unsized_locals)]
-
 pub use cookie::Cookie;
 use hyper::http;
 use hyper::{Body, Request};
