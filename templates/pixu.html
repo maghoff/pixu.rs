@@ -1,6 +1,7 @@
 <div class="photo-list--container">
     <div class="photo-list--top-background" style="background: {{top_color}}"></div>
-    <div class="photo-list--list">
+    <div class="photo-list--list noscript" id="photo-list--list">
+        <script>document.getElementById("photo-list--list").className = "photo-list--list";</script>
         {{#photos}}
         <div class="photo" style="background: {{.average_color}}; height: {{.height}}; {{#.max_height}}max-height: {{.}}{{/.max_height}}">
             <div class="photo--img-container" {{#.max_width}}style="max-width: {{.}};"{{/.max_width}}>

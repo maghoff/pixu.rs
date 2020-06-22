@@ -438,6 +438,6 @@ h2 {
     display: none;
 }
 
-.in-view .photo--large {
+.in-view .photo--large, .noscript .photo--large {
     display: inherit;
 }
