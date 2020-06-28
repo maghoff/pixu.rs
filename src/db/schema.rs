@@ -16,8 +16,16 @@ table! {
 }
 
 table! {
-    pixur_authorizations (pixur_id, sub) {
-        pixur_id -> Integer,
+    pixur_series (id, order) {
+        id -> Integer,
+        order -> Integer,
+        pixurs_id -> Integer,
+    }
+}
+
+table! {
+    pixur_series_authorizations (pixur_series_id, sub) {
+        pixur_series_id -> Integer,
         sub -> Text,
     }
 }
@@ -37,14 +45,6 @@ table! {
 }
 
 table! {
-    pixurs_series (id, order) {
-        id -> Integer,
-        order -> Integer,
-        pixurs_id -> Integer,
-    }
-}
-
-table! {
     thumbs (id) {
         id -> Integer,
         media_type -> Text,
@@ -60,16 +60,15 @@ table! {
 
 joinable!(images_meta -> images (id));
 joinable!(images_meta -> pixurs (pixurs_id));
-joinable!(pixur_authorizations -> pixurs (pixur_id));
+joinable!(pixur_series -> pixurs (pixurs_id));
 joinable!(pixurs -> thumbs (thumbs_id));
-joinable!(pixurs_series -> pixurs (pixurs_id));
 
 allow_tables_to_appear_in_same_query!(
     images,
     images_meta,
-    pixur_authorizations,
+    pixur_series,
+    pixur_series_authorizations,
     pixurs,
-    pixurs_series,
     thumbs,
     uploaders,
 );

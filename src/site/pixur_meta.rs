@@ -14,7 +14,7 @@ use super::handling_error::HandlingError;
 use crate::db::schema::*;
 use crate::id30::Id30;
 
-pub struct PixuMeta {
+pub struct PixurMeta {
     title: String,
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
     id: Id30,
@@ -59,18 +59,20 @@ struct UpdateRequest<'a> {
     send_email: Option<EmailDetails<'a>>,
 }
 
-impl PixuMeta {
+impl PixurMeta {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
             .db_pool
             .get()
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let recipients = pixur_authorizations::table
-            .filter(pixur_authorizations::pixur_id.eq(self.id))
-            .select(pixur_authorizations::sub)
-            .load(&*db_connection)
-            .map_err(|_| HandlingError::InternalServerError)?;
+        // TODO Backwards compatibility: Implement transparent sharing of single pixurs
+        let recipients = vec![];
+        // let recipients = pixur_authorizations::table
+        //     .filter(pixur_authorizations::pixur_id.eq(self.id))
+        //     .select(pixur_authorizations::sub)
+        //     .load(&*db_connection)
+        //     .map_err(|_| HandlingError::InternalServerError)?;
 
         let (crop_left, crop_right, crop_top, crop_bottom) = pixurs::table
             .filter(pixurs::id.eq(self.id))
@@ -174,6 +176,8 @@ impl PixuMeta {
 
         db_connection
             .transaction(|| {
+                // TODO Implement backwards compat for sharing
+                /*
                 #[derive(Insertable)]
                 #[table_name = "pixur_authorizations"]
                 struct Authorization<'a> {
@@ -218,6 +222,7 @@ impl PixuMeta {
                         .filter(pixur_authorizations::sub.eq_any(to_remove)),
                 )
                 .execute(&*db_connection)?;
+                */
 
                 #[derive(AsChangeset)]
                 #[table_name = "pixurs"]
@@ -259,7 +264,7 @@ impl PixuMeta {
 }
 
 #[async_trait::async_trait]
-impl Get for PixuMeta {
+impl Get for PixurMeta {
     async fn representations(self: Box<Self>) -> Response {
         let title = self.title.clone();
 
@@ -268,7 +273,7 @@ impl Get for PixuMeta {
 }
 
 #[async_trait::async_trait]
-impl Post for PixuMeta {
+impl Post for PixurMeta {
     async fn post(self: Box<Self>, content_type: String, body: hyper::Body) -> Response {
         let title = self.title.clone();
 
@@ -293,7 +298,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
     fn authorization(self, _: Self::Authorization) -> Result<Resource, Error> {
         Ok(Resource {
             etag: None,
-            get: Some(Box::new(PixuMeta {
+            get: Some(Box::new(PixurMeta {
                 title: self.title.clone(),
                 db_pool: self.db_pool.clone(),
                 id: self.id,
@@ -301,7 +306,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
                 mailer: self.mailer.clone(),
                 sender: self.sender.clone(),
             })),
-            post: Some(Box::new(PixuMeta {
+            post: Some(Box::new(PixurMeta {
                 //FIXME Curious duplication of get and post
                 title: self.title,
                 db_pool: self.db_pool,

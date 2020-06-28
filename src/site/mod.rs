@@ -4,9 +4,8 @@ mod handling_error;
 mod image;
 mod index;
 mod ingest;
-mod pixu;
-mod pixu_meta;
-mod pixu_series;
+mod pixur_meta;
+mod pixur_series;
 mod query_args;
 mod thumbnail;
 
@@ -192,8 +191,8 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 // if introducing other routes that would conflict
 
                 canonicalize_id30(&m[1], |id| {
-                    let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                    let consumer = pixu::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
+                    let provider = pixur_series::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
+                    let consumer = pixur_series::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
                     let authorizer = auth::authorizer::Authorizer::new(
                         title.clone(),
                         path.to_string(),
@@ -203,25 +202,13 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                     Box::new(JwtCookieHandler::new(self.key.clone(), authorizer))
                 })
             },
-            m = r"^pixur-series-([a-zA-Z0-9]{6})$" => {
-                let id = m[1].parse().map_err(|_| not_found())?;
-                let provider = pixu::AuthorizationProvider { db_pool: self.db_pool.clone(), id };
-                let consumer = pixu_series::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
-                let authorizer = auth::authorizer::Authorizer::new(
-                    title.clone(),
-                    path.to_string(),
-                    provider,
-                    consumer,
-                );
-                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
-            },
             m = r"^([a-zA-Z0-9]{6})/meta$" => {
                 // Don't canonicalize URL, or else the trailing /meta would disappear
                 // Besides: Users won't type in this URL
 
                 let id = m[1].parse().map_err(|_| not_found())?;
                 let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
-                let consumer = pixu_meta::AuthorizationConsumer {
+                let consumer = pixur_meta::AuthorizationConsumer {
                     title: title.clone(),
                     db_pool: self.db_pool.clone(),
                     id,

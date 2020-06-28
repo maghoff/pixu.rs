@@ -114,10 +114,16 @@ impl auth::authorizer::Provider for AuthorizationProvider {
 
         let authorized = is_uploader
             || select(exists(
-                pixur_authorizations::table
-                    .inner_join(pixurs::table.inner_join(images_meta::table))
+                pixur_series_authorizations::table
+                    .inner_join(
+                        pixur_series::table.inner_join(
+                            pixurs::table.inner_join(images_meta::table)
+                        ).on(
+                            pixur_series::id.eq(pixur_series_authorizations::pixur_series_id)
+                        )
+                    )
                     .filter(images_meta::id.eq(self.id))
-                    .filter(pixur_authorizations::sub.eq(sub)),
+                    .filter(pixur_series_authorizations::sub.eq(sub)),
             ))
             .first(&*db_connection)
             .expect("Query must return 1 result");

@@ -57,9 +57,9 @@ impl Index {
         let is_uploader = match is_uploader {
             false => None,
             true => {
-                let recipients = pixur_authorizations::table
-                    .select(pixur_authorizations::sub)
-                    .order(pixur_authorizations::sub.asc())
+                let recipients = pixur_series_authorizations::table
+                    .select(pixur_series_authorizations::sub)
+                    .order(pixur_series_authorizations::sub.asc())
                     .distinct()
                     .load::<String>(&*db_connection)
                     .map_err(|_| HandlingError::InternalServerError)?;
@@ -83,12 +83,18 @@ impl Index {
                         .select((pixurs::id, pixurs::thumbs_id, images_meta::id))
                         .load::<(Id30, Id30, Id30)>(&*db_connection)
                 } else {
-                    pixur_authorizations::table
-                        .inner_join(pixurs::table.inner_join(images_meta::table))
+                    pixur_series_authorizations::table
+                    .inner_join(
+                        pixur_series::table.inner_join(
+                            pixurs::table.inner_join(images_meta::table)
+                        ).on(
+                            pixur_series::id.eq(pixur_series_authorizations::pixur_series_id)
+                        )
+                    )
                         .order(pixurs::created.desc())
-                        .filter(pixur_authorizations::sub.eq(&claims.sub))
+                        .filter(pixur_series_authorizations::sub.eq(&claims.sub))
                         .select((
-                            pixur_authorizations::pixur_id,
+                            pixur_series_authorizations::pixur_series_id,
                             pixurs::thumbs_id,
                             images_meta::id,
                         ))

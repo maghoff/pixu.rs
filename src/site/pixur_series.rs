@@ -38,6 +38,13 @@ struct Get<'a> {
 }
 
 #[derive(Queryable)]
+struct PixurSeries {
+    id: i32,
+    order: i32,
+    pixur_id: i32,
+}
+
+#[derive(Queryable)]
 struct Pixurs {
     #[allow(unused)]
     id: Id30,
@@ -127,7 +134,11 @@ impl Pixu {
         // TODO Schedule IO operations on some kind of background thread (schedule_blocking)
         // TODO Parallelize independent queries
 
-        let pix: Vec<Pixurs> = pixurs::table
+        // Slight inefficiency: Reading out unnecessary PixurSeries objects
+        let pix: Vec<(PixurSeries, Pixurs)> = pixur_series::table
+            .inner_join(pixurs::table)
+            .filter(pixur_series::id.eq(self.id))
+            .order(pixur_series::order.asc())
             .load(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
@@ -139,7 +150,7 @@ impl Pixu {
 
         let photos = pix
             .iter()
-            .map(|pix| {
+            .map(|(_, pix)| {
                 // TODO Consolidate to one big query in parent scope, to avoid running O(n) queries
                 // TODO Load all sizes of images and allow client side to pick the best size
                 let large_id: Id30 = images_meta::table
@@ -224,9 +235,9 @@ impl auth::authorizer::Provider for AuthorizationProvider {
 
         let authorized = is_uploader
             || select(exists(
-                pixur_authorizations::table
-                    .filter(pixur_authorizations::pixur_id.eq(self.id))
-                    .filter(pixur_authorizations::sub.eq(sub)),
+                pixur_series_authorizations::table
+                    .filter(pixur_series_authorizations::pixur_series_id.eq(self.id))
+                    .filter(pixur_series_authorizations::sub.eq(sub)),
             ))
             .first(&*db_connection)
             .expect("Query must return 1 result");
