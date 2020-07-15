@@ -26,6 +26,7 @@ pub struct PixurMeta {
 #[derive(serde_derive::Serialize)]
 struct MetadataGet {
     recipients: Vec<String>,
+    series_url: Option<String>,
 
     crop_left: f32,
     crop_right: f32,
@@ -62,7 +63,7 @@ struct UpdateRequest<'a> {
 fn implicit_pixur_series(
     pixur_id: Id30,
     db_connection: &SqliteConnection,
-) -> Result<Option<Id30>, HandlingError> {
+) -> Result<Option<Id30>, diesel::result::Error> {
     use diesel::sql_types::Integer;
 
     #[derive(QueryableByName)]
@@ -87,8 +88,7 @@ fn implicit_pixur_series(
         ",
     )
     .bind::<diesel::sql_types::Integer, _>(pixur_id)
-    .load(db_connection)
-    .map_err(|_| HandlingError::InternalServerError)?;
+    .load(db_connection)?;
 
     Ok(pixur_series.get(0).map(|x| x.id))
 }
@@ -101,7 +101,9 @@ impl PixurMeta {
             .map_err(|_| HandlingError::InternalServerError)?;
 
         // Backwards compatibility for implicitly shared single pixur:
-        let recipients: Vec<String> = match implicit_pixur_series(self.id, &*db_connection)? {
+        let pixur_series_id = implicit_pixur_series(self.id, &*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)?;
+        let recipients: Vec<String> = match pixur_series_id {
             Some(pixur_series_id) => pixur_series_authorizations::table
                 .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
                 .select(pixur_series_authorizations::sub)
@@ -122,6 +124,7 @@ impl PixurMeta {
             .map_err(|_| HandlingError::InternalServerError)?;
 
         let metadata = MetadataGet {
+            series_url: pixur_series_id.map(|id| format!("{}{}", self.base_url, id)),
             recipients,
             crop_left,
             crop_right,
@@ -155,7 +158,15 @@ impl PixurMeta {
             .lock()
             .expect("Don't know what to do about Poison");
 
-        let url = format!("{}{}", self.base_url, self.id);
+        let db_connection = self.db_pool.get().unwrap(); // Not sure how to handle errors
+
+        let series_id = implicit_pixur_series(self.id, &*db_connection)
+            .unwrap() // Not sure how to handle errors
+            .expect("Implicit series must exist");
+
+        drop(db_connection);
+
+        let url = format!("{}{}", self.base_url, series_id);
 
         let html_body = HtmlMail {
             title: email_details.title,
@@ -212,18 +223,41 @@ impl PixurMeta {
 
         db_connection
             .transaction(|| {
-                // TODO Implement backwards compat for sharing
-                /*
+                let pixur_series_id = match implicit_pixur_series(self.id, &*db_connection)? {
+                    Some(id) => id,
+                    None => {
+                        use diesel::dsl::*;
+                        use rand::{rngs::SmallRng, SeedableRng};
+                        let mut rng = SmallRng::from_entropy();
+                        let mut attempts = 0;
+
+                        loop {
+                            let pixur_series_id = Id30::new_random(&mut rng);
+                            let exists: bool = select(exists(
+                                pixur_series::table.filter(pixur_series::id.eq(pixur_series_id)),
+                            ))
+                            .first(&*db_connection)?;
+                            if !exists {
+                                break pixur_series_id;
+                            }
+                            attempts += 1;
+                            if attempts >= 10 {
+                                return Err(diesel::result::Error::RollbackTransaction);
+                            }
+                        }
+                    }
+                };
+
                 #[derive(Insertable)]
-                #[table_name = "pixur_authorizations"]
+                #[table_name = "pixur_series_authorizations"]
                 struct Authorization<'a> {
-                    pixur_id: Id30,
+                    pixur_series_id: Id30,
                     sub: &'a str,
                 }
 
-                let old_recipients: Vec<String> = pixur_authorizations::table
-                    .filter(pixur_authorizations::pixur_id.eq(self.id))
-                    .select(pixur_authorizations::sub)
+                let old_recipients: Vec<String> = pixur_series_authorizations::table
+                    .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+                    .select(pixur_series_authorizations::sub)
                     .load(&*db_connection)?;
 
                 let old_recipients: std::collections::BTreeSet<_> =
@@ -234,12 +268,12 @@ impl PixurMeta {
                 let to_add = new_recipients
                     .difference(&old_recipients)
                     .map(|&sub| Authorization {
-                        pixur_id: self.id,
-                        sub: sub,
+                        pixur_series_id,
+                        sub,
                     })
                     .collect::<Vec<_>>();
 
-                diesel::insert_into(pixur_authorizations::table)
+                diesel::insert_into(pixur_series_authorizations::table)
                     .values(&to_add)
                     .execute(&*db_connection)?;
 
@@ -253,12 +287,11 @@ impl PixurMeta {
                 let to_remove = old_recipients.difference(&new_recipients);
 
                 diesel::delete(
-                    pixur_authorizations::table
-                        .filter(pixur_authorizations::pixur_id.eq(self.id))
-                        .filter(pixur_authorizations::sub.eq_any(to_remove)),
+                    pixur_series_authorizations::table
+                        .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+                        .filter(pixur_series_authorizations::sub.eq_any(to_remove)),
                 )
                 .execute(&*db_connection)?;
-                */
 
                 #[derive(AsChangeset)]
                 #[table_name = "pixurs"]

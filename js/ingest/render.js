@@ -136,9 +136,9 @@ function renderEmailForm(prev, next) {
         DOM.email.recipients.textContent = formatRecipientList(next.changed.newRecipients);
     }
 
-    if (next.pixurUrl != prev.pixurUrl) {
-        DOM.email.link.href = DOM.uploader.pixurUrl.href = next.pixurUrl;
-        DOM.email.link.textContent = DOM.uploader.pixurUrl.textContent = next.pixurUrl;
+    if (next.seriesUrl != prev.seriesUrl) {
+        DOM.email.link.href = DOM.uploader.url.href = next.seriesUrl;
+        DOM.email.link.textContent = DOM.uploader.url.textContent = next.seriesUrl;
     }
 
     if (next.sendEmail != prev.sendEmail) {

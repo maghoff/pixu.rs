@@ -13,7 +13,7 @@ const DOM = {
         uploadError: document.querySelector('.uploader-form--upload-error'),
         statusUploading: document.querySelector('.uploader-form--status__uploading'),
         statusUploaded: document.querySelector('.uploader-form--status__uploaded'),
-        pixurUrl: document.querySelector('.uploader-form--url'),
+        url: document.querySelector('.uploader-form--url'),
     },
     crop: {
         horizontal: {

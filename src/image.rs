@@ -184,7 +184,7 @@ fn transform_by_orientation(img: image::RgbImage, orientation: u32) -> image::Rg
 pub fn ingest_jpeg(
     jpeg: &[u8],
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
-) -> Result<Id30, Box<dyn std::error::Error>> {
+) -> Result<(Id30, Id30), Box<dyn std::error::Error>> {
     let sw = Stopwatch::start_new();
     let img = image::load_from_memory_with_format(jpeg, image::ImageFormat::JPEG)?.to_rgb();
     eprintln!(
@@ -381,7 +381,25 @@ pub fn ingest_jpeg(
                 })
                 .execute(&*db_connection)?;
 
-            Ok(pixurs_id)
+            #[derive(Insertable)]
+            #[table_name = "pixur_series"]
+            struct PixurSeriesElement {
+                id: Id30,
+                order: i32,
+                pixurs_id: Id30,
+            }
+
+            let pixur_series_id = Id30::new_random(&mut rng);
+
+            diesel::insert_into(pixur_series::table)
+                .values(&PixurSeriesElement {
+                    id: pixur_series_id,
+                    order: 0,
+                    pixurs_id,
+                })
+                .execute(&*db_connection)?;
+
+            Ok((pixurs_id, pixur_series_id))
         })
         .map_err(|x| dbg!(x))
 }

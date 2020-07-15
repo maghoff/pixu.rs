@@ -91,39 +91,57 @@ export const actions = {
         setState(initialState);
     },
     upload: function (file) {
-        fetch('img/', {
-            method: 'POST',
-            body: file,
-            credentials: 'same-origin',
-            redirect: 'follow',
-        })
-            .catch(function (err) {
-                // Low level error situation, such as network error
-                throw {
-                    err: err,
-                    hint: s.ERROR_CHECK_CONNECTIVITY,
-                };
-            })
-            .then(function (res) {
-                try {
-                    if (!res.ok) {
-                        throw "Unexpected status code: " + res.status + " " + res.statusText;
-                    }
+        updateState({
+            phase: s.PHASE_DETAILS,
+            uploadPhase: s.UPLOAD_PHASE_IN_PROGRESS,
+            uploadResult: null,
+            uploadError: null,
+            pixurUrl: null,
+            seriesUrl: null,
+            loadDetailsState: s.LOAD_DETAILS_READY,
+        });
 
-                    const location = res.headers.get('location');
-                    if (!location) {
-                        throw "Missing Location header in server response";
-                    }
-
-                    actions.uploadFinished(location);
-                }
-                catch (err) {
-                    // Unexpected error
+        async function async_upload(file) {
+            const res = await (
+                fetch('img/', {
+                    method: 'POST',
+                    body: file,
+                    credentials: 'same-origin',
+                    redirect: 'follow',
+                }).catch(function (err) {
+                    // Low level error situation, such as network error
                     throw {
                         err: err,
-                        hint: s.ERROR_TRY_AGAIN,
+                        hint: s.ERROR_CHECK_CONNECTIVITY,
                     };
+                })
+            );
+
+            try {
+                if (!res.ok) {
+                    throw "Unexpected status code: " + res.status + " " + res.statusText;
                 }
+
+                const json = await res.json();
+
+                if (!json.url || !json.series_url) {
+                    throw "Malformed response from server";
+                }
+
+                return json;
+            }
+            catch (err) {
+                // Unexpected error
+                throw {
+                    err: err,
+                    hint: s.ERROR_TRY_AGAIN,
+                };
+            }
+        }
+
+        async_upload(file)
+            .then(function (urls) {
+                actions.uploadFinished(urls);
             })
             .catch(function (err) {
                 updateState({
@@ -132,21 +150,13 @@ export const actions = {
                     uploadError: err,
                 });
             });
-
-        updateState({
-            phase: s.PHASE_DETAILS,
-            uploadPhase: s.UPLOAD_PHASE_IN_PROGRESS,
-            uploadResult: null,
-            uploadError: null,
-            pixurUrl: null,
-            loadDetailsState: s.LOAD_DETAILS_READY,
-        });
     },
-    uploadFinished: function (location) {
+    uploadFinished: function (locations) {
         updateState({
             uploadPhase: s.UPLOAD_PHASE_FINISHED,
             uploadResult: s.UPLOAD_STATE_SUCCESS,
-            pixurUrl: location,
+            pixurUrl: locations.url,
+            seriesUrl: locations.series_url,
         });
     },
     submitDetails: function () {
@@ -245,6 +255,7 @@ export const actions = {
                     setDetails(metadata);
 
                     updateState({
+                        seriesUrl: metadata.series_url,
                         loadDetailsState: s.LOAD_DETAILS_READY,
                         savedRecipients: metadata.recipients,
                         recipients: metadata.recipients,
@@ -283,6 +294,7 @@ export const actions = {
             uploadPhase: s.UPLOAD_PHASE_FINISHED,
             uploadResult: s.UPLOAD_STATE_SUCCESS,
             pixurUrl,
+            seriesUrl: null,
             previewUrl: thumb,
             loadDetailsState: s.LOAD_DETAILS_PENDING,
             saveDetailsState: s.SAVE_DETAILS_INITIAL,

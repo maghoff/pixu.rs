@@ -13,6 +13,7 @@ use crate::image;
 pub struct Ingest {
     pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    pub base_url: String,
 }
 
 impl Ingest {
@@ -34,14 +35,29 @@ impl Ingest {
             .await
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        let id = image::ingest_jpeg(&body, self.db_pool)
+        let (id, series_id) = image::ingest_jpeg(&body, self.db_pool)
             .map_err(|_| HandlingError::InternalServerError)?;
 
+        let url = format!("{}{}", self.base_url, id);
+        let series_url = format!("{}{}", self.base_url, series_id);
+
+        #[derive(serde_derive::Serialize)]
+        struct IngestResponse<'a> {
+            url: &'a str,
+            series_url: &'a str,
+        }
+
+        let json = serde_json::to_string(&IngestResponse {
+            url: &url,
+            series_url: &series_url,
+        })
+        .map_err(|_| HandlingError::InternalServerError)?;
+
         Ok(Response {
-            status: web::Status::Created(id.to_string()), // TODO Use base_url
+            status: web::Status::Created(url),
             representations: vec![(
-                web::MediaType::new("image", "jpeg", vec![]),
-                Box::new(move || Box::new(body) as web::RepresentationBox),
+                web::MediaType::new("application", "json", vec![]),
+                Box::new(move || Box::new(json) as web::RepresentationBox),
             )],
             cookies: vec![],
         })
@@ -62,6 +78,7 @@ impl Post for Ingest {
 pub struct AuthorizationConsumer {
     pub title: String,
     pub db_pool: Pool<ConnectionManager<SqliteConnection>>,
+    pub base_url: String,
 }
 
 impl auth::authorizer::Consumer for AuthorizationConsumer {
@@ -74,6 +91,7 @@ impl auth::authorizer::Consumer for AuthorizationConsumer {
             post: Some(Box::new(Ingest {
                 title: self.title,
                 db_pool: self.db_pool,
+                base_url: self.base_url,
             })),
         })
     }

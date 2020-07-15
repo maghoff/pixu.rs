@@ -291,7 +291,7 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
             },
             _ = r"^img/$" => {
                 let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
-                let consumer = ingest::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone() };
+                let consumer = ingest::AuthorizationConsumer { title: title.clone(), db_pool: self.db_pool.clone(), base_url: self.base_url.clone() };
                 let authorizer = auth::authorizer::Authorizer::new(
                     title,
                     path.to_string(),
