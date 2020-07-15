@@ -59,6 +59,40 @@ struct UpdateRequest<'a> {
     send_email: Option<EmailDetails<'a>>,
 }
 
+fn implicit_pixur_series(
+    pixur_id: Id30,
+    db_connection: &SqliteConnection,
+) -> Result<Option<Id30>, HandlingError> {
+    use diesel::sql_types::Integer;
+
+    #[derive(QueryableByName)]
+    struct IdRow {
+        #[sql_type = "Integer"]
+        id: Id30,
+    }
+
+    let pixur_series: Vec<IdRow> = diesel::dsl::sql_query(
+        "\
+            SELECT id \
+            FROM pixur_series \
+            JOIN ( \
+                SELECT id AS singleton_id \
+                FROM pixur_series \
+                GROUP BY id \
+                HAVING COUNT(*) = 1 \
+            ) \
+            ON pixur_series.id = singleton_id \
+            WHERE pixurs_id = ? \
+            LIMIT 1 \
+        ",
+    )
+    .bind::<diesel::sql_types::Integer, _>(pixur_id)
+    .load(db_connection)
+    .map_err(|_| HandlingError::InternalServerError)?;
+
+    Ok(pixur_series.get(0).map(|x| x.id))
+}
+
 impl PixurMeta {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
@@ -66,13 +100,15 @@ impl PixurMeta {
             .get()
             .map_err(|_| HandlingError::InternalServerError)?;
 
-        // TODO Backwards compatibility: Implement transparent sharing of single pixurs
-        let recipients = vec![];
-        // let recipients = pixur_authorizations::table
-        //     .filter(pixur_authorizations::pixur_id.eq(self.id))
-        //     .select(pixur_authorizations::sub)
-        //     .load(&*db_connection)
-        //     .map_err(|_| HandlingError::InternalServerError)?;
+        // Backwards compatibility for implicitly shared single pixur:
+        let recipients: Vec<String> = match implicit_pixur_series(self.id, &*db_connection)? {
+            Some(pixur_series_id) => pixur_series_authorizations::table
+                .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+                .select(pixur_series_authorizations::sub)
+                .load(&*db_connection)
+                .map_err(|_| HandlingError::InternalServerError)?,
+            None => vec![],
+        };
 
         let (crop_left, crop_right, crop_top, crop_bottom) = pixurs::table
             .filter(pixurs::id.eq(self.id))
