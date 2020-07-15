@@ -116,11 +116,9 @@ impl auth::authorizer::Provider for AuthorizationProvider {
             || select(exists(
                 pixur_series_authorizations::table
                     .inner_join(
-                        pixur_series::table.inner_join(
-                            pixurs::table.inner_join(images_meta::table)
-                        ).on(
-                            pixur_series::id.eq(pixur_series_authorizations::pixur_series_id)
-                        )
+                        pixur_series::table
+                            .inner_join(pixurs::table.inner_join(images_meta::table))
+                            .on(pixur_series::id.eq(pixur_series_authorizations::pixur_series_id)),
                     )
                     .filter(images_meta::id.eq(self.id))
                     .filter(pixur_series_authorizations::sub.eq(sub)),

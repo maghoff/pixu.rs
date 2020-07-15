@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate diesel;
 
-#[path="../id30.rs"]
+#[path = "../id30.rs"]
 mod id30;
 
-use std::env;
-use rand::{rngs::SmallRng, SeedableRng};
 use id30::Id30;
+use rand::{rngs::SmallRng, SeedableRng};
+use std::env;
 
 fn main() -> Result<(), &'static str> {
     let arg = env::args().skip(1).next();

@@ -84,13 +84,12 @@ impl Index {
                         .load::<(Id30, Id30, Id30)>(&*db_connection)
                 } else {
                     pixur_series_authorizations::table
-                    .inner_join(
-                        pixur_series::table.inner_join(
-                            pixurs::table.inner_join(images_meta::table)
-                        ).on(
-                            pixur_series::id.eq(pixur_series_authorizations::pixur_series_id)
+                        .inner_join(
+                            pixur_series::table
+                                .inner_join(pixurs::table.inner_join(images_meta::table))
+                                .on(pixur_series::id
+                                    .eq(pixur_series_authorizations::pixur_series_id)),
                         )
-                    )
                         .order(pixurs::created.desc())
                         .filter(pixur_series_authorizations::sub.eq(&claims.sub))
                         .select((

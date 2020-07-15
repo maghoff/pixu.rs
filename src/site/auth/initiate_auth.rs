@@ -60,10 +60,12 @@ fn is_registered_user_core(
         .first(&*db_connection)
         .expect("Query must return 1 result");
 
-    let exists = is_uploader ||
-        select(exists(pixur_series_authorizations::table.filter(pixur_series_authorizations::sub.eq(email))))
-            .first(&*db_connection)
-            .map_err(|e| format!("Unable to get db result: {}", e))?;
+    let exists = is_uploader
+        || select(exists(
+            pixur_series_authorizations::table.filter(pixur_series_authorizations::sub.eq(email)),
+        ))
+        .first(&*db_connection)
+        .map_err(|e| format!("Unable to get db result: {}", e))?;
 
     Ok(exists)
 }
