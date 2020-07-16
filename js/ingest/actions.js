@@ -7,8 +7,8 @@ import { state, setState, updateState, initialState } from './store.js';
 // From the author's tall, narrow phone:
 const SAFE_PORTRAIT_ASPECT = 414 / 837;
 
-// From a browser window on a small laptop:
-const SAFE_LANDSCAPE_ASPECT = 699 / 1280;
+// From a browser window on a small laptop, adjusted for 97vh height:
+const SAFE_LANDSCAPE_ASPECT = 699 / 1280 * 97 / 100;
 
 function gatherDetails() {
     const details = {
