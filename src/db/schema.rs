@@ -41,6 +41,7 @@ table! {
         crop_right -> Float,
         crop_top -> Float,
         crop_bottom -> Float,
+        comment -> Nullable<Text>,
     }
 }
 

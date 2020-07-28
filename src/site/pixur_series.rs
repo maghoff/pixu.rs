@@ -26,6 +26,8 @@ struct Photo {
     max_width: Option<String>,
 
     background_position: String,
+
+    comment: Option<String>,
 }
 
 #[derive(BartDisplay)]
@@ -38,6 +40,7 @@ struct Get<'a> {
 }
 
 #[derive(Queryable)]
+#[allow(unused)]
 struct PixurSeries {
     id: i32,
     order: i32,
@@ -60,10 +63,12 @@ struct Pixurs {
     crop_right: f32,
     crop_top: f32,
     crop_bottom: f32,
+
+    comment: Option<String>,
 }
 
 fn photo_from_pixurs(
-    pix: &Pixurs,
+    pix: Pixurs,
     large_id: Id30,
     vh_height: f32,
     vh_height_str: &'static str,
@@ -121,6 +126,7 @@ fn photo_from_pixurs(
         max_height,
         max_width,
         background_position,
+        comment: pix.comment,
     })
 }
 
@@ -149,7 +155,7 @@ impl Pixu {
         };
 
         let photos = pix
-            .iter()
+            .into_iter()
             .map(|(_, pix)| {
                 // TODO Consolidate to one big query in parent scope, to avoid running O(n) queries
                 // TODO Load all sizes of images and allow client side to pick the best size
