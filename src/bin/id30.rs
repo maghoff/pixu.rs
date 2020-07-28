@@ -11,7 +11,11 @@ use std::env;
 fn main() -> Result<(), &'static str> {
     let arg = env::args().skip(1).next();
 
-    let id = arg.map(|x| x.parse().map_err(|_| "Parse error"));
+    let id = arg.map(|x| {
+        x.parse()
+            .or_else(|_| x.parse::<u32>().map(Id30::from))
+            .map_err(|_| "Parse error")
+    });
     let id = id.unwrap_or_else(|| {
         let mut rng = SmallRng::from_entropy();
         Ok(Id30::new_random(&mut rng))
