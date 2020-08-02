@@ -442,7 +442,8 @@ h2 {
 }
 
 .photo--thumbnail {
-    filter: blur(1vmax);
+    /* Bugger, the blur causes severe performance degradation */
+    /* filter: blur(1vmax); */
 }
 
 .photo--large {
