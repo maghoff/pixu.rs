@@ -10,6 +10,8 @@ export const initialState = {
     loadDetailsState: s.LOAD_DETAILS_READY,
     saveDetailsState: s.SAVE_DETAILS_INITIAL,
     previewUrl: "",
+    savedComment: "",
+    comment: "",
     sendEmail: DOM.email.sendEmail.defaultChecked,
     emailMessage: DOM.email.messageInput.defaultValue,
     savedRecipients: [],

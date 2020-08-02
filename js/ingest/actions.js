@@ -18,6 +18,7 @@ function gatherDetails() {
             crop_right: state.cropHorizontal.end,
             crop_top: state.cropVertical.start,
             crop_bottom: state.cropVertical.end,
+            comment: state.comment || null,
         },
         send_email: DOM.email.sendEmail.checked ? {
             title: DOM.email.title.value,
@@ -84,7 +85,9 @@ export const actions = {
                 end: 0.5,
                 savedStart: null,
                 savedEnd: null,
-            }
+            },
+            savedComment: "",
+            comment: "",
         });
     },
     reset: function () {
@@ -199,6 +202,7 @@ export const actions = {
                             savedStart: state.cropVertical.start,
                             savedEnd: state.cropVertical.end,
                         },
+                        savedComment: state.comment,
                     });
                 }
                 catch (err) {
@@ -270,7 +274,9 @@ export const actions = {
                             end: metadata.crop_bottom,
                             savedStart: metadata.crop_top,
                             savedEnd: metadata.crop_bottom,
-                        }
+                        },
+                        savedComment: metadata.comment || "",
+                        comment: metadata.comment || "",
                     });
                 }
                 catch (err) {

@@ -16,7 +16,7 @@ export default function (state) {
     const removedRecipients = [];
 
     const prevRec = state.savedRecipients, nextRec = state.recipients;
-    for (let pi = 0, ni = 0; pi < prevRec.length || ni < nextRec.length; ) {
+    for (let pi = 0, ni = 0; pi < prevRec.length || ni < nextRec.length;) {
         let p = prevRec[pi], n = nextRec[ni];
         if (p < n || n == undefined) {
             removedRecipients.push(p);
@@ -33,12 +33,13 @@ export default function (state) {
     const changed = {
         image: pickingImage || uploadingImage || imageUploadFailed,
         crop: changedCropHorizontal || changedCropVertical,
+        comment: state.comment != state.savedComment,
         recipients: !!(newRecipients.length || removedRecipients.length),
         newRecipients,
         removedRecipients,
     };
 
-    changed.any = changed.image || changed.crop || changed.recipients;
+    changed.any = changed.image || changed.crop || changed.comment || changed.recipients;
 
     return {
         ...state,

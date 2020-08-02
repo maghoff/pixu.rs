@@ -1,4 +1,5 @@
 body {
+    font: -apple-system-body;
     font-family: system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", "Roboto",
         "Oxygen", "Ubuntu", "Helvetica Neue", Arial, sans-serif,
@@ -127,6 +128,16 @@ h2 {
 
 .uploader-form--phase-details {
     display: none;
+}
+
+.uploader-form--comment {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+}
+
+.uploader-form--comment:disabled::placeholder {
+    opacity: 0;
 }
 
 .uploader-form--recipients {

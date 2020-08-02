@@ -40,6 +40,7 @@ const DOM = {
     },
     details: {
         form: document.querySelector('.uploader-form--details'),
+        comment: document.getElementById('uploader-form--comment'),
         recipients: document.querySelector('.uploader-form--recipients'),
         detailsSubmission: document.querySelector('.uploader-form--details-submission'),
         submit: document.querySelector('.uploader-form--details button[type="submit"]'),

@@ -3,6 +3,14 @@ import DOM from './dom.js';
 import * as s from './states.js';
 import * as crop from './crop.js';
 
+function arrayEquals(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
 function formatRecipientList(list) {
     if (list.length == 0) {
         return '';
@@ -81,9 +89,19 @@ function renderMetadataForm(prev, next) {
         }
     }
 
-    const changedUpdated = next.changed.any != prev.changed.any || next.changed.crop != prev.changed.crop || next.changed.recipients != prev.changed.recipients;
+    if (next.comment != prev.comment) {
+        DOM.details.comment.value = next.comment;
+    }
+
+    const changedUpdated =
+        next.changed.any != prev.changed.any ||
+        next.changed.crop != prev.changed.crop ||
+        next.changed.recipients != prev.changed.recipients ||
+        !arrayEquals(next.changed.newRecipients, prev.changed.newRecipients) ||
+        !arrayEquals(next.changed.removedRecipients, prev.changed.removedRecipients);
+    const commentUpdated = next.comment != prev.comment;
     const sendEmailUpdated = next.sendEmail != prev.sendEmail;
-    if (changedUpdated || sendEmailUpdated) {
+    if (changedUpdated || commentUpdated || sendEmailUpdated) {
         let summary = "", action;
         if (!next.changed.any) {
             summary = "Ingen endringer.";
@@ -91,6 +109,9 @@ function renderMetadataForm(prev, next) {
         } else {
             if (next.changed.crop) {
                 summary = "Beskjæringen er oppdatert. ";
+            }
+            if (next.changed.comment) {
+                summary += "Kommentaren er endret. ";
             }
             if (next.changed.recipients) {
                 if (next.changed.newRecipients.length > 0) {
@@ -133,6 +154,9 @@ function renderEmailForm(prev, next) {
     if ((next.changed.newRecipients.length > 0) != (prev.changed.newRecipients.length > 0)) {
         const action = next.changed.newRecipients.length > 0 ? 'add' : 'remove';
         DOM.email.container.classList[action]('show');
+    }
+
+    if (!arrayEquals(next.changed.newRecipients, prev.changed.newRecipients)) {
         DOM.email.recipients.textContent = formatRecipientList(next.changed.newRecipients);
     }
 

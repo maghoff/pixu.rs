@@ -5,6 +5,11 @@
 
         {{>_dynamic-cropping.html}}
 
+        <h2 id="uploader-form--comment-header">Kommentar på bildet <a class="internal-link" href="#uploader-form--recipients-submission">(hopp over)</a></h2>
+        <div>
+            <input class="uploader-form--comment" id="uploader-form--comment" name="uploader-form--comment" type="text" autocomplete=off placeholder="Ingen kommentar">
+        </div>
+
         <h2 id="uploader-form--recipients">Hvem vil du dele bildet med? <a class="internal-link" href="#uploader-form--details-submission">(hopp over)</a></h2>
         <select class="uploader-form--recipients" multiple size="{{recipients.len()}}" autocomplete=off>
             <optgroup disabled hidden></optgroup><!-- iOS bug -->

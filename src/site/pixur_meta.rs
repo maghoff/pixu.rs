@@ -32,6 +32,8 @@ struct MetadataGet {
     crop_right: f32,
     crop_top: f32,
     crop_bottom: f32,
+
+    comment: Option<String>,
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -43,6 +45,8 @@ struct MetadataPost<'a> {
     crop_right: Option<f32>,
     crop_top: Option<f32>,
     crop_bottom: Option<f32>,
+
+    comment: Option<&'a str>,
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -112,13 +116,14 @@ impl PixurMeta {
             None => vec![],
         };
 
-        let (crop_left, crop_right, crop_top, crop_bottom) = pixurs::table
+        let (crop_left, crop_right, crop_top, crop_bottom, comment) = pixurs::table
             .filter(pixurs::id.eq(self.id))
             .select((
                 pixurs::crop_left,
                 pixurs::crop_right,
                 pixurs::crop_top,
                 pixurs::crop_bottom,
+                pixurs::comment,
             ))
             .first(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
@@ -130,6 +135,7 @@ impl PixurMeta {
             crop_right,
             crop_top,
             crop_bottom,
+            comment,
         };
 
         let json =
@@ -295,19 +301,21 @@ impl PixurMeta {
 
                 #[derive(AsChangeset)]
                 #[table_name = "pixurs"]
-                struct UpdateCrop {
+                struct UpdateMetadata<'a> {
                     crop_left: Option<f32>,
                     crop_right: Option<f32>,
                     crop_top: Option<f32>,
                     crop_bottom: Option<f32>,
+                    comment: Option<Option<&'a str>>,
                 }
 
                 diesel::update(pixurs::table.filter(pixurs::id.eq(self.id)))
-                    .set(UpdateCrop {
+                    .set(UpdateMetadata {
                         crop_left: update_request.metadata.crop_left,
                         crop_right: update_request.metadata.crop_right,
                         crop_top: update_request.metadata.crop_top,
                         crop_bottom: update_request.metadata.crop_bottom,
+                        comment: Some(update_request.metadata.comment),
                     })
                     .execute(&*db_connection)
                     .or_else(|err| match err {

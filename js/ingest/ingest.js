@@ -28,6 +28,10 @@ function updateRecipients() {
     updateState({ recipients });
 }
 
+DOM.details.comment.addEventListener('input', function (ev) {
+    updateState({ comment: DOM.details.comment.value });
+});
+
 DOM.details.recipients.addEventListener('input', function (ev) {
     updateRecipients();
 });
