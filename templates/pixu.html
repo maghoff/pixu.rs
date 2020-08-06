@@ -3,12 +3,15 @@
     <div class="photo-list--list noscript" id="photo-list--list">
         <script>document.getElementById("photo-list--list").className = "photo-list--list";</script>
         {{#photos}}
-        <div class="photo" style="background: {{.average_color}}; height: {{.height}}; {{#.max_height}}max-height: {{.}}{{/.max_height}}">
-            <div class="photo--img-container" {{#.max_width}}style="max-width: {{.}};"{{/.max_width}}>
-                <div class="photo--img photo--thumbnail" style="background-image: url({{.thumb_url}}); background-position: {{.background_position}}"></div>
-                <div class="photo--img photo--large" style="background-image: url({{.large_url}}); background-position: {{.background_position}}"></div>
+        <div class="photo"
+            style="background: {{.average_color}}; height: {{.height}}; {{#.max_height}}max-height: {{.}}{{/.max_height}}">
+            <div class="photo--img-container" {{#.max_width}}style="max-width: {{.}};" {{/.max_width}}>
+                <div class="photo--img photo--thumbnail"
+                    style="background-image: url({{.thumb_url}}); background-position: {{.background_position}}"></div>
+                <div class="photo--img photo--large"
+                    style="background-image: url({{.large_url}}); background-position: {{.background_position}}"></div>
                 {{#.comment}}
-                <div class="photo--comment">{{.}}</div>
+                <div class="photo--comment photo--comment__bottom">{{.}}</div>
                 {{/.comment}}
             </div>
         </div>

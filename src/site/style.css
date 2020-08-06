@@ -427,6 +427,9 @@ h2 {
     height: 100%;
 
     position: relative;
+
+    display: flex;
+    align-items: center;
 }
 
 .photo--img {
@@ -459,9 +462,20 @@ h2 {
     left: 0;
     right: 0;
     padding: 8px 16px;
-    bottom: 10%;
 
     background: rgba(0, 0, 0, 0.5);
     color: #eee;
     text-align: center;
+}
+
+.photo--comment__top {
+    top: 10%;
+}
+
+.photo--comment__center {
+    /* Centering implemented by align-items: center on parent */
+}
+
+.photo--comment__bottom {
+    bottom: 10%;
 }
