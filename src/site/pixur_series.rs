@@ -28,6 +28,7 @@ struct Photo {
     background_position: String,
 
     comment: Option<String>,
+    comment_position: String,
 }
 
 #[derive(BartDisplay)]
@@ -65,6 +66,7 @@ struct Pixurs {
     crop_bottom: f32,
 
     comment: Option<String>,
+    comment_position: String, // TODO Could be an enum type instead (top, center, bottom)
 }
 
 fn photo_from_pixurs(
@@ -127,6 +129,7 @@ fn photo_from_pixurs(
         max_width,
         background_position,
         comment: pix.comment,
+        comment_position: pix.comment_position,
     })
 }
 

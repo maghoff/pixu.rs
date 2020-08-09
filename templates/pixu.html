@@ -11,7 +11,7 @@
                 <div class="photo--img photo--large"
                     style="background-image: url({{.large_url}}); background-position: {{.background_position}}"></div>
                 {{#.comment}}
-                <div class="photo--comment photo--comment__bottom">{{.}}</div>
+                <div class="photo--comment photo--comment__{{..comment_position}}">{{.}}</div>
                 {{/.comment}}
             </div>
         </div>
