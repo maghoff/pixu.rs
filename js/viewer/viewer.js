@@ -9,14 +9,16 @@ function updateInView() {
 
     window.requestAnimationFrame(function () {
         if (pendingResize) {
-            const el = anchorElement;
-            const top = el.offsetTop;
-            const height = el.clientHeight;
-
-            const anchorElementPos = top + height * anchorElementRatio;
-            window.scrollTo(window.scrollX, anchorElementPos - window.innerHeight / 2);
-
             pendingResize = false;
+
+            const el = anchorElement;
+            if (el) {
+                const top = el.offsetTop;
+                const height = el.clientHeight;
+
+                const anchorElementPos = top + height * anchorElementRatio;
+                window.scrollTo(window.scrollX, anchorElementPos - window.innerHeight / 2);
+            }
         }
 
         pendingUpdate = false;
