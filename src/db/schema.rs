@@ -20,6 +20,8 @@ table! {
         id -> Integer,
         order -> Integer,
         pixurs_id -> Integer,
+        comment -> Nullable<Text>,
+        comment_position -> Text,
     }
 }
 
@@ -41,8 +43,6 @@ table! {
         crop_right -> Float,
         crop_top -> Float,
         crop_bottom -> Float,
-        comment -> Nullable<Text>,
-        comment_position -> Text,
     }
 }
 

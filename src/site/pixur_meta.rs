@@ -116,16 +116,26 @@ impl PixurMeta {
             None => vec![],
         };
 
-        let (crop_left, crop_right, crop_top, crop_bottom, comment) = pixurs::table
+        let (crop_left, crop_right, crop_top, crop_bottom) = pixurs::table
             .filter(pixurs::id.eq(self.id))
             .select((
                 pixurs::crop_left,
                 pixurs::crop_right,
                 pixurs::crop_top,
                 pixurs::crop_bottom,
-                pixurs::comment,
             ))
             .first(&*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)?;
+
+        let comment = pixur_series_id
+            .and_then(|pixur_series_id| {
+                pixur_series::table
+                    .filter(pixur_series::id.eq(pixur_series_id))
+                    .select(pixur_series::comment)
+                    .first::<Option<String>>(&*db_connection)
+                    .transpose()
+            })
+            .transpose()
             .map_err(|_| HandlingError::InternalServerError)?;
 
         let metadata = MetadataGet {
@@ -301,12 +311,11 @@ impl PixurMeta {
 
                 #[derive(AsChangeset)]
                 #[table_name = "pixurs"]
-                struct UpdateMetadata<'a> {
+                struct UpdateMetadata {
                     crop_left: Option<f32>,
                     crop_right: Option<f32>,
                     crop_top: Option<f32>,
                     crop_bottom: Option<f32>,
-                    comment: Option<Option<&'a str>>,
                 }
 
                 diesel::update(pixurs::table.filter(pixurs::id.eq(self.id)))
@@ -315,7 +324,6 @@ impl PixurMeta {
                         crop_right: update_request.metadata.crop_right,
                         crop_top: update_request.metadata.crop_top,
                         crop_bottom: update_request.metadata.crop_bottom,
-                        comment: Some(update_request.metadata.comment),
                     })
                     .execute(&*db_connection)
                     .or_else(|err| match err {
@@ -323,6 +331,10 @@ impl PixurMeta {
                         diesel::result::Error::QueryBuilderError(_) => Ok(0),
                         err => Err(err),
                     })?;
+
+                diesel::update(pixur_series::table.filter(pixur_series::id.eq(pixur_series_id)))
+                    .set(pixur_series::comment.eq(update_request.metadata.comment))
+                    .execute(&*db_connection)?;
 
                 Ok(Response {
                     status: web::Status::Ok,

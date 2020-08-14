@@ -46,6 +46,9 @@ struct PixurSeries {
     id: i32,
     order: i32,
     pixur_id: i32,
+
+    comment: Option<String>,
+    comment_position: String, // TODO Could be an enum type instead (top, center, bottom)
 }
 
 #[derive(Queryable)]
@@ -64,13 +67,12 @@ struct Pixurs {
     crop_right: f32,
     crop_top: f32,
     crop_bottom: f32,
-
-    comment: Option<String>,
-    comment_position: String, // TODO Could be an enum type instead (top, center, bottom)
 }
 
 fn photo_from_pixurs(
     pix: Pixurs,
+    comment: Option<String>,
+    comment_position: String,
     large_id: Id30,
     vh_height: f32,
     vh_height_str: &'static str,
@@ -128,8 +130,8 @@ fn photo_from_pixurs(
         max_height,
         max_width,
         background_position,
-        comment: pix.comment,
-        comment_position: pix.comment_position,
+        comment,
+        comment_position,
     })
 }
 
@@ -143,7 +145,6 @@ impl Pixu {
         // TODO Schedule IO operations on some kind of background thread (schedule_blocking)
         // TODO Parallelize independent queries
 
-        // Slight inefficiency: Reading out unnecessary PixurSeries objects
         let pix: Vec<(PixurSeries, Pixurs)> = pixur_series::table
             .inner_join(pixurs::table)
             .filter(pixur_series::id.eq(self.id))
@@ -159,7 +160,7 @@ impl Pixu {
 
         let photos = pix
             .into_iter()
-            .map(|(_, pix)| {
+            .map(|(ps, pix)| {
                 // TODO Consolidate to one big query in parent scope, to avoid running O(n) queries
                 // TODO Load all sizes of images and allow client side to pick the best size
                 let large_id: Id30 = images_meta::table
@@ -169,7 +170,14 @@ impl Pixu {
                     .first(&*db_connection)
                     .map_err(|_| HandlingError::InternalServerError)?;
 
-                photo_from_pixurs(pix, large_id, vh_height, vh_height_str)
+                photo_from_pixurs(
+                    pix,
+                    ps.comment,
+                    ps.comment_position,
+                    large_id,
+                    vh_height,
+                    vh_height_str,
+                )
             })
             .collect::<Result<Vec<_>, HandlingError>>()?;
 
