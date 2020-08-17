@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use diesel;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
@@ -39,20 +41,20 @@ struct MetadataGet {
 #[derive(serde_derive::Deserialize)]
 struct MetadataPost<'a> {
     #[serde(borrow)]
-    recipients: std::collections::BTreeSet<&'a str>,
+    recipients: std::collections::BTreeSet<Cow<'a, str>>,
 
     crop_left: Option<f32>,
     crop_right: Option<f32>,
     crop_top: Option<f32>,
     crop_bottom: Option<f32>,
 
-    comment: Option<&'a str>,
+    comment: Option<Cow<'a, str>>,
 }
 
 #[derive(serde_derive::Deserialize)]
 struct EmailDetails<'a> {
-    title: &'a str,
-    message: &'a str,
+    title: Cow<'a, str>,
+    message: Cow<'a, str>,
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -185,8 +187,8 @@ impl PixurMeta {
         let url = format!("{}{}", self.base_url, series_id);
 
         let html_body = HtmlMail {
-            title: email_details.title,
-            message: email_details.message,
+            title: &*email_details.title,
+            message: &*email_details.message,
             url: &url,
         }
         .to_string();
@@ -200,7 +202,7 @@ impl PixurMeta {
             let email = EmailBuilder::new()
                 .to(*email)
                 .from(self.sender.clone())
-                .subject(email_details.title)
+                .subject(&*email_details.title)
                 .alternative(&html_body, &text_body)
                 .build()
                 .unwrap();
@@ -277,15 +279,15 @@ impl PixurMeta {
                     .load(&*db_connection)?;
 
                 let old_recipients: std::collections::BTreeSet<_> =
-                    old_recipients.iter().map(|x| x.as_str()).collect();
+                    old_recipients.iter().map(|x| Cow::from(x.as_str())).collect();
 
                 let new_recipients = update_request.metadata.recipients;
 
                 let to_add = new_recipients
                     .difference(&old_recipients)
-                    .map(|&sub| Authorization {
+                    .map(|sub| Authorization {
                         pixur_series_id,
-                        sub,
+                        sub: &*sub,
                     })
                     .collect::<Vec<_>>();
 
