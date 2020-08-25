@@ -3,7 +3,7 @@ use diesel::deserialize::{self, FromSql};
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 use std::io::Write;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, AsExpression, FromSqlRow)]

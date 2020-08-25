@@ -7,9 +7,9 @@ use web::{Error, MediaType, RepresentationBox, Resource, Response};
 
 use super::auth;
 use super::handling_error::HandlingError;
+use crate::comment_position::CommentPosition;
 use crate::db::schema::*;
 use crate::id30::Id30;
-use crate::comment_position::CommentPosition;
 
 pub struct Pixu {
     title: String,
