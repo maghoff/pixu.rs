@@ -6,6 +6,7 @@ mod index;
 mod ingest;
 mod pixur_meta;
 mod pixur_series;
+mod pixur_series_meta;
 mod query_args;
 mod thumbnail;
 
@@ -206,9 +207,34 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 // Don't canonicalize URL, or else the trailing /meta would disappear
                 // Besides: Users won't type in this URL
 
+                // FIXME: The Id30 in the URL is taken as the ID in the pixurs table,
+                // while the parent URL (without trailing /meta) is the ID in pixur_series
+
                 let id = m[1].parse().map_err(|_| not_found())?;
                 let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
                 let consumer = pixur_meta::AuthorizationConsumer {
+                    title: title.clone(),
+                    db_pool: self.db_pool.clone(),
+                    id,
+                    base_url: self.base_url.clone(),
+                    mailer: self.mailer.clone(),
+                    sender: self.sender.clone()
+                };
+                let authorizer = auth::authorizer::Authorizer::new(
+                    title,
+                    path.to_string(),
+                    provider,
+                    consumer,
+                );
+                Ok(Box::new(JwtCookieHandler::new(self.key.clone(), authorizer)))
+            },
+            m = r"^([a-zA-Z0-9]{6})/edit$" => {
+                // Don't canonicalize URL, or else the trailing /edit would disappear
+                // Besides: Users won't type in this URL
+
+                let id = m[1].parse().map_err(|_| not_found())?;
+                let provider = auth_provider::CanEditProvider { db_pool: self.db_pool.clone() };
+                let consumer = pixur_series_meta::AuthorizationConsumer {
                     title: title.clone(),
                     db_pool: self.db_pool.clone(),
                     id,

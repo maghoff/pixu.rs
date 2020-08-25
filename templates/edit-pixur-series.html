@@ -1,0 +1,63 @@
+<link href="../style.css" rel="stylesheet">
+<article>
+    <form id=form>
+        <ul class="series">
+        {{#series}}
+            <li class="series--item">
+            <img class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
+                <input autocomplete=off type="hidden" name="pixurs_id" value="{{.pixurs_id}}">
+                <input autocomplete=off class="series--comment" name="comment" value="{{#.comment}}{{.}}{{/.comment}}" placeholder="Ingen kommentar">
+                <div class="series--position">
+                    Kommentar på
+                    <input autocomplete=off type="radio" id="{{.pixurs_id}}-position--top" name="{{.pixurs_id}}--comment-position" value="top" {{#.position_top()?}}checked{{/.position_top()}}>
+                    <label for="{{.pixurs_id}}-position--top">toppen</label>
+                    <input autocomplete=off type="radio" id="{{.pixurs_id}}-position--center" name="{{.pixurs_id}}--comment-position" value="center" {{#.position_center()?}}checked{{/.position_center()}}>
+                    <label for="{{.pixurs_id}}-position--center">midten</label>
+                    <input autocomplete=off type="radio" id="{{.pixurs_id}}-position--bottom" name="{{.pixurs_id}}--comment-position" value="bottom" {{#.position_bottom()?}}checked{{/.position_bottom()}}>
+                    <label for="{{.pixurs_id}}-position--bottom">bunnen</label>
+                </div>
+            </li>
+        {{/series}}
+        </ul>
+        <button class="uploader-form--button uploader-form--button__default" type="submit">Lagre</button>
+    </form>
+</article>
+<script>
+async function saveSeries(series) {
+    let res =
+        await fetch("", {
+            method: 'POST',
+            body: JSON.stringify({series}),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            redirect: 'follow',
+        })
+        .catch(err => { throw "Noe gikk galt. Er du tilkoblet Internett?" });
+
+    if (!res.ok) {
+        throw `Noe gikk galt. Feilkode ${res.status} ${res.statusText}`;
+    }
+
+    alert("Lagret ✔");
+}
+
+document.getElementById("form").addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const series = [];
+    for (let item of document.querySelectorAll(".series--item")) {
+        const i = {
+            pixurs_id: item.querySelector('[name="pixurs_id"]').value,
+            comment: item.querySelector('[name="comment"]').value || null,
+            comment_position: item.querySelector('[type="radio"]:checked').value,
+        };
+        series.push(i);
+    }
+
+    saveSeries(series)
+        .catch(err => alert(err));
+});
+</script>
