@@ -48,12 +48,16 @@ struct MetadataPost<'a> {
     crop_top: Option<f32>,
     crop_bottom: Option<f32>,
 
+    #[serde(borrow)]
     comment: Option<Cow<'a, str>>,
 }
 
 #[derive(serde_derive::Deserialize)]
 struct EmailDetails<'a> {
+    #[serde(borrow)]
     title: Cow<'a, str>,
+
+    #[serde(borrow)]
     message: Cow<'a, str>,
 }
 
@@ -278,8 +282,10 @@ impl PixurMeta {
                     .select(pixur_series_authorizations::sub)
                     .load(&*db_connection)?;
 
-                let old_recipients: std::collections::BTreeSet<_> =
-                    old_recipients.iter().map(|x| Cow::from(x.as_str())).collect();
+                let old_recipients: std::collections::BTreeSet<_> = old_recipients
+                    .iter()
+                    .map(|x| Cow::from(x.as_str()))
+                    .collect();
 
                 let new_recipients = update_request.metadata.recipients;
 
