@@ -9,6 +9,7 @@ use super::auth;
 use super::handling_error::HandlingError;
 use crate::db::schema::*;
 use crate::id30::Id30;
+use crate::comment_position::CommentPosition;
 
 pub struct Pixu {
     title: String,
@@ -28,7 +29,7 @@ struct Photo {
     background_position: String,
 
     comment: Option<String>,
-    comment_position: String,
+    comment_position: CommentPosition,
 }
 
 #[derive(BartDisplay)]
@@ -48,7 +49,7 @@ struct PixurSeries {
     pixur_id: i32,
 
     comment: Option<String>,
-    comment_position: String, // TODO Could be an enum type instead (top, center, bottom)
+    comment_position: CommentPosition,
 }
 
 #[derive(Queryable)]
@@ -72,7 +73,7 @@ struct Pixurs {
 fn photo_from_pixurs(
     pix: Pixurs,
     comment: Option<String>,
-    comment_position: String,
+    comment_position: CommentPosition,
     large_id: Id30,
     vh_height: f32,
     vh_height_str: &'static str,

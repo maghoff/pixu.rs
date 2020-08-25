@@ -7,6 +7,7 @@ extern crate diesel;
 #[macro_use]
 extern crate lazy_static;
 
+mod comment_position;
 mod db;
 mod id30;
 mod image;
