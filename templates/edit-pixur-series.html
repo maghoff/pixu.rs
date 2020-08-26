@@ -4,7 +4,7 @@
         <ul class="series">
         {{#series}}
             <li class="series--item">
-            <img class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
+                <img class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
                 <input autocomplete=off type="hidden" name="pixurs_id" value="{{.pixurs_id}}">
                 <input autocomplete=off class="series--comment" name="comment" value="{{#.comment}}{{.}}{{/.comment}}" placeholder="Ingen kommentar">
                 <div class="series--position">
@@ -19,9 +19,26 @@
             </li>
         {{/series}}
         </ul>
+        <button id="add-photo" class="uploader-form--button">➕ Legg til bilde</button>
         <button class="uploader-form--button uploader-form--button__default" type="submit">Lagre</button>
     </form>
 </article>
+<template id="">
+    <li class="series--item">
+        <img class="series--thumbnail">
+        <input autocomplete=off type="hidden" name="pixurs_id">
+        <input autocomplete=off class="series--comment" name="comment" placeholder="Ingen kommentar">
+        <div class="series--position">
+            Kommentar på
+            <input id="PIXURS_ID-position--top" name="PIXURS_ID--comment-position" autocomplete=off type="radio" value="top">
+            <label for="PIXURS_ID-position--top">toppen</label>
+            <input id="PIXURS_ID-position--center" name="PIXURS_ID--comment-position" autocomplete=off type="radio" value="center">
+            <label for="PIXURS_ID-position--center">midten</label>
+            <input id="PIXURS_ID-position--bottom" name="PIXURS_ID--comment-position" autocomplete=off type="radio" value="bottom" checked>
+            <label for="PIXURS_ID-position--bottom">bunnen</label>
+        </div>
+    </li>
+</template>
 <script>
 async function saveSeries(series) {
     let res =
@@ -59,5 +76,28 @@ document.getElementById("form").addEventListener('submit', function (ev) {
 
     saveSeries(series)
         .catch(err => alert(err));
+});
+
+document.getElementById("add-photo").addEventListener('click', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const list = document.querySelector(".series");
+    const template = document.querySelector("template");
+
+    const pixursId = prompt("Pixur ID");
+
+    const item = template.content.cloneNode(true);
+    item.querySelector('input[name="pixurs_id"]').setAttribute('value', pixursId);
+    for (let radio of item.querySelectorAll('input[type="radio"]')) {
+        radio.id = radio.id.replace("PIXURS_ID", pixursId);
+        radio.name = radio.name.replace("PIXURS_ID", pixursId);
+    }
+    for (let label of item.querySelectorAll('label')) {
+        let n = label.getAttribute('for').replace("PIXURS_ID", pixursId);
+        label.setAttribute('for', n);
+    }
+
+    list.appendChild(item);
 });
 </script>
