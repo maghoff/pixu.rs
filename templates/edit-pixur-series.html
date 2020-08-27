@@ -7,6 +7,7 @@
                 <img class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
                 <input autocomplete=off type="hidden" name="pixurs_id" value="{{.pixurs_id}}">
                 <input autocomplete=off class="series--comment" name="comment" value="{{#.comment}}{{.}}{{/.comment}}" placeholder="Ingen kommentar">
+                <button class="series--delete" type=button>❌</button>
                 <div class="series--position">
                     Kommentar på
                     <input autocomplete=off type="radio" id="{{.pixurs_id}}-position--top" name="{{.pixurs_id}}--comment-position" value="top" {{#.position_top()?}}checked{{/.position_top()}}>
@@ -28,6 +29,7 @@
         <img class="series--thumbnail">
         <input autocomplete=off type="hidden" name="pixurs_id">
         <input autocomplete=off class="series--comment" name="comment" placeholder="Ingen kommentar">
+        <button class="series--delete" type=button>❌</button>
         <div class="series--position">
             Kommentar på
             <input id="PIXURS_ID-position--top" name="PIXURS_ID--comment-position" autocomplete=off type="radio" value="top">
@@ -76,6 +78,18 @@ document.getElementById("form").addEventListener('submit', function (ev) {
 
     saveSeries(series)
         .catch(err => alert(err));
+});
+
+document.getElementById("form").addEventListener('click', function (ev) {
+    if (ev.target.classList.contains("series--delete")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const item = ev.target.parentNode;
+        const list = item.parentNode;
+
+        list.removeChild(item);
+    }
 });
 
 document.getElementById("add-photo").addEventListener('click', function (ev) {
