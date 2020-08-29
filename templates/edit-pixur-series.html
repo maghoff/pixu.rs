@@ -3,8 +3,8 @@
     <form id=form>
         <ul class="series">
         {{#series}}
-            <li class="series--item">
-                <img class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
+            <li draggable=true class="series--item">
+                <img draggable=false class="series--thumbnail" src="../thumb/{{.thumbs_id}}" alt="Pixur {{.pixurs_id}}" style="background-color: {{.average_color()}}">
                 <input autocomplete=off type="hidden" name="pixurs_id" value="{{.pixurs_id}}">
                 <input autocomplete=off class="series--comment" name="comment" value="{{#.comment}}{{.}}{{/.comment}}" placeholder="Ingen kommentar">
                 <button class="series--delete" type=button>❌</button>
@@ -25,8 +25,8 @@
     </form>
 </article>
 <template id="">
-    <li class="series--item">
-        <img class="series--thumbnail">
+    <li draggable=true class="series--item">
+        <img draggable=false class="series--thumbnail">
         <input autocomplete=off type="hidden" name="pixurs_id">
         <input autocomplete=off class="series--comment" name="comment" placeholder="Ingen kommentar">
         <button class="series--delete" type=button>❌</button>
@@ -114,4 +114,53 @@ document.getElementById("add-photo").addEventListener('click', function (ev) {
 
     list.appendChild(item);
 });
+
+
+
+// Drag sorting due to https://stackoverflow.com/a/28962290
+let listRoot = document.querySelector("ul");
+let draggedItem;
+
+function dragOver(e) {
+    let over = e.target;
+    while (over && (over.parentNode !== listRoot)) {
+        over = over.parentNode;
+    }
+    if (!over) return;
+
+    if (isBefore(draggedItem, over)) {
+        listRoot.insertBefore(draggedItem, over);
+    } else {
+        listRoot.insertBefore(draggedItem, over.nextSibling);
+    }
+}
+
+function dragStart(e) {
+    e.dataTransfer.effectAllowed = "move";
+    draggedItem = e.target;
+    setTimeout(() => draggedItem.classList.add("dragging"), 0);
+}
+
+function dragEnd(ev) {
+    if (draggedItem) {
+        draggedItem.classList.remove("dragging");
+        draggedItem = null;
+    }
+}
+
+function isBefore(el1, el2) {
+    if (el2.parentNode === el1.parentNode) {
+        for (var cur = el1.previousSibling; cur && cur.nodeType !== 9; cur = cur.previousSibling) {
+            if (cur === el2) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+document.addEventListener('dragstart', dragStart);
+document.addEventListener('dragover', dragOver);
+document.addEventListener('dragend', dragEnd);
+
 </script>

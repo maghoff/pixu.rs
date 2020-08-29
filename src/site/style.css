@@ -105,6 +105,10 @@ h2 {
     grid-template: "a b c" auto "a d d" auto / 86px auto 50px;
 }
 
+.dragging {
+    visibility: hidden;
+}
+
 .series--thumbnail {
     width: 80px;
     height: 100%;
