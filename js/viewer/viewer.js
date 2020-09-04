@@ -6,6 +6,22 @@ let anchorElementRatio = null;
 const viewportSizeElement = document.querySelector(".viewport-size");
 let vh = viewportSizeElement.clientHeight, vw = viewportSizeElement.clientWidth;
 
+function handlePendingResize() {
+    const newVh = viewportSizeElement.clientHeight, newVw = viewportSizeElement.clientWidth;
+    if (vh == newVh && vw == newVw) return;
+    vh = newVh;
+    vw = newVw;
+
+    const el = anchorElement;
+    if (el) {
+        const top = el.offsetTop;
+        const height = el.clientHeight;
+
+        const anchorElementPos = top + height * anchorElementRatio;
+        window.scrollTo(window.scrollX, anchorElementPos - vh / 2);
+    }
+}
+
 function updateInView() {
     if (pendingUpdate) return;
     pendingUpdate = true;
@@ -13,20 +29,7 @@ function updateInView() {
     window.requestAnimationFrame(function () {
         if (pendingResize) {
             pendingResize = false;
-
-            const newVh = viewportSizeElement.clientHeight, newVw = viewportSizeElement.clientWidth;
-            if (vh == newVh && vw == newVw) return;
-            vh = newVh;
-            vw = newVw;
-
-            const el = anchorElement;
-            if (el) {
-                const top = el.offsetTop;
-                const height = el.clientHeight;
-
-                const anchorElementPos = top + height * anchorElementRatio;
-                window.scrollTo(window.scrollX, anchorElementPos - vh / 2);
-            }
+            handlePendingResize();
         }
 
         pendingUpdate = false;
