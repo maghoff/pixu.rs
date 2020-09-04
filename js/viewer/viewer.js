@@ -3,6 +3,9 @@ let pendingUpdate = false;
 let anchorElement = null;
 let anchorElementRatio = null;
 
+const viewportSizeElement = document.querySelector(".viewport-size");
+let vh = viewportSizeElement.clientHeight, vw = viewportSizeElement.clientWidth;
+
 function updateInView() {
     if (pendingUpdate) return;
     pendingUpdate = true;
@@ -11,20 +14,29 @@ function updateInView() {
         if (pendingResize) {
             pendingResize = false;
 
+            const newVh = viewportSizeElement.clientHeight, newVw = viewportSizeElement.clientWidth;
+            if (vh == newVh && vw == newVw) return;
+            vh = newVh;
+            vw = newVw;
+
             const el = anchorElement;
             if (el) {
                 const top = el.offsetTop;
                 const height = el.clientHeight;
 
                 const anchorElementPos = top + height * anchorElementRatio;
-                window.scrollTo(window.scrollX, anchorElementPos - window.innerHeight / 2);
+                window.scrollTo(window.scrollX, anchorElementPos - vh / 2);
             }
         }
 
         pendingUpdate = false;
 
+        // Add some padding to preload photos that are almost in view
+        const paddingTop = 100;
+        const paddingBottom = 300;
+
         const viewTop = window.scrollY;
-        const viewBottom = viewTop + window.innerHeight;
+        const viewBottom = viewTop + vh;
 
         const anchorY = (viewTop + viewBottom) / 2.;
 
@@ -38,7 +50,7 @@ function updateInView() {
                 anchorElementRatio = (anchorY - top) / (bottom - top);
             }
 
-            const inView = (bottom >= viewTop) && (top <= viewBottom);
+            const inView = (bottom >= viewTop - paddingTop) && (top <= viewBottom + paddingBottom);
             if (inView) el.classList.add("in-view");
             else el.classList.remove("in-view");
         }

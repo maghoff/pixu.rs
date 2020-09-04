@@ -28,6 +28,19 @@ h2 {
     font-size: inherit;
 }
 
+.viewport-size--container {
+    overflow: hidden;
+    position: relative;
+    width: 0;
+    height: 0;
+}
+.viewport-size {
+    visibility: hidden;
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+}
+
 /* Login etc */
 
 .input-row {
