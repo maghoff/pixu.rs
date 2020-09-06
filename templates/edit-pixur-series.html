@@ -21,6 +21,15 @@
         {{/series}}
         </ul>
         <button type=button id="add-photo" class="uploader-form--button">➕ Legg til bilde</button>
+        <h2 id="uploader-form--recipients">Hvem vil du dele serien med?</h2>
+        <select class="uploader-form--recipients" multiple size="{{recipients.len()}}" autocomplete=off>
+            <optgroup disabled hidden></optgroup><!-- iOS bug -->
+            {{#recipients}}
+            <option value='{{.0}}' {{#.1?}}selected{{/.1}}>{{.0}}</option>
+            {{/recipients}}
+        </select>
+        <!--<button id="uploader-form--add-recipient" class="uploader-form--button" type=button>➕ Legg til en annen</button>-->
+        <hr/>
         <button class="uploader-form--button uploader-form--button__default" type="submit">Lagre</button>
     </form>
 </article>
@@ -42,11 +51,11 @@
     </li>
 </template>
 <script>
-async function saveSeries(series) {
+async function saveSeries(series, recipients) {
     let res =
         await fetch("", {
             method: 'POST',
-            body: JSON.stringify({series}),
+            body: JSON.stringify({series, recipients}),
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -76,7 +85,13 @@ document.getElementById("form").addEventListener('submit', function (ev) {
         series.push(i);
     }
 
-    saveSeries(series)
+    const recipients = [];
+    const rec = document.querySelector(".uploader-form--recipients").selectedOptions;
+    for (let i = 0; i < rec.length; ++i) {
+        recipients.push(rec[i].value);
+    }
+
+    saveSeries(series, recipients)
         .catch(err => alert(err));
 });
 

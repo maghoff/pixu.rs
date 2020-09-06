@@ -103,6 +103,53 @@ fn implicit_pixur_series(
     Ok(pixur_series.get(0).map(|x| x.id))
 }
 
+fn delta_update_authorizations<'a>(db_connection: &SqliteConnection, pixur_series_id: Id30, new_recipients: std::collections::BTreeSet<Cow<'a, str>>) -> Result<Vec<Cow<'a, str>>, diesel::result::Error> {
+    #[derive(Insertable)]
+    #[table_name = "pixur_series_authorizations"]
+    struct Authorization<'a> {
+        pixur_series_id: Id30,
+        sub: &'a str,
+    }
+
+    let old_recipients: Vec<String> = pixur_series_authorizations::table
+        .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+        .select(pixur_series_authorizations::sub)
+        .load(db_connection)?;
+
+    let old_recipients: std::collections::BTreeSet<_> = old_recipients
+        .into_iter()
+        .map(|x| Cow::from(x))
+        .collect();
+
+    let to_add = new_recipients
+        .difference(&old_recipients)
+        .map(|x| x.clone())
+        .collect::<Vec<Cow<'a, str>>>();
+
+    let to_add_insert = to_add
+        .iter()
+        .map(|sub| Authorization {
+            pixur_series_id,
+            sub: &*sub,
+        })
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(pixur_series_authorizations::table)
+        .values(&to_add_insert)
+        .execute(db_connection)?;
+
+    let to_remove = old_recipients.difference(&new_recipients);
+
+    diesel::delete(
+        pixur_series_authorizations::table
+            .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+            .filter(pixur_series_authorizations::sub.eq_any(to_remove)),
+    )
+    .execute(db_connection)?;
+
+    Ok(to_add)
+}
+
 impl PixurMeta {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
@@ -270,52 +317,14 @@ impl PixurMeta {
                     }
                 };
 
-                #[derive(Insertable)]
-                #[table_name = "pixur_series_authorizations"]
-                struct Authorization<'a> {
-                    pixur_series_id: Id30,
-                    sub: &'a str,
-                }
-
-                let old_recipients: Vec<String> = pixur_series_authorizations::table
-                    .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
-                    .select(pixur_series_authorizations::sub)
-                    .load(&*db_connection)?;
-
-                let old_recipients: std::collections::BTreeSet<_> = old_recipients
-                    .iter()
-                    .map(|x| Cow::from(x.as_str()))
-                    .collect();
-
-                let new_recipients = update_request.metadata.recipients;
-
-                let to_add = new_recipients
-                    .difference(&old_recipients)
-                    .map(|sub| Authorization {
-                        pixur_series_id,
-                        sub: &*sub,
-                    })
-                    .collect::<Vec<_>>();
-
-                diesel::insert_into(pixur_series_authorizations::table)
-                    .values(&to_add)
-                    .execute(&*db_connection)?;
+                let new_recipients = delta_update_authorizations(&*db_connection, pixur_series_id, update_request.metadata.recipients)?;
 
                 if let Some(email_details) = update_request.send_email {
                     self.send_email_notification(
                         &email_details,
-                        &to_add.iter().map(|x| x.sub).collect::<Vec<_>>(),
+                        &new_recipients.iter().map(|x| x.as_ref()).collect::<Vec<_>>(),
                     );
                 }
-
-                let to_remove = old_recipients.difference(&new_recipients);
-
-                diesel::delete(
-                    pixur_series_authorizations::table
-                        .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
-                        .filter(pixur_series_authorizations::sub.eq_any(to_remove)),
-                )
-                .execute(&*db_connection)?;
 
                 #[derive(AsChangeset)]
                 #[table_name = "pixurs"]

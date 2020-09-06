@@ -29,6 +29,7 @@ pub struct PixurSeriesMeta {
 #[template = "templates/edit-pixur-series.html"]
 struct Get<'a> {
     series: &'a [PixurSeriesRow],
+    recipients: &'a [(String, bool)],
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -53,8 +54,12 @@ struct EmailDetails<'a> {
 struct UpdateRequest<'a> {
     #[serde(borrow)]
     series: Vec<SeriesRowPost<'a>>,
-    // #[serde(borrow)]
-    // send_email: Option<EmailDetails<'a>>,
+
+    #[serde(borrow)]
+    recipients: std::collections::BTreeSet<Cow<'a, str>>,
+
+    #[serde(borrow)]
+    send_email: Option<EmailDetails<'a>>,
 }
 
 #[derive(Queryable)]
@@ -84,6 +89,87 @@ impl PixurSeriesRow {
     }
 }
 
+fn update_series(db_connection: &SqliteConnection, series_id: Id30, series_description: Vec<SeriesRowPost>) -> Result<(), diesel::result::Error> {
+    diesel::delete(pixur_series::table.filter(pixur_series::id.eq(series_id)))
+        .execute(db_connection)?;
+
+    let to_add = series_description
+        .into_iter()
+        .enumerate()
+        .map(
+            |(
+                order,
+                SeriesRowPost {
+                    pixurs_id,
+                    comment,
+                    comment_position,
+                },
+            )| {
+                (
+                    pixur_series::id.eq(series_id),
+                    pixur_series::order.eq(order as i32),
+                    pixur_series::pixurs_id.eq(pixurs_id.parse::<Id30>().unwrap()), // TODO Parse on deserialize
+                    pixur_series::comment.eq(comment),
+                    pixur_series::comment_position.eq(comment_position),
+                )
+            },
+        )
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(pixur_series::table)
+        .values(&to_add)
+        .execute(db_connection)?;
+
+    Ok(())
+}
+
+fn delta_update_authorizations<'a>(db_connection: &SqliteConnection, pixur_series_id: Id30, new_recipients: std::collections::BTreeSet<Cow<'a, str>>) -> Result<Vec<Cow<'a, str>>, diesel::result::Error> {
+    #[derive(Insertable)]
+    #[table_name = "pixur_series_authorizations"]
+    struct Authorization<'a> {
+        pixur_series_id: Id30,
+        sub: &'a str,
+    }
+
+    let old_recipients: Vec<String> = pixur_series_authorizations::table
+        .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+        .select(pixur_series_authorizations::sub)
+        .load(db_connection)?;
+
+    let old_recipients: std::collections::BTreeSet<_> = old_recipients
+        .into_iter()
+        .map(|x| Cow::from(x))
+        .collect();
+
+    let to_add = new_recipients
+        .difference(&old_recipients)
+        .map(|x| x.clone())
+        .collect::<Vec<Cow<'a, str>>>();
+
+    let to_add_insert = to_add
+        .iter()
+        .map(|sub| Authorization {
+            pixur_series_id,
+            sub: &*sub,
+        })
+        .collect::<Vec<_>>();
+
+    diesel::insert_into(pixur_series_authorizations::table)
+        .values(&to_add_insert)
+        .execute(db_connection)?;
+
+    let to_remove = old_recipients.difference(&new_recipients);
+
+    diesel::delete(
+        pixur_series_authorizations::table
+            .filter(pixur_series_authorizations::pixur_series_id.eq(pixur_series_id))
+            .filter(pixur_series_authorizations::sub.eq_any(to_remove)),
+    )
+    .execute(db_connection)?;
+
+    Ok(to_add)
+}
+
 impl PixurSeriesMeta {
     async fn try_get(self: Box<Self>) -> Result<Response, HandlingError> {
         let db_connection = self
@@ -105,6 +191,28 @@ impl PixurSeriesMeta {
             .load(&*db_connection)
             .map_err(|_| HandlingError::InternalServerError)?;
 
+        let all_recipients = pixur_series_authorizations::table
+            .select(pixur_series_authorizations::sub)
+            .order(pixur_series_authorizations::sub.asc())
+            .distinct()
+            .load::<String>(&*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)?;
+
+        let recipients: Vec<String> = pixur_series_authorizations::table
+            .filter(pixur_series_authorizations::pixur_series_id.eq(self.id))
+            .select(pixur_series_authorizations::sub)
+            .order(pixur_series_authorizations::sub.asc())
+            .load(&*db_connection)
+            .map_err(|_| HandlingError::InternalServerError)?;
+
+        // TODO Could be expressed as JOIN in database:
+        let mut i = recipients.into_iter().peekable();
+        let mut recipients: Vec<(String, bool)> = vec![];
+        for recipient in all_recipients {
+            let selected = i.peek() == Some(&recipient);
+            recipients.push((recipient, selected));
+        }
+
         Ok(Response::new(
             web::Status::Ok,
             vec![(
@@ -113,7 +221,10 @@ impl PixurSeriesMeta {
                     Box::new(
                         super::Layout {
                             title: &self.title,
-                            body: &Get { series: &series },
+                            body: &Get {
+                                series: &series,
+                                recipients: &recipients,
+                            },
                         }
                         .to_string(),
                     ) as RepresentationBox
@@ -122,7 +233,6 @@ impl PixurSeriesMeta {
         ))
     }
 
-    /*
     fn send_email_notification(&self, email_details: &EmailDetails, recipients: &[&str]) {
         #[derive(BartDisplay)]
         #[template = "templates/notification-email.html"]
@@ -145,6 +255,7 @@ impl PixurSeriesMeta {
 
         let url = format!("{}{}", self.base_url, series_id);
 
+        // TODO Deal with singular vs plural for series
         let html_body = HtmlMail {
             title: email_details.title,
             message: email_details.message,
@@ -171,7 +282,6 @@ impl PixurSeriesMeta {
             // TODO How to handle errors here?
         }
     }
-    */
 
     async fn try_post(
         self: Box<Self>,
@@ -201,36 +311,16 @@ impl PixurSeriesMeta {
 
         db_connection
             .transaction(|| {
-                diesel::delete(pixur_series::table.filter(pixur_series::id.eq(self.id)))
-                    .execute(&*db_connection)?;
+                update_series(&*db_connection, self.id, update_request.series)?;
 
-                let to_add = update_request
-                    .series
-                    .into_iter()
-                    .enumerate()
-                    .map(
-                        |(
-                            order,
-                            SeriesRowPost {
-                                pixurs_id,
-                                comment,
-                                comment_position,
-                            },
-                        )| {
-                            (
-                                pixur_series::id.eq(self.id),
-                                pixur_series::order.eq(order as i32),
-                                pixur_series::pixurs_id.eq(pixurs_id.parse::<Id30>().unwrap()),
-                                pixur_series::comment.eq(comment),
-                                pixur_series::comment_position.eq(comment_position),
-                            )
-                        },
-                    )
-                    .collect::<Vec<_>>();
+                let new_recipients = delta_update_authorizations(&*db_connection, self.id, update_request.recipients)?;
 
-                diesel::insert_into(pixur_series::table)
-                    .values(&to_add)
-                    .execute(&*db_connection)?;
+                if let Some(email_details) = update_request.send_email {
+                    self.send_email_notification(
+                        &email_details,
+                        &new_recipients.iter().map(|x| x.as_ref()).collect::<Vec<_>>(),
+                    );
+                }
 
                 Ok(Response {
                     status: web::Status::Ok,
