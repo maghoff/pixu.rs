@@ -210,6 +210,9 @@ impl PixurSeriesMeta {
         let mut recipients: Vec<(String, bool)> = vec![];
         for recipient in all_recipients {
             let selected = i.peek() == Some(&recipient);
+            if selected {
+                i.next();
+            }
             recipients.push((recipient, selected));
         }
 
