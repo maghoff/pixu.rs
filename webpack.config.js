@@ -4,6 +4,7 @@ module.exports = {
     entry: {
         ingest: './js/ingest/ingest.js',
         viewer: './js/viewer/viewer.js',
+        series_editor: './js/series_editor/series_editor.js',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

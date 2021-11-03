@@ -284,6 +284,18 @@ impl<S: Spawn + Clone + Send + Sync + 'static> Site<S> {
                 #[cfg(feature = "dev-server")]
                 panic!("viewer.js must be served by the dev server");
             },
+            _ = r"^series_editor\.js$" => {
+                #[cfg(not(feature = "dev-server"))]
+                {
+                    Ok(Box::new(static_asset(
+                        MediaType::new("text", "javascript", vec!["charset=utf-8".to_string()]),
+                        include_str!("../../dist/series_editor.js").to_string(),
+                    )))
+                }
+
+                #[cfg(feature = "dev-server")]
+                panic!("viewer.js must be served by the dev server");
+            },
             _ = r"^initiate_auth$" =>
                 Ok(Box::new(web::Resource {
                     etag: None,
