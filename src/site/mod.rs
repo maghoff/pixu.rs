@@ -55,7 +55,7 @@ fn moved_permanently(redirect: impl Into<String>) -> Response {
     #[template_string = "Moved permanently to {{redirect}}\n"]
     struct MovedPermanently<'a> {
         redirect: &'a str,
-    };
+    }
 
     let body = MovedPermanently {
         redirect: &redirect,
