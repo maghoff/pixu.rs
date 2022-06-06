@@ -5,7 +5,7 @@ authors = ["Magnus Hovland Hoff <maghoff@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-hyper = "0.12.13"
+hyper = "0.14.10"
 chrono = "0.4.6"
 cookie = "0.12.0"
 async-trait = "0.1.22"
